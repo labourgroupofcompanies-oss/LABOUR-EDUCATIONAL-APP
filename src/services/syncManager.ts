@@ -1,5 +1,4 @@
 import { syncService } from './syncService';
-import { showToast } from '../components/Common/Toast';
 import { supabase } from '../supabaseClient';
 
 export const syncManager = {

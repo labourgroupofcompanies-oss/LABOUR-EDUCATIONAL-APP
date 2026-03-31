@@ -1,8 +1,6 @@
 import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { dbService } from '../../../services/dbService';
 import { useAuth } from '../../../hooks/useAuth';
-import { db } from '../../../db';
 
 interface Props {
     studentId: number;

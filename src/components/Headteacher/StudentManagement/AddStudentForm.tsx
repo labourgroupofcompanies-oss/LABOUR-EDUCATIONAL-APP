@@ -7,7 +7,6 @@ import { eduDb, type Student } from '../../../eduDb';
 import { showToast } from '../../Common/Toast';
 import { supabase } from '../../../supabaseClient';
 import { dbService } from '../../../services/dbService';
-import { syncManager } from '../../../services/syncManager';
 import { syncService } from '../../../services/syncService';
 
 interface AddStudentFormProps {

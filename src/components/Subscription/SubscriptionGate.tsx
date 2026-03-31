@@ -28,7 +28,7 @@ export default function SubscriptionGate({ children, inline }: SubscriptionGateP
 
     // ── REACTIVE IDENTITY & HISTORY ──
     const school = useLiveQuery(() => 
-        user?.schoolId ? db.schools.where('idCloud').equals(user.schoolId).first() : null
+        user?.schoolId ? db.schools.where('idCloud').equals(user.schoolId).first() : undefined
     , [user?.schoolId]);
 
     const hasPaidSubs = useLiveQuery(async () => {

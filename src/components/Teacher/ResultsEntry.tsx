@@ -40,7 +40,6 @@ const ResultsEntry: React.FC<ResultsEntryProps> = ({ classId, className, subject
     const { user } = useAuth();
     const [students, setStudents] = useState<StudentRow[]>([]);
     const [isSaving, setIsSaving] = useState(false);
-    const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     const [selectedTerm, setSelectedTerm] = useState<string>('');
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -505,16 +504,6 @@ const ResultsEntry: React.FC<ResultsEntryProps> = ({ classId, className, subject
                 )}
             </div>
 
-            {/* Save Message */}
-            {saveMessage && (
-                <div className={`p - 4 rounded - xl border flex items - center gap - 3 ${saveMessage.type === 'success'
-                    ? 'bg-green-50 text-green-700 border-green-100'
-                    : 'bg-red-50 text-red-700 border-red-100'
-                    } `}>
-                    <i className={`fas ${saveMessage.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} `}></i>
-                    {saveMessage.text}
-                </div>
-            )}
 
             {/* Results Display */}
             <div className="animate-fadeIn">

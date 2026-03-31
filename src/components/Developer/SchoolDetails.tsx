@@ -52,7 +52,7 @@ const Section = ({ icon, title, color = 'blue', children }: {
 const SchoolDetails: React.FC<SchoolDetailsProps> = ({ school, onClose }) => {
     const [live, setLive] = useState<LiveData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'overview' | 'staff' | 'subscriptions'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'staff' | 'subscriptions' | 'onboarding'>('overview');
 
     const schoolUuid = school.idCloud || (school as any).id;
     const s = (school as any); // raw cloud row shorthand

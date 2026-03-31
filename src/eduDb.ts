@@ -131,6 +131,7 @@ export interface FeePayment extends BaseEntity {
     paymentDate: number;
     notes?: string;
     receiptNo: string;
+    isVoided?: boolean;
     isDeleted?: boolean;
 }
 

@@ -1284,12 +1284,12 @@ export const syncService = {
                     } else if (data) {
                         // Success: Match returned cloud records back to local records to persist the UUID
                         for (const cloudItem of data) {
-                            const localMatch = batch.find(localItem => {
+                            const localMatch = batch.find((localItem: any) => {
                                 // Fallback to matching by conflict columns (natural keys) as id_local is not in schema
                                 return conflictCols.every(col => {
                                     const camelCol = col.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
                                     const localVal = localItem[camelCol] ?? localItem[col] ?? null;
-                                    const cloudVal = cloudItem[col] ?? null;
+                                    const cloudVal = (cloudItem as any)[col] ?? null;
                                     
                                     // Soft string matching for ID comparisons (UUIDs)
                                     if (localVal === null || cloudVal === null) return localVal === cloudVal;
@@ -1299,7 +1299,7 @@ export const syncService = {
 
                             if (localMatch) {
                                 await table.update(localMatch.id, { 
-                                    idCloud: cloudItem.id, 
+                                    idCloud: (cloudItem as any).id, 
                                     syncStatus: 'synced',
                                     syncError: null,
                                     updatedAt: Date.now()

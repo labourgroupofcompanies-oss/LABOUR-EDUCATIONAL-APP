@@ -105,7 +105,7 @@ export default function PromotionApprovals() {
                 status: 'rejected',
                 reviewedBy: user.id,
                 reviewedAt: now,
-                reviewNote: reason.trim() || undefined,
+                reviewNote: reason?.trim() || undefined,
                 syncStatus: 'pending',
                 updatedAt: now
             });
