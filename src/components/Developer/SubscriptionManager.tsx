@@ -78,7 +78,7 @@ export default function SubscriptionManager() {
     const [priceMessage, setPriceMessage] = useState({ type: '', text: '' });
 
     const fetchPrices = async () => {
-        const { data, error } = await supabase.from('subscription_prices').select('*').single();
+        const { data, error } = await supabase.from('subscription_prices').select('*').maybeSingle();
         if (data && !error) {
             setPrices({
                 plan_1_term: data.plan_1_term,
@@ -91,7 +91,7 @@ export default function SubscriptionManager() {
     const handleSavePrices = async () => {
         setSavingPrices(true);
         // We know we only have one row because of the exact schema we created
-        const { data: existingData } = await supabase.from('subscription_prices').select('id').single();
+        const { data: existingData } = await supabase.from('subscription_prices').select('id').maybeSingle();
 
         let error;
         if (existingData) {

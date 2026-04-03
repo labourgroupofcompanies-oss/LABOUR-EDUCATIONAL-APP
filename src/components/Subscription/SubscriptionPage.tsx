@@ -68,7 +68,7 @@ export default function SubscriptionPage() {
 
     useEffect(() => {
         const fetchPrices = async () => {
-            const { data, error } = await supabase.from('subscription_prices').select('*').single();
+            const { data, error } = await supabase.from('subscription_prices').select('*').maybeSingle();
             if (data && !error) {
                 setPrices({
                     plan_1_term: Number(data.plan_1_term),

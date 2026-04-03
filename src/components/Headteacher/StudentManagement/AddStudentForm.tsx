@@ -135,7 +135,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
 
     // Fetch Classes
     const classes = useLiveQuery(() =>
-        user?.schoolId ? eduDb.classes.where('schoolId').equals(user.schoolId).toArray() : []
+        user?.schoolId ? eduDb.classes.where('schoolId').equals(user.schoolId).filter(c => !c.isDeleted).toArray() : []
         , [user?.schoolId]);
 
     // Fetch existing students to auto-suggest ID

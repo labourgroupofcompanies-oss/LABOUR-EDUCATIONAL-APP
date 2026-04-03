@@ -198,7 +198,7 @@ const RemarkRow: React.FC<{
 };
 
 /* ── Main component ── */
-type ClassView = 'roster' | 'remarks';
+type ClassView = 'roster' | 'remarks' | 'subjects';
 
 const TeacherClassList: React.FC = () => {
     const { user } = useAuth();
@@ -273,6 +273,39 @@ const TeacherClassList: React.FC = () => {
         return enriched;
     }, [selectedClass, user?.schoolId, currentTerm, currentYear]);
 
+    const allocatedSubjects = useLiveQuery(async () => {
+        if (!selectedClass?.id || !user?.schoolId) return [];
+        
+        const [classSubjects, staff] = await Promise.all([
+            dbService.classSubjects.getByClass(user.schoolId, selectedClass.id),
+            dbService.staff.getAll(user.schoolId)
+        ]);
+        
+        const subjectTeachers: { subjectName: string; teacherName: string; teacherId?: string }[] = [];
+        
+        for (const cs of classSubjects) {
+            const subject = await eduDb.subjects.get(cs.subjectId);
+            let teacherName = 'Unassigned';
+            
+            if (cs.teacherId) {
+                const teacherIds = await dbService.staff.resolveTeacherIds(cs.teacherId);
+                const found = staff.find(t => teacherIds.includes(t.id?.toString() || (t as any).idCloud || ''));
+                if (found) {
+                    teacherName = found.fullName || found.username || 'Unknown Teacher';
+                }
+            }
+            
+            if (subject) {
+                subjectTeachers.push({
+                    subjectName: subject.name,
+                    teacherName,
+                    teacherId: cs.teacherId
+                });
+            }
+        }
+        return subjectTeachers;
+    }, [selectedClass, user?.schoolId]);
+
     const classStats = React.useMemo(() => {
         if (!students) return null;
         const total = students.length;
@@ -346,7 +379,10 @@ const TeacherClassList: React.FC = () => {
                     {([
                         { key: 'roster', label: 'Learner Roster', icon: 'fa-users' },
                         ...(isCurrentClassTeacher
-                            ? [{ key: 'remarks', label: 'Term Remarks', icon: 'fa-comment-dots' }]
+                            ? [
+                                { key: 'remarks', label: 'Term Remarks', icon: 'fa-comment-dots' },
+                                { key: 'subjects', label: 'Allocated Subjects', icon: 'fa-book' }
+                              ]
                             : []
                         ),
                     ] as { key: ClassView; label: string; icon: string }[]).map(tab => (
@@ -439,6 +475,47 @@ const TeacherClassList: React.FC = () => {
                                         schoolId={user!.schoolId}
                                     />
                                 ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── SUBJECTS ── */}
+                {classView === 'subjects' && (
+                    <div className="space-y-4 animate-fadeIn">
+                        <div className="flex items-start gap-3 bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-800 mb-6">
+                            <i className="fas fa-book-open text-indigo-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                                <p className="font-black">Subject Allocations</p>
+                                <p className="text-xs mt-0.5 text-indigo-700">The current subjects assigned to this class and the designated subject teachers.</p>
+                            </div>
+                        </div>
+
+                        {allocatedSubjects && allocatedSubjects.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {allocatedSubjects.map((sub, idx) => (
+                                    <div key={idx} className="bg-white p-5 rounded-[1.5rem] border border-gray-100 shadow-sm flex flex-col gap-3 group hover:shadow-md transition-all">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-lg flex-shrink-0 group-hover:scale-110 transition-transform">
+                                                <i className="fas fa-book"></i>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-black text-gray-800 leading-tight group-hover:text-purple-600 transition-colors">{sub.subjectName}</h4>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Subject</p>
+                                            </div>
+                                        </div>
+                                        <div className="pt-3 border-t border-gray-50 flex items-center gap-2">
+                                            <i className="fas fa-chalkboard-teacher text-indigo-400 text-xs" />
+                                            <span className="text-xs font-bold text-gray-600 truncate">{sub.teacherName}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-12 text-center bg-gray-50/50 rounded-[2rem] border-2 border-dashed border-gray-100">
+                                <i className="fas fa-book text-4xl mb-4 text-gray-200" />
+                                <h3 className="text-lg font-bold text-gray-400">No Subjects Allocated</h3>
+                                <p className="text-gray-400 text-sm mt-1 font-medium">Subjects have not yet been assigned to this sector.</p>
                             </div>
                         )}
                     </div>

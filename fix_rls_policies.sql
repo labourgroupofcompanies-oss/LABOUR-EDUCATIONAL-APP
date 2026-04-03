@@ -28,9 +28,9 @@ DO $$
 DECLARE 
     t text;
     tables text[] := ARRAY[
-        'staff_profiles', 'subjects', 'classes', 'students', 'results', 'attendance', 
+        'staff_profiles', 'subjects', 'classes', 'class_subjects', 'students', 'results', 'attendance', 
         'settings', 'assessment_configs', 'component_scores', 'fee_structures', 'fee_payments', 
-        'payroll_records', 'expenses', 'promotion_requests'
+        'payroll_records', 'expenses', 'budgets', 'promotion_requests'
     ];
 BEGIN
     FOR t IN SELECT unnest(tables) LOOP

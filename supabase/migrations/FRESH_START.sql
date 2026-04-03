@@ -108,6 +108,27 @@ AS $$
   LIMIT  1;
 $$;
 
+-- ─── STEP 5.1: AUTH RESOLVER (EXTERNAL LOOKUP) ──────────────────────────────
+-- Replaces the broad anon policy with a SECURITY DEFINER function.
+-- Used by LoginPage.tsx to find the internal auth_email from school+username.
+CREATE OR REPLACE FUNCTION public.resolve_auth_email(
+  p_school_code TEXT,
+  p_username    TEXT
+)
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT sp.auth_email
+  FROM   public.staff_profiles sp
+  JOIN   public.schools s ON s.id = sp.school_id
+  WHERE  LOWER(s.school_code) = LOWER(p_school_code)
+  AND    LOWER(sp.username)   = LOWER(p_username)
+  LIMIT  1;
+$$;
+
 -- ─── STEP 6: Enable Row Level Security ───────────────────────────────────────
 ALTER TABLE public.schools        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.staff_profiles ENABLE ROW LEVEL SECURITY;
@@ -149,6 +170,9 @@ GRANT SELECT            ON public.schools        TO authenticated;
 GRANT SELECT, UPDATE    ON public.staff_profiles TO authenticated;
 GRANT EXECUTE ON FUNCTION public.my_school_id()  TO authenticated;
 GRANT EXECUTE ON FUNCTION public.my_role()       TO authenticated;
+
+-- The auth resolver MUST be executable by unauthenticated (anon) users
+GRANT EXECUTE ON FUNCTION public.resolve_auth_email(TEXT, TEXT) TO anon;
 
 COMMIT;
 

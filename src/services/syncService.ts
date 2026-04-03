@@ -369,7 +369,9 @@ export const syncService = {
                     const { error } = await supabase
                         .from('class_subjects')
                         .update(payload)
-                        .eq('id', cloudId);
+                        .eq('id', cloudId)
+                        .select('id')
+                        .single();
 
                     if (error) throw error;
                 } else {

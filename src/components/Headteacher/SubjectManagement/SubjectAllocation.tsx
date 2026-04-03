@@ -13,16 +13,24 @@ const SubjectAllocation: React.FC = () => {
     const [loading, setLoading] = useState(false);
 
     const classes = useLiveQuery(() =>
-        user?.schoolId ? eduDb.classes.where('schoolId').equals(user.schoolId).toArray() : []
+        user?.schoolId ? eduDb.classes.where('schoolId').equals(user.schoolId).filter(c => !c.isDeleted).toArray() : []
         , [user?.schoolId]);
 
     const subjects = useLiveQuery(() =>
         user?.schoolId ? eduDb.subjects.where('schoolId').equals(user.schoolId).toArray() : []
         , [user?.schoolId]);
 
-    const teachers = useLiveQuery(() =>
-        user?.schoolId ? db.users.where({ schoolId: user.schoolId, role: 'TEACHER' }).toArray() : []
-        , [user?.schoolId]);
+    const teachers = useLiveQuery(() => {
+        if (!user?.schoolId) return [];
+        return db.users
+            .where('schoolId')
+            .equals(user.schoolId)
+            .filter(u => {
+                const r = (u.role || '').toUpperCase();
+                return (r === 'TEACHER' || r === 'STAFF' || r === 'HEADTEACHER') && !u.isDeleted;
+            })
+            .toArray();
+    }, [user?.schoolId]);
 
     const classSubjectsRecord = useLiveQuery(() =>
         user?.schoolId ? eduDb.classSubjects.where('schoolId').equals(user.schoolId).toArray() : []
@@ -113,7 +121,14 @@ const SubjectAllocation: React.FC = () => {
 
             // 1. Save selected subjects ── Online First (select → insert or update)
             for (const sId of selectedSubjectIds) {
-                const teacherUuid = allocations[sId] || null;
+                let teacherUuid = allocations[sId] || null;
+                if (isClassTeacherMode && classTeacherId) {
+                    // Try to resolve the classTeacher's cloud UUID directly if it exists
+                    const asNum = parseInt(classTeacherId);
+                    const teacherRecord = await db.users.where({ idCloud: classTeacherId }).first() 
+                        || (!isNaN(asNum) ? await db.users.get(asNum) : null);
+                    teacherUuid = (teacherRecord as any)?.idCloud || classTeacherId;
+                }
 
                 const localSubject = await eduDb.subjects.get(sId);
                 const subjectCloudId = (localSubject as any)?.idCloud;
@@ -135,7 +150,9 @@ const SubjectAllocation: React.FC = () => {
                     const { error } = await supabase
                         .from('class_subjects')
                         .update({ teacher_id: teacherUuid, is_deleted: false })
-                        .eq('id', existingCloud.id);
+                        .eq('id', existingCloud.id)
+                        .select('id')
+                        .single();
                     if (error) throw new Error(error.message);
                     cloudId = existingCloud.id;
                 } else {
@@ -328,7 +345,7 @@ const SubjectAllocation: React.FC = () => {
                                                         }`}
                                                     >
                                                         <option value="">— No Teacher —</option>
-                                                    {teachers?.map(teacher => (
+                                                    {teachers?.map((teacher: any) => (
                                                         <option key={teacher.id} value={teacher.idCloud || ''} disabled={!teacher.idCloud}>
                                                             {teacher.fullName || teacher.username}{!teacher.idCloud ? ' (Not Synced)' : ''}
                                                         </option>
@@ -375,7 +392,7 @@ const SubjectAllocation: React.FC = () => {
                                                         }`}
                                                 >
                                                     <option value="">— No Teacher Assigned —</option>
-                                                    {teachers?.map(teacher => (
+                                                    {teachers?.map((teacher: any) => (
                                                         <option key={teacher.id} value={teacher.idCloud || ''} disabled={!teacher.idCloud}>
                                                             {teacher.fullName || teacher.username}{!teacher.idCloud ? ' (Not Synced)' : ''}
                                                         </option>

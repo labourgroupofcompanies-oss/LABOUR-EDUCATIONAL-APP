@@ -6,6 +6,7 @@ import { showToast } from '../Common/Toast';
 import { showConfirm } from '../Common/ConfirmDialog';
 import { showPromotionDialog } from '../Common/PromotionDialogs';
 import { supabase } from '../../supabaseClient';
+import { db } from '../../db';
 
 const ClassManagement: React.FC = () => {
     const { user } = useAuth();
@@ -73,9 +74,16 @@ const ClassManagement: React.FC = () => {
         cleanupDuplicates();
     }, [classes?.length, user?.schoolId]);
 
-    const teachers = useLiveQuery(async () => {
-        if (user?.schoolId) return await dbService.staff.getTeachers(user.schoolId);
-        return [];
+    const teachers = useLiveQuery(() => {
+        if (!user?.schoolId) return [];
+        return db.users
+            .where('schoolId')
+            .equals(user.schoolId)
+            .filter((u: any) => {
+                const r = (u.role || '').toUpperCase();
+                return (r === 'TEACHER' || r === 'STAFF' || r === 'HEADTEACHER') && !u.isDeleted;
+            })
+            .toArray();
     }, [user?.schoolId]);
 
     const subjects = useLiveQuery(async () => {
@@ -508,7 +516,7 @@ const ClassManagement: React.FC = () => {
                                 className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary"
                             >
                                 <option value="">Select Teacher...</option>
-                                {teachers?.map((t) => (
+                                {teachers?.map((t: any) => (
                                     <option key={t.id} value={t.idCloud || ''} disabled={!t.idCloud}>
                                         {t.fullName}{!t.idCloud ? ' (Not Synced)' : ''}
                                     </option>
@@ -568,7 +576,7 @@ const ClassManagement: React.FC = () => {
                                             className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl bg-indigo-50 border border-indigo-100 text-sm font-bold text-indigo-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-300 hover:bg-indigo-100 transition-colors truncate"
                                         >
                                             <option value="">— Unassigned —</option>
-                                            {teachers?.map((t) => (
+                                            {teachers?.map((t: any) => (
                                                 <option key={t.id} value={t.idCloud || ''} disabled={!t.idCloud}>
                                                     {t.fullName}{!t.idCloud ? ' (Not Synced)' : ''}
                                                 </option>
@@ -854,7 +862,7 @@ const ClassManagement: React.FC = () => {
                                                             className="w-full pl-3 pr-8 py-2 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary hover:bg-indigo-100 transition-colors"
                                                         >
                                                             <option value="">— Unassigned Teacher —</option>
-                                                            {teachers?.map((t) => (
+                                                            {teachers?.map((t: any) => (
                                                                 <option key={t.id} value={t.idCloud || ''} disabled={!t.idCloud}>
                                                                     {t.fullName}{!t.idCloud ? ' ⚠ Not Synced' : ''}
                                                                 </option>

@@ -74,7 +74,7 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
     }, [user?.schoolId, term, year]);
 
     const classes = useLiveQuery(() =>
-        user?.schoolId ? eduDb.classes.where('schoolId').equals(user.schoolId).toArray() : []
+        user?.schoolId ? eduDb.classes.where('schoolId').equals(user.schoolId).filter(c => !c.isDeleted).toArray() : []
         , [user?.schoolId]);
 
     // Filter Students
