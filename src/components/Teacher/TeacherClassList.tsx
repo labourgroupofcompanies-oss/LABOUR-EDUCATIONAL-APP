@@ -293,6 +293,12 @@ const TeacherClassList: React.FC = () => {
                 if (found) {
                     teacherName = found.fullName || found.username || 'Unknown Teacher';
                 }
+            } else if (selectedClass?.teachingMode === 'class_teacher' && selectedClass.classTeacherId) {
+                const teacherIds = await dbService.staff.resolveTeacherIds(selectedClass.classTeacherId);
+                const found = staff.find(t => teacherIds.includes(t.id?.toString() || (t as any).idCloud || ''));
+                if (found) {
+                    teacherName = found.fullName || found.username || 'Unknown Teacher';
+                }
             }
             
             if (subject) {

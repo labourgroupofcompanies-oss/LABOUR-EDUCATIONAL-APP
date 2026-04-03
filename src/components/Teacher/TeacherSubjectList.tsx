@@ -24,6 +24,14 @@ const TeacherSubjectList: React.FC = () => {
         return await dbService.staff.getSubjectAssignments(user.schoolId, user.id.toString()) as SubjectAssignment[];
     }, [user?.schoolId, user?.id]);
 
+    const classTeacherIds = useLiveQuery(async () => {
+        if (user?.schoolId && user?.id) {
+            const ctClasses = await dbService.classes.getAsClassTeacher(user.schoolId, user.id.toString());
+            return new Set(ctClasses.map(c => c.id!));
+        }
+        return new Set<number>();
+    }, [user?.schoolId, user?.id]);
+
     const { currentTerm, currentYear } = useAcademicSession();
 
     const submissionStatus = useLiveQuery(async () => {
@@ -90,7 +98,9 @@ const TeacherSubjectList: React.FC = () => {
                                 <i className={`fas ${isSubmitted ? 'fa-check-double' : isDraft ? 'fa-pencil-alt' : 'fa-book-open'}`}></i>
                             </div>
                             <div className="flex flex-col items-end gap-1.5">
-                                <span className={`${isDraft ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600'} px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider`}>Subject Teacher</span>
+                                <span className={`${isDraft ? 'bg-amber-100 text-amber-700' : 'bg-blue-50 text-blue-600'} px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider`}>
+                                    {classTeacherIds?.has(assign.classId) ? 'Class Teacher' : 'Subject Teacher'}
+                                </span>
                                 {isSubmitted && (
                                     <span className="bg-emerald-500 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">
                                         <i className="fas fa-check-circle mr-1"></i> Completed

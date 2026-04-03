@@ -321,29 +321,34 @@ export const dbService = {
 
             const teacherIds = await this.resolveTeacherIds(teacherId);
 
-            const classSubjects = await eduDb.classSubjects
+            const allClassSubjects = await eduDb.classSubjects
                 .where('schoolId')
                 .equals(schoolId)
-                .filter((cs) => teacherIds.includes(cs.teacherId ?? '') && !cs.isDeleted)
+                .filter((cs) => !cs.isDeleted)
                 .toArray();
 
             const seen = new Set<string>();
 
-            for (const cs of classSubjects) {
+            for (const cs of allClassSubjects) {
                 const cls = await eduDb.classes.get(cs.classId);
                 const sub = await eduDb.subjects.get(cs.subjectId);
 
                 if (cls && !cls.isDeleted && sub && !sub.isDeleted) {
-                    const uniqueKey = `${cls.id}-${sub.id}`;
-                    if (!seen.has(uniqueKey)) {
-                        seen.add(uniqueKey);
-                        assignments.push({
-                            classSubjectId: cs.id!,
-                            classId: cls.id!,
-                            className: cls.name,
-                            subjectId: sub.id!,
-                            subjectName: sub.name
-                        });
+                    const isDirectlyAssigned = teacherIds.includes(cs.teacherId ?? '');
+                    const isImplicitlyAssigned = cls.teachingMode === 'class_teacher' && teacherIds.includes(cls.classTeacherId ?? '');
+
+                    if (isDirectlyAssigned || isImplicitlyAssigned) {
+                        const uniqueKey = `${cls.id}-${sub.id}`;
+                        if (!seen.has(uniqueKey)) {
+                            seen.add(uniqueKey);
+                            assignments.push({
+                                classSubjectId: cs.id!,
+                                classId: cls.id!,
+                                className: cls.name,
+                                subjectId: sub.id!,
+                                subjectName: sub.name
+                            });
+                        }
                     }
                 }
             }
