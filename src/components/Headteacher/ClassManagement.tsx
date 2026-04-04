@@ -24,6 +24,10 @@ const ClassManagement: React.FC = () => {
     const [promotionTargetClassId, setPromotionTargetClassId] = useState<number | null>(null);
     const [selectedStudentsForPromotion, setSelectedStudentsForPromotion] = useState<number[]>([]);
 
+    // Class Name Edit State
+    const [editingClassNameId, setEditingClassNameId] = useState<number | null>(null);
+    const [editingClassNameValue, setEditingClassNameValue] = useState<string>('');
+
     // Subject Management State
     const [isManagingSubjects, setIsManagingSubjects] = useState(false);
     const [editingSubjectClassId, setEditingSubjectClassId] = useState<number | null>(null);
@@ -135,6 +139,62 @@ const ClassManagement: React.FC = () => {
         } catch (error: any) {
             console.error('Failed to update teacher', error);
             showToast(error.message || 'Failed to update teacher', 'error');
+        }
+    };
+
+    const handleSaveClassName = async (classId: number) => {
+        if (!user?.schoolId || !editingClassNameValue.trim()) {
+            setEditingClassNameId(null);
+            return;
+        }
+
+        const trimmedName = editingClassNameValue.trim();
+        const currentClass = classes?.find(c => c.id === classId);
+        
+        if (currentClass?.name === trimmedName) {
+            setEditingClassNameId(null);
+            return; // No change
+        }
+
+        // Local pre-check to prevent duplicate conflict
+        const isDuplicate = classes?.some(
+            c => c.id !== classId && 
+                 c.name.toLowerCase() === trimmedName.toLowerCase() && 
+                 c.level === currentClass?.level && 
+                 !c.isDeleted
+        );
+        
+        if (isDuplicate) {
+            showToast(`A class named "${trimmedName}" at level "${currentClass?.level}" already exists.`, 'error');
+            return;
+        }
+
+        try {
+            const classCloudId = (currentClass as any)?.idCloud;
+            if (!classCloudId) {
+                showToast('Class has not synced to the cloud yet. Please sync first.', 'error');
+                return;
+            }
+
+            // Online update
+            const { error } = await supabase
+                .from('classes')
+                .update({ name: trimmedName })
+                .eq('id', classCloudId);
+
+            if (error) throw new Error(error.message);
+
+            // Local update
+            await dbService.classes.update(classId, {
+                name: trimmedName,
+                syncStatus: 'synced'
+            });
+
+            showToast('Class name updated!', 'success');
+            setEditingClassNameId(null);
+        } catch (error: any) {
+            console.error('Failed to update class name', error);
+            showToast(error.message || 'Failed to update class name', 'error');
         }
     };
 
@@ -561,9 +621,39 @@ const ClassManagement: React.FC = () => {
                                         {cls.teachingMode === 'subject_teacher' ? 'Subject Teaching' : 'Class Teacher'}
                                     </span>
                                 </div>
-                                <h3 className="text-xl sm:text-2xl font-black text-gray-800 mt-3 truncate">
-                                    {cls.name}
-                                </h3>
+                                {editingClassNameId === cls.id ? (
+                                    <div className="flex items-center gap-2 mt-3">
+                                        <input
+                                            autoFocus
+                                            type="text"
+                                            value={editingClassNameValue}
+                                            onChange={(e) => setEditingClassNameValue(e.target.value)}
+                                            onBlur={() => handleSaveClassName(cls.id!)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSaveClassName(cls.id!);
+                                                if (e.key === 'Escape') setEditingClassNameId(null);
+                                            }}
+                                            className="w-full px-2 py-1 rounded bg-white border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary text-xl font-black text-gray-800"
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 mt-3 group/name">
+                                        <h3 className="text-xl sm:text-2xl font-black text-gray-800 truncate">
+                                            {cls.name}
+                                        </h3>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingClassNameId(cls.id!);
+                                                setEditingClassNameValue(cls.name);
+                                            }}
+                                            className="w-6 h-6 rounded-md hover:bg-gray-100 text-gray-400 hover:text-indigo-600 transition-colors flex items-center justify-center sm:opacity-0 group-hover/name:opacity-100 opacity-100 shrink-0"
+                                            title="Edit Class Name"
+                                        >
+                                            <i className="fas fa-pen text-xs"></i>
+                                        </button>
+                                    </div>
+                                )}
 
                                 <div className="mt-3">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
