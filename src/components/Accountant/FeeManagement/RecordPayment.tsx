@@ -113,9 +113,9 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                         { label: 'Paid', val: `GHS ${row.amountPaid.toLocaleString()}`, color: 'text-green-600', bg: 'bg-green-50/50' },
                         { label: 'Balance', val: row.balance > 0 ? `GHS ${row.balance.toLocaleString()}` : 'OVERPAID', color: row.balance > 0 ? 'text-red-500' : 'text-cyan-600', bg: row.balance > 0 ? 'bg-red-50/50' : 'bg-cyan-50/50' },
                     ].map(s => (
-                        <div key={s.label} className={`${s.bg} p-3 rounded-2xl text-center border border-white/50 shadow-sm transition-transform hover:scale-105`}>
+                        <div key={s.label} className={`${s.bg} p-3 rounded-2xl text-center border border-white/50 shadow-sm transition-transform hover:scale-105 flex flex-col justify-center`}>
                             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{s.label}</p>
-                            <p className={`font-black text-xs ${s.color} truncate`}>{s.val}</p>
+                            <p className={`font-black text-xs ${s.color} break-words`}>{s.val}</p>
                         </div>
                     ))}
                 </div>
