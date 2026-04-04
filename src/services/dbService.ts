@@ -680,6 +680,38 @@ export const dbService = {
                 .toArray();
         },
 
+        async signalReady(id: number) {
+            const record = await eduDb.payrollRecords.get(id);
+            if (!record) throw new Error("Payroll record not found");
+            
+            // Generate a random 4-digit code
+            const code = Math.floor(1000 + Math.random() * 9000).toString();
+            
+            return await eduDb.payrollRecords.update(id, {
+                status: 'Ready',
+                collectionCode: code,
+                notifiedAt: Date.now(),
+                updatedAt: Date.now(),
+                syncStatus: 'pending'
+            });
+        },
+
+        async confirmPayout(id: number, providedCode: string) {
+            const record = await eduDb.payrollRecords.get(id);
+            if (!record) throw new Error("Payroll record not found");
+            if (record.status !== 'Ready') throw new Error("Record is not ready for collection");
+            if (!record.collectionCode || record.collectionCode !== providedCode.trim()) {
+                throw new Error("Invalid collection code");
+            }
+            
+            return await eduDb.payrollRecords.update(id, {
+                status: 'Paid',
+                paidAt: Date.now(),
+                updatedAt: Date.now(),
+                syncStatus: 'pending'
+            });
+        },
+
         async getByStaff(schoolId: string, staffIdUuid: string) {
             // Strict query by Cloud UUID (identity ownership)
             // This ensures same-name staff members remain separated

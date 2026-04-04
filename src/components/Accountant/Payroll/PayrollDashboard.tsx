@@ -30,6 +30,8 @@ const PayrollDashboard: React.FC = () => {
     const [rows, setRows] = useState<PayrollRow[]>([]);
     const [saving, setSaving] = useState<number | null>(null);
     const [viewPayslip, setViewPayslip] = useState<PayrollRecord | null>(null);
+    const [confirmingCodeFor, setConfirmingCodeFor] = useState<PayrollRow | null>(null);
+    const [codeEntry, setCodeEntry] = useState('');
 
     const allStaff = useLiveQuery(() =>
         user?.schoolId ? dbService.staff.getAll(user.schoolId) : [], [user?.schoolId]);
@@ -132,14 +134,14 @@ const PayrollDashboard: React.FC = () => {
         finally { setSaving(null); }
     };
 
-    const handleMarkPaid = async (row: PayrollRow) => {
+    const handleSignalReady = async (row: PayrollRow) => {
         if (!user?.schoolId) return;
         const gross = parseFloat(row.grossInput);
         const deductions = parseFloat(row.deductionInput || '0');
         if (isNaN(gross) || gross < 0) { showToast('Enter a valid gross salary', 'error'); return; }
 
         try {
-            await dbService.payroll.upsert({
+            const savedId = await dbService.payroll.upsert({
                 ...(row.record || {}),
                 schoolId: user.schoolId,
                 staffId: row.staffId,
@@ -153,15 +155,20 @@ const PayrollDashboard: React.FC = () => {
                 deductionNotes: row.deductionNotes || undefined,
                 netPay: gross - (isNaN(deductions) ? 0 : deductions),
                 paymentMethod: row.methodInput,
-                status: 'Paid', 
-                paidAt: row.record?.paidAt || Date.now(),
+                status: row.record?.status || 'Pending', 
+                paidAt: row.record?.paidAt,
                 createdAt: row.record?.createdAt || Date.now(),
                 updatedAt: Date.now(),
                 syncStatus: 'pending',
             } as any);
-            showToast(`${row.name} marked as paid`, 'success');
-            syncManager.triggerSync(true);
-        } catch { showToast('Failed to update status', 'error'); }
+            
+            const rId = typeof savedId === 'number' ? savedId : row.record?.id;
+            if (rId) {
+                await dbService.payroll.signalReady(rId);
+                showToast(`Signaled ${row.name} for collection`, 'success');
+                syncManager.triggerSync(true);
+            }
+        } catch { showToast('Failed to signal ready', 'error'); }
     };
 
     const totalNet = rows.reduce((sum, r) => {
@@ -238,7 +245,6 @@ const PayrollDashboard: React.FC = () => {
                                 const gross = parseFloat(row.grossInput || '0');
                                 const ded = parseFloat(row.deductionInput || '0');
                                 const net = gross - ded;
-                                const isPaid = row.record?.status === 'Paid';
                                 return (
                                     <tr key={row.staffId} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 py-5 font-black text-slate-800 text-sm whitespace-nowrap group-hover:text-indigo-600 transition-colors">{row.name}</td>
@@ -250,7 +256,7 @@ const PayrollDashboard: React.FC = () => {
                                                 type="number" min="0" step="0.01" placeholder="0.00"
                                                 value={row.grossInput}
                                                 onChange={e => updateRow(i, { grossInput: e.target.value })}
-                                                disabled={isPaid}
+                                                disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
                                                 className="w-28 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-400 focus:border-transparent outline-none disabled:bg-slate-50 disabled:text-slate-400 transition-all shadow-inner"
                                             />
                                         </td>
@@ -259,7 +265,7 @@ const PayrollDashboard: React.FC = () => {
                                                 type="number" min="0" step="0.01" placeholder="0.00"
                                                  value={row.deductionInput}
                                                 onChange={e => updateRow(i, { deductionInput: e.target.value })}
-                                                disabled={isPaid}
+                                                disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
                                                 className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-400 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition-all shadow-inner"
                                             />
                                         </td>
@@ -268,7 +274,7 @@ const PayrollDashboard: React.FC = () => {
                                                 type="text" placeholder="Reason..."
                                                 value={row.deductionNotes}
                                                 onChange={e => updateRow(i, { deductionNotes: e.target.value })}
-                                                disabled={isPaid}
+                                                disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
                                                 className="w-32 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-bold text-slate-600 focus:bg-white focus:ring-2 focus:ring-indigo-400 outline-none disabled:bg-slate-50 disabled:text-slate-300 transition-all shadow-inner placeholder:text-slate-300"
                                             />
                                         </td>
@@ -287,19 +293,23 @@ const PayrollDashboard: React.FC = () => {
                                             </select>
                                         </td>
                                         <td className="px-6 py-5">
-                                            {isPaid ? (
+                                            {row.record?.status === 'Paid' ? (
                                                 <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black px-3 py-1.5 rounded-md uppercase tracking-widest">
                                                     <i className="fas fa-check-circle"></i> Paid
                                                 </span>
+                                            ) : row.record?.status === 'Ready' ? (
+                                                <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 text-[10px] font-black px-3 py-1.5 rounded-md uppercase tracking-widest animate-pulse">
+                                                    <i className="fas fa-bell"></i> Ready
+                                                </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 text-[10px] font-black px-3 py-1.5 rounded-md uppercase tracking-widest">
+                                                <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-500 text-[10px] font-black px-3 py-1.5 rounded-md uppercase tracking-widest">
                                                     <i className="fas fa-clock"></i> Pending
                                                 </span>
                                             )}
                                         </td>
                                         <td className="px-6 py-5">
                                             <div className="flex gap-2 justify-end">
-                                                {!isPaid && (
+                                                {(!row.record || row.record.status === 'Pending') && (
                                                     <>
                                                         <button
                                                             onClick={() => handleSave(row, i)}
@@ -309,12 +319,20 @@ const PayrollDashboard: React.FC = () => {
                                                             {saving === i ? <i className="fas fa-spinner fa-spin"></i> : 'Save'}
                                                         </button>
                                                         <button
-                                                            onClick={() => handleMarkPaid(row)}
-                                                            className="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm"
+                                                            onClick={() => handleSignalReady(row)}
+                                                            className="bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm"
                                                         >
-                                                            Mark Paid
+                                                            Signal Ready
                                                         </button>
                                                     </>
+                                                )}
+                                                {row.record?.status === 'Ready' && (
+                                                    <button
+                                                        onClick={() => setConfirmingCodeFor(row)}
+                                                        className="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm"
+                                                    >
+                                                        Disburse
+                                                    </button>
                                                 )}
                                                 {row.record && (
                                                     <button
@@ -344,9 +362,8 @@ const PayrollDashboard: React.FC = () => {
                     const gross = parseFloat(row.grossInput || '0');
                     const ded = parseFloat(row.deductionInput || '0');
                     const net = gross - ded;
-                    const isPaid = row.record?.status === 'Paid';
                     return (
-                        <div key={row.staffId} className={`bg-white rounded-[2rem] border shadow-xl overflow-hidden ${isPaid ? 'border-emerald-100 shadow-emerald-100/20' : 'border-slate-100 shadow-slate-200/40'}`}>
+                        <div key={row.staffId} className={`bg-white rounded-[2rem] border shadow-xl overflow-hidden ${row.record?.status === 'Paid' ? 'border-emerald-100 shadow-emerald-100/20' : row.record?.status === 'Ready' ? 'border-amber-200 shadow-amber-200/40' : 'border-slate-100 shadow-slate-200/40'}`}>
                             {/* Card header */}
                             <div className="flex items-start justify-between gap-4 p-6 border-b border-slate-50">
                                 <div>
@@ -355,12 +372,16 @@ const PayrollDashboard: React.FC = () => {
                                         {row.role}
                                     </span>
                                 </div>
-                                {isPaid ? (
+                                {row.record?.status === 'Paid' ? (
                                     <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-600 text-[10px] font-black px-3 py-1.5 rounded-md uppercase tracking-widest shrink-0">
                                         <i className="fas fa-check-circle"></i> Paid
                                     </span>
+                                ) : row.record?.status === 'Ready' ? (
+                                    <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 text-[10px] font-black px-3 py-1.5 rounded-md uppercase tracking-widest shrink-0 animate-pulse">
+                                        <i className="fas fa-bell"></i> Ready
+                                    </span>
                                 ) : (
-                                    <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 text-[10px] font-black px-3 py-1.5 rounded-md uppercase tracking-widest shrink-0">
+                                    <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-500 text-[10px] font-black px-3 py-1.5 rounded-md uppercase tracking-widest shrink-0">
                                         <i className="fas fa-clock"></i> Pending
                                     </span>
                                 )}
@@ -385,7 +406,7 @@ const PayrollDashboard: React.FC = () => {
                                                 type="number" min="0" step="0.01" placeholder="0.00"
                                                 value={row.deductionInput}
                                                 onChange={e => updateRow(i, { deductionInput: e.target.value })}
-                                                disabled={isPaid}
+                                                disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
                                                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black focus:ring-2 focus:ring-indigo-400 outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
                                             />
                                         </div>
@@ -395,7 +416,7 @@ const PayrollDashboard: React.FC = () => {
                                                 type="text" placeholder="Note..."
                                                 value={row.deductionNotes}
                                                 onChange={e => updateRow(i, { deductionNotes: e.target.value })}
-                                                disabled={isPaid}
+                                                disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
                                                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-600 focus:ring-2 focus:ring-indigo-400 outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-300 placeholder:text-slate-300"
                                             />
                                         </div>
@@ -421,9 +442,8 @@ const PayrollDashboard: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Action buttons */}
                             <div className="p-6 pt-0 space-y-3 bg-slate-50/50">
-                                {!isPaid && (
+                                {(!row.record || row.record.status === 'Pending') && (
                                     <div className="grid grid-cols-2 gap-3">
                                         <button
                                             onClick={() => handleSave(row, i)}
@@ -433,12 +453,20 @@ const PayrollDashboard: React.FC = () => {
                                             {saving === i ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fas fa-save"></i> Save</>}
                                         </button>
                                         <button
-                                            onClick={() => handleMarkPaid(row)}
-                                            className="bg-emerald-500 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                                            onClick={() => handleSignalReady(row)}
+                                            className="bg-amber-500 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-600 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-200"
                                         >
-                                            <i className="fas fa-check-circle"></i> Mark Paid
+                                            <i className="fas fa-bell"></i> Signal Ready
                                         </button>
                                     </div>
+                                )}
+                                {row.record?.status === 'Ready' && (
+                                    <button
+                                        onClick={() => setConfirmingCodeFor(row)}
+                                        className="w-full bg-emerald-500 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                                    >
+                                        <i className="fas fa-handshake"></i> Disburse Funds
+                                    </button>
                                 )}
                                 {row.record && (
                                     <button
@@ -455,6 +483,55 @@ const PayrollDashboard: React.FC = () => {
             </div>
 
             {viewPayslip && <Payslip record={viewPayslip} onClose={() => setViewPayslip(null)} />}
+
+            {confirmingCodeFor && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+                        <div className="p-6 text-center border-b border-slate-100">
+                            <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i className="fas fa-lock text-indigo-400 text-2xl"></i>
+                            </div>
+                            <h3 className="text-xl font-black text-slate-800">Enter Collection Code</h3>
+                            <p className="text-sm font-bold text-slate-400 mt-1">Get this code from {confirmingCodeFor.name}</p>
+                        </div>
+                        <div className="p-6 bg-slate-50/50">
+                            <input
+                                type="text" autoFocus
+                                maxLength={4}
+                                value={codeEntry}
+                                onChange={e => setCodeEntry(e.target.value.replace(/\D/g, ''))}
+                                placeholder="0000"
+                                className="w-full text-center text-3xl tracking-[0.5em] font-black bg-white border border-slate-200 rounded-2xl p-4 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all shadow-sm"
+                            />
+                        </div>
+                        <div className="p-6 grid grid-cols-2 gap-3 pt-0 bg-slate-50/50">
+                            <button
+                                onClick={() => { setConfirmingCodeFor(null); setCodeEntry(''); }}
+                                className="px-4 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={async () => {
+                                     try {
+                                         await dbService.payroll.confirmPayout(confirmingCodeFor.record!.id!, codeEntry);
+                                         showToast('Payment confirmed and finalized!', 'success');
+                                         syncManager.triggerSync(true);
+                                         setConfirmingCodeFor(null);
+                                         setCodeEntry('');
+                                     } catch (e: any) {
+                                         showToast(e.message || 'Invalid code', 'error');
+                                     }
+                                }}
+                                disabled={codeEntry.length !== 4}
+                                className="px-4 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                Confirm Code
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

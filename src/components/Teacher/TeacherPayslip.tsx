@@ -53,6 +53,24 @@ const TeacherPayslip: React.FC = () => {
                         <i className="fas fa-print"></i> Print Payslip
                     </button>
                 </div>
+
+                {selectedRecord.status === 'Ready' && selectedRecord.collectionCode && (
+                    <div className="bg-indigo-600 rounded-3xl p-6 text-center text-white shadow-xl shadow-indigo-200/50 max-w-lg mx-auto relative overflow-hidden">
+                        <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                        <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-purple-500/20 rounded-full blur-2xl"></div>
+                        <div className="relative z-10 w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-4 border border-white/20">
+                            <i className="fas fa-handshake text-2xl text-indigo-200"></i>
+                        </div>
+                        <h3 className="text-sm font-black uppercase tracking-widest text-indigo-200 mb-1">Action Required</h3>
+                        <p className="text-base font-bold text-white mb-6 leading-tight">Your salary is ready for collection! Provide this code to the Accountant.</p>
+                        
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 inline-block">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200 mb-2">Collection Code</p>
+                            <p className="text-4xl tracking-[0.3em] font-black text-white">{selectedRecord.collectionCode}</p>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden max-w-lg mx-auto">
                     {/* Header */}
                     <div className="px-6 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-center">
@@ -207,14 +225,14 @@ const TeacherPayslip: React.FC = () => {
                             className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between hover:shadow-md hover:border-indigo-200 transition-all group text-left"
                         >
                             <div className="flex items-center gap-4">
-                                <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm ${rec.status === 'Paid' ? 'bg-green-50 text-green-500' : 'bg-amber-50 text-amber-500'}`}>
+                                <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm ${rec.status === 'Paid' ? 'bg-green-50 text-green-500' : rec.status === 'Ready' ? 'bg-indigo-50 text-indigo-500' : 'bg-amber-50 text-amber-500'}`}>
                                     <i className="fas fa-file-invoice-dollar"></i>
                                 </div>
                                 <div>
                                     <p className="font-black text-gray-800 text-sm">{MONTHS[rec.month - 1]} {rec.year}</p>
                                     <p className="text-[10px] text-gray-400 mt-0.5">
-                                        <span className={`font-black px-2 py-0.5 rounded-full ${rec.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
-                                            {rec.status}
+                                        <span className={`font-black px-2 py-0.5 rounded-full ${rec.status === 'Paid' ? 'bg-green-50 text-green-600' : rec.status === 'Ready' ? 'bg-indigo-50 text-indigo-600 animate-pulse' : 'bg-amber-50 text-amber-600'}`}>
+                                            {rec.status === 'Ready' ? 'Ready for Collection' : rec.status}
                                         </span>
                                         <span className="ml-2">{rec.paymentMethod}</span>
                                     </p>
