@@ -25,6 +25,25 @@ const FeeStructure: React.FC = () => {
         , [user?.schoolId, term, year]);
 
     const [fees, setFees] = useState<Record<number, string>>({});
+    const [groupFees, setGroupFees] = useState<Record<string, string>>({
+        '1-3': '', '4-6': '', '7-9': ''
+    });
+
+    const getGroup = (className: string) => {
+        const name = className.toLowerCase();
+        const isJHS = name.includes('jhs') || name.includes('form') || name.includes('junior');
+        
+        const match = name.match(/\d+/);
+        if (!match) return 'other';
+        
+        let num = parseInt(match[0], 10);
+        if (isJHS && num <= 3) num += 6;
+        
+        if (num >= 1 && num <= 3) return '1-3';
+        if (num >= 4 && num <= 6) return '4-6';
+        if (num >= 7 && num <= 9) return '7-9';
+        return 'other';
+    };
 
     // Pre-fill existing fee structures
     useEffect(() => {
@@ -36,6 +55,46 @@ const FeeStructure: React.FC = () => {
             setFees(m);
         }
     }, [structures]);
+
+    const handleApplyGroup = async (group: string) => {
+        if (!user?.schoolId || !classes) return;
+        const amountStr = groupFees[group];
+        const amount = parseFloat(amountStr || '0');
+        if (isNaN(amount) || amount < 0) {
+            showToast('Enter a valid fee amount', 'error'); return;
+        }
+
+        const targetClasses = classes.filter(c => getGroup(c.name) === group);
+        if (targetClasses.length === 0) {
+            showToast('No class found matching this group', 'error'); return;
+        }
+
+        try {
+            await Promise.all(targetClasses.map(cls => 
+                dbService.fees.setStructure({
+                    schoolId: user.schoolId!,
+                    classId: cls.id!,
+                    className: cls.name,
+                    termFeeAmount: amount,
+                    term,
+                    year,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                    syncStatus: 'pending'
+                })
+            ));
+            
+            setFees(prev => {
+                const next = { ...prev };
+                targetClasses.forEach(c => { if (c.id) next[c.id] = amount.toString(); });
+                return next;
+            });
+            showToast(`GHS ${amount} applied to ${targetClasses.length} class(es)`, 'success');
+            setGroupFees(prev => ({ ...prev, [group]: '' }));
+        } catch (error) {
+            showToast('Failed to apply group fees', 'error');
+        }
+    };
 
     const handleSave = async (classId: number, className: string) => {
         if (!user?.schoolId) return;
@@ -87,6 +146,50 @@ const FeeStructure: React.FC = () => {
                     </select>
                 </div>
             </div>
+
+            {/* Bulk Actions */}
+            {classes && classes.length > 0 && (
+                <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 md:p-8">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center -rotate-6">
+                            <i className="fas fa-layer-group text-lg"></i>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-black text-slate-800 leading-tight">Batch Apply by Level</h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Set fees for multiple classes at once</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Group 1-3 */}
+                        <div className="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100/50 hover:border-indigo-100 transition-colors group">
+                            <p className="font-black text-sm text-slate-700 mb-0.5 group-hover:text-indigo-600 transition-colors">Lower Primary</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic 1 - 3</p>
+                            <div className="flex gap-2">
+                                <input type="number" min="0" placeholder="0.00" value={groupFees['1-3']} onChange={e => setGroupFees(p => ({...p, '1-3': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-indigo-400 shadow-inner" />
+                                <button onClick={() => handleApplyGroup('1-3')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex-shrink-0 shadow-sm hover:shadow-indigo-200">Apply</button>
+                            </div>
+                        </div>
+                        {/* Group 4-6 */}
+                        <div className="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100/50 hover:border-teal-100 transition-colors group">
+                            <p className="font-black text-sm text-slate-700 mb-0.5 group-hover:text-teal-600 transition-colors">Upper Primary</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic 4 - 6</p>
+                            <div className="flex gap-2">
+                                <input type="number" min="0" placeholder="0.00" value={groupFees['4-6']} onChange={e => setGroupFees(p => ({...p, '4-6': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-teal-400 shadow-inner" />
+                                <button onClick={() => handleApplyGroup('4-6')} className="bg-teal-600 hover:bg-teal-700 text-white px-5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex-shrink-0 shadow-sm hover:shadow-teal-200">Apply</button>
+                            </div>
+                        </div>
+                        {/* Group 7-9 */}
+                        <div className="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100/50 hover:border-purple-100 transition-colors group">
+                            <p className="font-black text-sm text-slate-700 mb-0.5 group-hover:text-purple-600 transition-colors">Junior High</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic 7 - 9 (JHS)</p>
+                            <div className="flex gap-2">
+                                <input type="number" min="0" placeholder="0.00" value={groupFees['7-9']} onChange={e => setGroupFees(p => ({...p, '7-9': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-purple-400 shadow-inner" />
+                                <button onClick={() => handleApplyGroup('7-9')} className="bg-purple-600 hover:bg-purple-700 text-white px-5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex-shrink-0 shadow-sm hover:shadow-purple-200">Apply</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
                 {/* Header */}

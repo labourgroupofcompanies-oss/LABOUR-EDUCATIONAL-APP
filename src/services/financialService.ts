@@ -26,25 +26,28 @@ export const financialService = {
         let payrollYear = year;
 
         if (t.includes('1') || t.includes('first')) {
+            // Sep 1 - Dec 31
             months = [9, 10, 11, 12];
-            startTime = new Date(year, 8, 1).getTime(); // Sep 1
-            endTime = new Date(year, 11, 31, 23, 59, 59).getTime(); // Dec 31
+            startTime = new Date(year, 8, 1).getTime(); 
+            endTime = new Date(year, 11, 31, 23, 59, 59).getTime(); 
             payrollYear = year;
         } else if (t.includes('2') || t.includes('second')) {
+            // Jan 1 - Apr 30
             months = [1, 2, 3, 4];
-            startTime = new Date(year + 1, 0, 1).getTime(); // Jan 1
-            endTime = new Date(year + 1, 3, 30, 23, 59, 59).getTime(); // Apr 30
-            payrollYear = year + 1;
+            startTime = new Date(year, 0, 1).getTime(); 
+            endTime = new Date(year, 3, 30, 23, 59, 59).getTime(); 
+            payrollYear = year;
         } else if (t.includes('3') || t.includes('third')) {
+            // May 1 - Aug 31
             months = [5, 6, 7, 8];
-            startTime = new Date(year + 1, 4, 1).getTime(); // May 1
-            endTime = new Date(year + 1, 7, 31, 23, 59, 59).getTime(); // Aug 31
-            payrollYear = year + 1;
+            startTime = new Date(year, 4, 1).getTime(); 
+            endTime = new Date(year, 7, 31, 23, 59, 59).getTime(); 
+            payrollYear = year;
         } else {
-            // Broad Fallback: Full Academic Session (e.g. Sep 2025 - Aug 2026)
+            // Broad Fallback: Jan 1 - Dec 31
             months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-            startTime = new Date(year, 8, 1).getTime();
-            endTime = new Date(year + 1, 7, 31, 23, 59, 59).getTime();
+            startTime = new Date(year, 0, 1).getTime();
+            endTime = new Date(year, 11, 31, 23, 59, 59).getTime();
             payrollYear = year;
         }
 

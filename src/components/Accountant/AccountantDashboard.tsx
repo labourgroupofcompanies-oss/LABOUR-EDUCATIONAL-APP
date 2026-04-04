@@ -189,7 +189,7 @@ const AccountantDashboard: React.FC = () => {
                 {/* ── Sidebar ── */}
                 <aside className={`
                     fixed md:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100 shadow-xl md:shadow-none
-                    flex flex-col pt-14 md:pt-0 transition-transform duration-300
+                    flex flex-col pt-24 md:pt-0 transition-transform duration-300
                     ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
                 `}>
                     <div className="p-4 md:p-6 flex-1 overflow-y-auto space-y-1">

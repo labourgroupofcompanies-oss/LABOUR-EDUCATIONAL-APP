@@ -10,8 +10,15 @@ import BudgetModal from './BudgetModal';
 
 const FinancialReports: React.FC = () => {
     const { user } = useAuth();
-    const { currentTerm: term, currentYear: year } = useAcademicSession();
+    const { currentTerm, currentYear } = useAcademicSession();
+    const [term, setTerm] = useState(currentTerm || 'Term 1');
+    const [year, setYear] = useState(currentYear || new Date().getFullYear());
     const [isPrinting, setIsPrinting] = useState(false);
+
+    useEffect(() => {
+        if (currentTerm && term === 'Term 1') setTerm(currentTerm);
+        if (currentYear && year === new Date().getFullYear()) setYear(currentYear);
+    }, [currentTerm, currentYear]);
     const [showBudgetModal, setShowBudgetModal] = useState(false);
     const [verificationStatus, setVerificationStatus] = useState<'idle' | 'checking' | 'verified' | 'failed'>('idle');
     const [verifiedAt, setVerifiedAt] = useState<number | null>(null);
@@ -87,8 +94,30 @@ const FinancialReports: React.FC = () => {
                     <h2 className="text-2xl font-black text-slate-800 tracking-tight">Financial Reports</h2>
                     <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{term} · {year} Term Analysis</p>
                 </div>
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <div className="flex bg-white p-2 rounded-2xl shadow-sm border border-slate-100 gap-2 w-full sm:w-auto">
+                        <select
+                            value={term}
+                            onChange={e => setTerm(e.target.value)}
+                            className="border-none bg-slate-50 rounded-xl px-4 py-2.5 text-xs font-black text-slate-700 focus:ring-2 focus:ring-emerald-400 outline-none w-full sm:w-auto cursor-pointer"
+                        >
+                            <option value="Term 1">Term 1</option>
+                            <option value="Term 2">Term 2</option>
+                            <option value="Term 3">Term 3</option>
+                        </select>
+                        <select
+                            value={year}
+                            onChange={e => setYear(parseInt(e.target.value))}
+                            className="border-none bg-slate-50 rounded-xl px-4 py-2.5 text-xs font-black text-slate-700 focus:ring-2 focus:ring-emerald-400 outline-none w-full sm:w-auto cursor-pointer"
+                        >
+                            {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                    </div>
+
                 {report && (
-                    <div className="flex gap-3 no-print">
+                    <div className="flex gap-3 no-print w-full sm:w-auto">
                         <button
                             onClick={() => setShowBudgetModal(true)}
                             className="bg-slate-900 text-white hover:bg-slate-800 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-xl shadow-slate-200"
@@ -103,6 +132,7 @@ const FinancialReports: React.FC = () => {
                         </button>
                     </div>
                 )}
+                </div>
             </div>
 
             {/* Main Stats Row */}
