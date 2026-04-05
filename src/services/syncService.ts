@@ -1199,8 +1199,10 @@ export const syncService = {
                                 return null;
                             }
                             mapped.student_id = cloudStudentId;
+                            // Strip local-only fields that don't exist in the cloud schema
                             delete mapped.student_id_local;
                             delete mapped.student_id_string;
+                            delete mapped.student_id_cloud;
                         }
                     }
 
