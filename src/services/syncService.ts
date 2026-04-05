@@ -69,6 +69,7 @@ export const syncService = {
             totalSynced += await this.syncEntity(schoolId, eduDb.budgets, 'budgets', 'id');
             totalSynced += await this.syncEntity(schoolId, eduDb.settings, 'settings', 'key');
             totalSynced += await this.syncPromotionRequests(schoolId);
+            totalSynced += await this.syncEntity(schoolId, eduDb.graduateRecords, 'graduate_records', 'id');
 
             console.log('[syncService] Sync completed.');
 
@@ -157,6 +158,7 @@ export const syncService = {
 
             await this.pullEntity(schoolId, eduDb.settings, 'settings');
             await this.pullEntity(schoolId, eduDb.promotionRequests, 'promotion_requests');
+            await this.pullEntity(schoolId, eduDb.graduateRecords, 'graduate_records');
 
             // Cleanup duplicate settings to prevent stale reads
             try {
@@ -1189,6 +1191,17 @@ export const syncService = {
                             delete mapped.class_id;
                             delete mapped.className;
                         }
+
+                        if (supabaseTable === 'graduate_records' && item.studentId) {
+                            const cloudStudentId = await this.resolveCloudId(eduDb.students, item.studentId);
+                            if (!cloudStudentId) {
+                                console.warn(`[syncService] Skipping graduate_records sync: no cloud ID for student ${item.studentId}`);
+                                return null;
+                            }
+                            mapped.student_id = cloudStudentId;
+                            delete mapped.student_id_local;
+                            delete mapped.student_id_string;
+                        }
                     }
 
                     if (!mapped) return null;
@@ -1568,6 +1581,18 @@ export const syncService = {
                     }
                 }
 
+                if (supabaseTable === 'graduate_records') {
+                    const localStudentId = (await eduDb.students.where({ idCloud: (mapped as any).studentId }).first())?.id;
+                    if (localStudentId) (mapped as any).studentId = localStudentId;
+
+                    if (!match && localStudentId) {
+                        match = await table.where({
+                            schoolId: mapped.schoolId,
+                            studentId: localStudentId
+                        }).first();
+                    }
+                }
+
                 if (supabaseTable === 'payroll_records') {
                     // The cloud 'staff_id' is a UUID. Locally we store this in 'staffIdCloud'.
                     const cloudStaffUuid = (mapped as any).staffId;
@@ -1708,7 +1733,8 @@ export const syncService = {
             'approvedAt',
             'lockedAt',
             'lastSyncAt',
-            'deletedAt'
+            'deletedAt',
+            'notedAt'
         ];
 
         for (const key in obj) {
@@ -1878,7 +1904,8 @@ export const syncService = {
                     'voided_at',
                     'submitted_at',
                     'approved_at',
-                    'deleted_at'
+                    'deleted_at',
+                    'noted_at'
                 ].includes(key)
             ) {
                 newObj[camelKey] = obj[key] ? new Date(obj[key]).getTime() : 0;
@@ -1918,6 +1945,7 @@ export const syncService = {
         if (table === 'expenses') return 'school_id,category,description,date,amount';
         if (table === 'budgets') return 'school_id,category,term,year';
         if (table === 'promotion_requests') return 'student_id,from_class_id,to_class_id,created_at';
+        if (table === 'graduate_records') return 'school_id,student_id';
 
         return defaultKey;
     },

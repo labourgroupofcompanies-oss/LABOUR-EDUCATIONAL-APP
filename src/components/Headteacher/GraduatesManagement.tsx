@@ -661,6 +661,15 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
                 updatedAt: now,
                 syncStatus: 'pending',
             });
+
+            // Soft-delete the student from the active student list so they
+            // vanish from class rosters, teacher portals, and fee screens.
+            await eduDb.students.update(selectedStudentId, {
+                isDeleted: true,
+                updatedAt: now,
+                syncStatus: 'pending',
+            });
+
             showToast(`${preview.student.fullName} has been graduated successfully!`, 'success');
             onClose();
         } catch (err: any) {
