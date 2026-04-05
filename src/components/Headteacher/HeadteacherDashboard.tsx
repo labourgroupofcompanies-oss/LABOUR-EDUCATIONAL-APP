@@ -23,8 +23,9 @@ import SubscriptionGate from '../Subscription/SubscriptionGate';
 import SubscriptionPage from '../Subscription/SubscriptionPage';
 import PromotionApprovals from './PromotionApprovals';
 import SubscriptionStatusIndicator from '../Common/SubscriptionStatusIndicator';
+import GraduatesManagement from './GraduatesManagement';
 
-type ViewType = 'overview' | 'students' | 'staff' | 'classes' | 'subjects' | 'results' | 'attendance' | 'settings' | 'subscription' | 'promotions' | 'payslip';
+type ViewType = 'overview' | 'students' | 'staff' | 'classes' | 'subjects' | 'results' | 'attendance' | 'settings' | 'subscription' | 'promotions' | 'payslip' | 'graduates';
 
 const tabConfig: { key: ViewType; label: string; shortLabel: string; icon: string }[] = [
     { key: 'overview', label: 'Overview', shortLabel: 'Home', icon: 'fa-home' },
@@ -32,6 +33,8 @@ const tabConfig: { key: ViewType; label: string; shortLabel: string; icon: strin
     { key: 'classes', label: 'Classes', shortLabel: 'Classes', icon: 'fa-chalkboard' },
     { key: 'subjects', label: 'Subjects', shortLabel: 'Subjects', icon: 'fa-book' },
     { key: 'students', label: 'Students', shortLabel: 'Students', icon: 'fa-user-graduate' },
+    { key: 'graduates', label: 'Graduates', shortLabel: 'Alumni', icon: 'fa-award' },
+    { key: 'promotions', label: 'Promotions', shortLabel: 'Promos', icon: 'fa-level-up-alt' },
     { key: 'attendance', label: 'Attendance', shortLabel: 'Attend.', icon: 'fa-calendar-check' },
     { key: 'results', label: 'Results', shortLabel: 'Results', icon: 'fa-chart-bar' },
     { key: 'payslip', label: 'My Payslips', shortLabel: 'Payslips', icon: 'fa-file-invoice-dollar' },
@@ -175,6 +178,7 @@ const HeadteacherDashboard: React.FC = () => {
         { icon: 'fa-user-graduate', label: 'Students', color: 'bg-blue-500', action: () => setView('students') },
         { icon: 'fa-calendar-check', label: 'Attendance', color: 'bg-pink-500', action: () => setView('attendance') },
         { icon: 'fa-chart-bar', label: 'Results', color: 'bg-green-500', action: () => setView('results') },
+        { icon: 'fa-award', label: 'Graduates', color: 'bg-violet-500', action: () => setView('graduates') },
         { icon: 'fa-file-invoice-dollar', label: 'My Payslips', color: 'bg-emerald-500', action: () => setView('payslip') },
         { icon: 'fa-level-up-alt', label: 'Promotions', color: 'bg-rose-500', action: () => setView('promotions') },
         { icon: 'fa-cogs', label: 'Settings', color: 'bg-gray-500', action: () => setView('settings') },
@@ -266,6 +270,7 @@ const HeadteacherDashboard: React.FC = () => {
             case 'results': return <SubscriptionGate><ResultsManagement initialSelection={reportCardSelection} /></SubscriptionGate>;
             case 'attendance': return <SubscriptionGate><AttendanceDashboard /></SubscriptionGate>;
             case 'promotions': return <SubscriptionGate><PromotionApprovals /></SubscriptionGate>;
+            case 'graduates': return <SubscriptionGate><GraduatesManagement /></SubscriptionGate>;
             case 'payslip': return <TeacherPayslip />;
             case 'settings': return <Settings />;
             case 'subscription': return <SubscriptionPage />;
@@ -274,14 +279,9 @@ const HeadteacherDashboard: React.FC = () => {
     };
 
     // Bottom nav: show first 5 tabs + a "More" approach
-    const primaryTabs = [
-        tabConfig[0], // Overview
-        tabConfig[8], // Subscription (Promoted)
-        tabConfig[1], // Staff
-        tabConfig[2], // Classes
-        tabConfig[3], // Subjects
-    ];
-    const moreTabs = tabConfig.filter(t => !primaryTabs.includes(t));
+    const primaryKeys: ViewType[] = ['overview', 'subscription', 'staff', 'classes', 'students'];
+    const primaryTabs = tabConfig.filter(t => primaryKeys.includes(t.key));
+    const moreTabs = tabConfig.filter(t => !primaryKeys.includes(t.key));
 
     return (
         <div className="max-w-7xl mx-auto py-4 md:py-8 px-4 sm:px-6 lg:px-8 space-y-6 md:space-y-8 relative z-10 pb-24 md:pb-0">
