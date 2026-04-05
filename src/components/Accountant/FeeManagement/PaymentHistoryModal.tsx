@@ -6,7 +6,7 @@ import { showConfirm } from '../../Common/ConfirmDialog';
 import { showToast } from '../../Common/Toast';
 import { syncService } from '../../../services/syncService';
 import { supabase } from '../../../supabaseClient';
-import { type FeePayment } from '../../../eduDb';
+
 
 interface Props {
     studentId: number;
