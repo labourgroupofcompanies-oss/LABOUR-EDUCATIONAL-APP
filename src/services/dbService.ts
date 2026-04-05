@@ -579,22 +579,33 @@ export const dbService = {
                 .toArray();
         },
 
-        async getPaymentsByTerm(schoolId: string, term: string, year: number) {
-            return await eduDb.feePayments
+        async getPaymentsByTerm(schoolId: string, term: string, year: number, includeVoided = false) {
+            const all = await eduDb.feePayments
                 .where('schoolId')
                 .equals(schoolId)
                 .filter((p) => p.term === term && p.year === year)
                 .toArray();
+            
+            return includeVoided ? all : all.filter(p => !p.isVoided);
         },
 
         async getTermTotalCollected(schoolId: string, term: string, year: number) {
             const payments = await eduDb.feePayments
                 .where('schoolId')
                 .equals(schoolId)
-                .filter((p) => p.term === term && p.year === year)
+                .filter((p) => !p.isVoided && p.term === term && p.year === year)
                 .toArray();
 
             return payments.reduce((sum, p) => sum + p.amountPaid, 0);
+        },
+
+        async voidPayment(id: number, reason?: string) {
+            return await eduDb.feePayments.update(id, {
+                isVoided: true,
+                notes: reason ? `VOIDED: ${reason}` : 'VOIDED (User initiated)',
+                updatedAt: Date.now(),
+                syncStatus: 'pending'
+            });
         },
 
         /**

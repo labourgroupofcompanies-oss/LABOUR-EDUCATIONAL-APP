@@ -269,11 +269,11 @@ const ExpenseList: React.FC = () => {
             {/* ── Expense Detail / Void Modal ── */}
             {selectedExpense && (
                 <div
-                    className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4 animate-fadeIn"
+                    className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn"
                     onClick={closeModal}
                 >
                     <div
-                        className="bg-white w-full sm:max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden animate-slideUp"
+                        className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-zoomIn"
                         onClick={ev => ev.stopPropagation()}
                     >
                         {/* Modal header */}

@@ -42,11 +42,12 @@ const StudentFeeList: React.FC = () => {
 
     const rows = useLiveQuery(async (): Promise<StudentFeeRow[]> => {
         if (!user?.schoolId) return [];
-        const [students, structures, allPayments] = await Promise.all([
+        const [students, structures, allPaymentsRaw] = await Promise.all([
             dbService.students.getAll(user.schoolId),
             dbService.fees.getAllStructures(user.schoolId, term, year),
-            dbService.fees.getPaymentsByTerm(user.schoolId, term, year),
+            dbService.fees.getPaymentsByTerm(user.schoolId, term, year, false), // Exclude voided
         ]);
+        const allPayments = allPaymentsRaw.filter(p => !p.isVoided);
         const allClasses = await dbService.classes.getAll(user.schoolId);
 
         const rows: StudentFeeRow[] = [];

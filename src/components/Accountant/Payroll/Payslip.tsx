@@ -34,7 +34,7 @@ const Payslip: React.FC<Props> = ({ record, onClose }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-start sm:items-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex justify-center items-center p-4 overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fadeIn my-auto">
                 <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
                     <h3 className="font-black text-gray-800">Payslip</h3>
