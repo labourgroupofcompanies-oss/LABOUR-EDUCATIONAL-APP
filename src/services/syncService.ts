@@ -1947,7 +1947,7 @@ export const syncService = {
         if (table === 'expenses') return 'school_id,category,description,date,amount';
         if (table === 'budgets') return 'school_id,category,term,year';
         if (table === 'promotion_requests') return 'student_id,from_class_id,to_class_id,created_at';
-        if (table === 'graduate_records') return 'school_id,student_id';
+        if (table === 'graduate_records') return 'id';
 
         return defaultKey;
     },
