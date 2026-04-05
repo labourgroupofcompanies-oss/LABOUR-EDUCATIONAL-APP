@@ -134,10 +134,15 @@ const PaymentHistoryModal: React.FC<Props> = ({ studentId, studentName, classNam
                                             <button
                                                 onClick={() => handleVoid(p.id!, p.receiptNo)}
                                                 disabled={isVoiding === p.id}
-                                                className="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 transition-colors"
+                                                className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all flex items-center gap-2 border border-rose-100"
                                                 title="Reconcile / Void"
                                             >
-                                                {isVoiding === p.id ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-undo-alt"></i>}
+                                                {isVoiding === p.id ? (
+                                                    <i className="fas fa-spinner fa-spin text-[10px]"></i>
+                                                ) : (
+                                                    <i className="fas fa-rotate-left text-[10px]"></i>
+                                                )}
+                                                <span className="text-[10px] font-black uppercase tracking-wider">Void</span>
                                             </button>
                                         )}
                                     </div>
