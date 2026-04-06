@@ -569,19 +569,27 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
         feeStatus: 'cleared' | 'outstanding';
     } | null>(null);
 
-    // Active, non-deleted students
-    const activeStudents = useLiveQuery(async () => {
-        if (!schoolId) return [];
-        return await eduDb.students
-            .where('schoolId').equals(schoolId)
-            .filter(s => !s.isDeleted)
-            .toArray();
-    }, [schoolId]);
-
+    // All active classes for this school
     const classes = useLiveQuery(async () => {
         if (!schoolId) return [];
         return await eduDb.classes.where('schoolId').equals(schoolId).filter(c => !c.isDeleted).toArray();
     }, [schoolId]);
+
+    // Only show Level 9 students in the graduation picker
+    const activeStudents = useLiveQuery(async () => {
+        if (!schoolId || !classes) return [];
+        // Collect IDs of all Level 9 classes
+        const level9ClassIds = new Set(
+            classes
+                .filter(c => c.level?.trim().toLowerCase() === 'level 9')
+                .map(c => c.id!)
+        );
+        if (level9ClassIds.size === 0) return [];
+        return await eduDb.students
+            .where('schoolId').equals(schoolId)
+            .filter(s => !s.isDeleted && s.classId != null && level9ClassIds.has(s.classId!))
+            .toArray();
+    }, [schoolId, classes]);
 
     const handleSelectAndPreview = async (studentId: number) => {
         setSelectedStudentId(studentId);
@@ -635,6 +643,16 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
         if (!preview || !selectedStudentId) return;
         setIsProcessing(true);
         try {
+            // ── Duplicate guard ──────────────────────────────────────────
+            const existing = await eduDb.graduateRecords
+                .where('schoolId').equals(schoolId)
+                .filter(g => g.studentId === selectedStudentId && !g.isDeleted)
+                .first();
+            if (existing) {
+                showToast(`${preview.student.fullName} already has a graduate record.`, 'error');
+                return;
+            }
+
             const now = Date.now();
             await eduDb.graduateRecords.add({
                 schoolId,
@@ -701,7 +719,11 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
                         <p className="text-sm text-gray-500 font-medium">Choose a student to graduate. Academic and financial data will be automatically captured.</p>
                         <div className="grid grid-cols-1 gap-2">
                             {activeStudents?.length === 0 && (
-                                <p className="text-sm text-gray-400 text-center py-6">No active students found.</p>
+                                <div className="py-8 text-center">
+                                    <i className="fas fa-filter text-3xl text-gray-200 mb-3 block" />
+                                    <p className="text-sm font-black text-gray-400">No Level 9 students found</p>
+                                    <p className="text-xs text-gray-300 mt-1">Only learners enrolled in a <strong>Level 9</strong> class are eligible for graduation.</p>
+                                </div>
                             )}
                             {activeStudents?.map(s => {
                                 const cls = classes?.find(c => c.id === s.classId);
