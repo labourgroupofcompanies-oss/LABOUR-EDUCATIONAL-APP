@@ -575,19 +575,19 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
         return await eduDb.classes.where('schoolId').equals(schoolId).filter(c => !c.isDeleted).toArray();
     }, [schoolId]);
 
-    // Only show Level 9 students in the graduation picker
+    // Only show Basic 9 students in the graduation picker (Basic 9, Basic 9A, Basic 9B, etc.)
     const activeStudents = useLiveQuery(async () => {
         if (!schoolId || !classes) return [];
-        // Collect IDs of all Level 9 classes
-        const level9ClassIds = new Set(
+        // Collect IDs of all classes whose name contains "basic 9" (case-insensitive)
+        const basic9ClassIds = new Set(
             classes
-                .filter(c => c.level?.trim().toLowerCase() === 'level 9')
+                .filter(c => c.name?.trim().toLowerCase().includes('basic 9'))
                 .map(c => c.id!)
         );
-        if (level9ClassIds.size === 0) return [];
+        if (basic9ClassIds.size === 0) return [];
         return await eduDb.students
             .where('schoolId').equals(schoolId)
-            .filter(s => !s.isDeleted && s.classId != null && level9ClassIds.has(s.classId!))
+            .filter(s => !s.isDeleted && s.classId != null && basic9ClassIds.has(s.classId!))
             .toArray();
     }, [schoolId, classes]);
 
@@ -721,8 +721,8 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
                             {activeStudents?.length === 0 && (
                                 <div className="py-8 text-center">
                                     <i className="fas fa-filter text-3xl text-gray-200 mb-3 block" />
-                                    <p className="text-sm font-black text-gray-400">No Level 9 students found</p>
-                                    <p className="text-xs text-gray-300 mt-1">Only learners enrolled in a <strong>Level 9</strong> class are eligible for graduation.</p>
+                                    <p className="text-sm font-black text-gray-400">No Basic 9 students found</p>
+                                    <p className="text-xs text-gray-300 mt-1">Only learners in <strong>Basic 9</strong>, <strong>Basic 9A</strong>, <strong>Basic 9B</strong>, etc. are eligible for graduation.</p>
                                 </div>
                             )}
                             {activeStudents?.map(s => {
