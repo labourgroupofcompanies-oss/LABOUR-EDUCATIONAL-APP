@@ -274,6 +274,8 @@ export interface GraduateRecord extends BaseEntity {
     graduationTerm: string;      // e.g. "Term 3"
     finalClass: string;          // e.g. "JHS 3"
     gender?: string;
+    photo?: Blob;                // Photo blob for offline use
+    photoUrl?: string;           // Photo URL from cloud storage
     // Academic snapshot
     overallAverage?: number;
     totalSubjects?: number;
@@ -890,6 +892,48 @@ eduDb.version(26).stores({
     subscriptions: '++id, idCloud, schoolId, term, academicYear, status, verifiedAt, [schoolId+term+academicYear], syncStatus',
     promotionRequests: '++id, idCloud, schoolId, studentId, fromClassId, toClassId, status, syncStatus, isDeleted',
     graduateRecords: '++id, idCloud, schoolId, studentId, graduationYear, feeStatus, isDeleted, syncStatus'
+});
+
+// Version 27: Add graduateImageUrl to graduate records
+eduDb.version(27).stores({
+    classes: '++id, idCloud, schoolId, classTeacherId, name, level, teachingMode, isDeleted, syncStatus, [schoolId+name+level]',
+    classSubjects: '++id, idCloud, schoolId, classId, subjectId, teacherId, isDeleted, syncStatus, [classId+subjectId]',
+    subjects: '++id, idCloud, schoolId, name, code, isDeleted, syncStatus, [schoolId+name]',
+    students: '++id, idCloud, schoolId, classId, studentIdString, fullName, isDeleted, syncStatus, [schoolId+studentIdString]',
+    results: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, isDeleted, syncStatus, [classId+subjectId], [studentId+classSubjectId+term+year]',
+    attendance: '++id, idCloud, schoolId, studentId, classId, date, [schoolId+classId+date], [schoolId+studentId+date], syncStatus',
+    settings: '++id, idCloud, schoolId, key, [schoolId+key], syncStatus',
+    assessmentConfigs: '++id, idCloud, schoolId, year, term, isDeleted, [schoolId+year+term], syncStatus',
+    componentScores: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, componentType, status, isDeleted, syncStatus',
+    feeStructures: '++id, idCloud, schoolId, classId, term, year, isDeleted, [schoolId+classId+term+year], syncStatus',
+    feePayments: '++id, idCloud, schoolId, studentId, classId, term, year, isDeleted, syncStatus',
+    payrollRecords: '++id, idCloud, schoolId, staffId, staffIdCloud, month, year, isDeleted, [schoolId+staffId+month+year], [schoolId+staffIdCloud+month+year], status, syncStatus',
+    expenses: '++id, idCloud, schoolId, category, date, isDeleted, syncStatus',
+    budgets: '++id, idCloud, schoolId, category, term, year, isDeleted, [schoolId+category+term+year], syncStatus',
+    subscriptions: '++id, idCloud, schoolId, term, academicYear, status, verifiedAt, [schoolId+term+academicYear], syncStatus',
+    promotionRequests: '++id, idCloud, schoolId, studentId, fromClassId, toClassId, status, syncStatus, isDeleted',
+    graduateRecords: '++id, idCloud, schoolId, studentId, graduationYear, feeStatus, isDeleted, syncStatus, [schoolId+studentId]'
+});
+
+// Version 28: Refine GraduateRecord fields to match students table (photo/photoUrl)
+eduDb.version(28).stores({
+    classes: '++id, idCloud, schoolId, classTeacherId, name, level, teachingMode, isDeleted, syncStatus, [schoolId+name+level]',
+    classSubjects: '++id, idCloud, schoolId, classId, subjectId, teacherId, isDeleted, syncStatus, [classId+subjectId]',
+    subjects: '++id, idCloud, schoolId, name, code, isDeleted, syncStatus, [schoolId+name]',
+    students: '++id, idCloud, schoolId, classId, studentIdString, fullName, isDeleted, syncStatus, [schoolId+studentIdString]',
+    results: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, isDeleted, syncStatus, [classId+subjectId], [studentId+classSubjectId+term+year]',
+    attendance: '++id, idCloud, schoolId, studentId, classId, date, [schoolId+classId+date], [schoolId+studentId+date], syncStatus',
+    settings: '++id, idCloud, schoolId, key, [schoolId+key], syncStatus',
+    assessmentConfigs: '++id, idCloud, schoolId, year, term, isDeleted, [schoolId+year+term], syncStatus',
+    componentScores: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, componentType, status, isDeleted, syncStatus',
+    feeStructures: '++id, idCloud, schoolId, classId, term, year, isDeleted, [schoolId+classId+term+year], syncStatus',
+    feePayments: '++id, idCloud, schoolId, studentId, classId, term, year, isDeleted, syncStatus',
+    payrollRecords: '++id, idCloud, schoolId, staffId, staffIdCloud, month, year, isDeleted, [schoolId+staffId+month+year], [schoolId+staffIdCloud+month+year], status, syncStatus',
+    expenses: '++id, idCloud, schoolId, category, date, isDeleted, syncStatus',
+    budgets: '++id, idCloud, schoolId, category, term, year, isDeleted, [schoolId+category+term+year], syncStatus',
+    subscriptions: '++id, idCloud, schoolId, term, academicYear, status, verifiedAt, [schoolId+term+academicYear], syncStatus',
+    promotionRequests: '++id, idCloud, schoolId, studentId, fromClassId, toClassId, status, syncStatus, isDeleted',
+    graduateRecords: '++id, idCloud, schoolId, studentId, graduationYear, photoUrl, isDeleted, syncStatus, [schoolId+studentId]'
 });
 
 export { eduDb };

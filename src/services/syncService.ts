@@ -69,7 +69,7 @@ export const syncService = {
             totalSynced += await this.syncEntity(schoolId, eduDb.budgets, 'budgets', 'id');
             totalSynced += await this.syncEntity(schoolId, eduDb.settings, 'settings', 'key');
             totalSynced += await this.syncPromotionRequests(schoolId);
-            totalSynced += await this.syncEntity(schoolId, eduDb.graduateRecords, 'graduate_records', 'id');
+            totalSynced += await this.syncGraduateRecords(schoolId);
 
             console.log('[syncService] Sync completed.');
 
@@ -786,6 +786,106 @@ export const syncService = {
             } catch (error: any) {
                 console.error('[syncService] AssessmentConfig sync failed:', error);
                 await eduDb.assessmentConfigs.update(item.id!, {
+                    syncStatus: 'pending',
+                    updatedAt: Date.now()
+                });
+            }
+        }
+
+        return syncedCount;
+    },
+
+    // ─────────────────────────────────────────────────────────────
+    // Custom sync: graduateRecords
+    // ─────────────────────────────────────────────────────────────
+    async syncGraduateRecords(schoolId: string): Promise<number> {
+        const pendingItems = await eduDb.graduateRecords
+            .where('syncStatus')
+            .anyOf('pending', 'failed')
+            .filter((item) => item.schoolId === schoolId)
+            .toArray();
+
+        let syncedCount = 0;
+
+        for (const item of pendingItems) {
+            try {
+                // Resolve student cloud ID
+                const studentCloudId = await this.resolveCloudId(eduDb.students, item.studentId);
+                if (!studentCloudId) {
+                    console.warn(`[syncService] Skipping graduate_records sync: no cloud ID for student ${item.studentId}`);
+                    continue;
+                }
+
+                // Map to snake_case for Supabase
+                const payload: any = {
+                    school_id: schoolId,
+                    student_id: studentCloudId,
+                    full_name: item.fullName,
+                    graduation_year: item.graduationYear,
+                    graduation_term: item.graduationTerm,
+                    final_class: item.finalClass,
+                    gender: item.gender ?? null,
+                    overall_average: item.overallAverage ?? null,
+                    total_subjects: item.totalSubjects ?? null,
+                    passed_subjects: item.passedSubjects ?? null,
+                    final_grade: item.finalGrade ?? null,
+                    academic_summary: item.academicSummary ?? null,
+                    total_fees_paid: item.totalFeesPaid ?? null,
+                    outstanding_balance: item.outstandingBalance ?? null,
+                    fee_status: item.feeStatus ?? null,
+                    headteacher_note: item.headteacherNote ?? null,
+                    noted_by: item.notedBy ?? null,
+                    noted_at: this.toIso(item.notedAt),
+                    is_deleted: item.isDeleted ?? false,
+                    updated_at: this.toIso(Date.now())
+                };
+
+                // Handle Photo uploading/Base64 conversion
+                if (item.photo instanceof Blob) {
+                    const filename = `grad_${item.studentIdCloud || item.studentId || Date.now()}.png`;
+                    const result = await storageService.uploadAsset(schoolId, 'students', filename, item.photo);
+                    if (result && result.path) {
+                        payload.graduate_image_url = result.path;
+                    } else {
+                        // Fallback to base64 if storage fails
+                        const reader = new FileReader();
+                        const base64Promise = new Promise<string>((resolve) => {
+                            reader.onloadend = () => resolve(reader.result as string);
+                            reader.readAsDataURL(item.photo as Blob);
+                        });
+                        payload.graduate_image_url = await base64Promise;
+                    }
+                } else if (item.photoUrl) {
+                    payload.graduate_image_url = item.photoUrl;
+                }
+
+                if (item.idCloud) {
+                    const { error } = await supabase
+                        .from('graduate_records')
+                        .update(payload)
+                        .eq('id', item.idCloud);
+                    if (error) throw error;
+                } else {
+                    const { data, error } = await supabase
+                        .from('graduate_records')
+                        .insert(payload)
+                        .select('id')
+                        .single();
+                    if (error) throw error;
+                    item.idCloud = data.id;
+                }
+
+                await eduDb.graduateRecords.update(item.id!, {
+                    idCloud: item.idCloud,
+                    syncStatus: 'synced',
+                    updatedAt: Date.now()
+                });
+
+                syncedCount++;
+            } catch (error: any) {
+                console.error('[syncService] Graduate record sync failed:', error);
+                this.lastError = error?.message || 'Graduate record sync failed';
+                await eduDb.graduateRecords.update(item.id!, {
                     syncStatus: 'pending',
                     updatedAt: Date.now()
                 });
@@ -1827,7 +1927,7 @@ export const syncService = {
             const camelKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
 
             // Handle Storage Paths (stored as strings in DB)
-            if (typeof obj[key] === 'string' && (key === 'logo' || key === 'photo_url' || key === 'photo')) {
+            if (typeof obj[key] === 'string' && (key === 'logo' || key === 'photo_url' || key === 'photo' || key === 'graduate_image_url')) {
                 const val = obj[key].trim();
 
                 if (val.startsWith('http://') || val.startsWith('https://')) {
@@ -1841,7 +1941,7 @@ export const syncService = {
                     try {
                         const blob = await storageService.downloadAsset(val);
                         if (blob) {
-                            const targetKey = (key === 'photo_url') ? 'photo' : camelKey;
+                            const targetKey = (key === 'photo_url' || key === 'graduate_image_url') ? 'photo' : camelKey;
                             newObj[targetKey] = blob;
                             continue;
                         } else {

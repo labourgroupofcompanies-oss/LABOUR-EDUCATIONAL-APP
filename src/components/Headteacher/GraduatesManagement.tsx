@@ -226,10 +226,21 @@ const GraduatesManagement: React.FC = () => {
                         >
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex items-center gap-4">
-                                    {/* Avatar */}
-                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white font-black text-lg shadow-sm flex-shrink-0">
-                                        {grad.fullName.charAt(0).toUpperCase()}
-                                    </div>
+                                    {/* Avatar/Photo */}
+                                    {grad.photoUrl || grad.photo ? (
+                                        <img 
+                                            src={grad.photoUrl ? grad.photoUrl : (grad.photo ? URL.createObjectURL(grad.photo) : '')} 
+                                            className="w-12 h-12 rounded-2xl object-cover shadow-sm flex-shrink-0" 
+                                            alt={grad.fullName}
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(grad.fullName)}&background=6366f1&color=fff`;
+                                            }}
+                                        />
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white font-black text-lg shadow-sm flex-shrink-0 text-center uppercase">
+                                            {grad.fullName.charAt(0)}
+                                        </div>
+                                    )}
                                     <div>
                                         <h3 className="font-black text-gray-800 text-sm uppercase group-hover:text-indigo-600 transition-colors">{grad.fullName}</h3>
                                         <div className="flex flex-wrap items-center gap-1.5 mt-1">
@@ -298,9 +309,17 @@ const GraduatesManagement: React.FC = () => {
                                     >
                                         <td className="py-4 px-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white font-black text-xs flex-shrink-0 shadow-sm">
-                                                    {grad.fullName.charAt(0).toUpperCase()}
-                                                </div>
+                                                {grad.photoUrl || grad.photo ? (
+                                                    <img 
+                                                        src={grad.photoUrl ? grad.photoUrl : (grad.photo ? URL.createObjectURL(grad.photo) : '')} 
+                                                        className="w-8 h-8 rounded-xl object-cover shadow-sm flex-shrink-0" 
+                                                        alt={grad.fullName}
+                                                    />
+                                                ) : (
+                                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white font-black text-xs flex-shrink-0 shadow-sm uppercase">
+                                                        {grad.fullName.charAt(0)}
+                                                    </div>
+                                                )}
                                                 <span className="font-bold text-gray-800 text-sm group-hover:text-indigo-600 transition-colors uppercase">{grad.fullName}</span>
                                             </div>
                                         </td>
@@ -351,9 +370,17 @@ const GraduatesManagement: React.FC = () => {
                             {/* Card header */}
                             <div className="flex items-center justify-between gap-4 p-4 md:p-5 border-b border-gray-50">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white font-black text-sm shadow-sm flex-shrink-0">
-                                        {grad.fullName.charAt(0).toUpperCase()}
-                                    </div>
+                                    {grad.photoUrl || grad.photo ? (
+                                        <img 
+                                            src={grad.photoUrl ? grad.photoUrl : (grad.photo ? URL.createObjectURL(grad.photo) : '')} 
+                                            className="w-10 h-10 rounded-xl object-cover shadow-sm flex-shrink-0" 
+                                            alt={grad.fullName}
+                                        />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-white font-black text-sm shadow-sm flex-shrink-0 uppercase">
+                                            {grad.fullName.charAt(0)}
+                                        </div>
+                                    )}
                                     <div>
                                         <p className="font-black text-gray-800 text-sm uppercase">{grad.fullName}</p>
                                         <p className="text-[10px] text-gray-400 font-bold">{grad.finalClass} · {grad.graduationTerm} {grad.graduationYear}</p>
@@ -434,9 +461,17 @@ const GraduatesManagement: React.FC = () => {
                         <div className="bg-gradient-to-br from-violet-600 to-indigo-700 p-6">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white font-black text-2xl shadow-sm">
-                                        {showDetailModal.fullName.charAt(0).toUpperCase()}
-                                    </div>
+                                    {showDetailModal.photoUrl || showDetailModal.photo ? (
+                                        <img 
+                                            src={showDetailModal.photoUrl ? showDetailModal.photoUrl : (showDetailModal.photo ? URL.createObjectURL(showDetailModal.photo) : '')} 
+                                            className="w-14 h-14 rounded-2xl object-cover border-2 border-white/20 shadow-sm flex-shrink-0" 
+                                            alt={showDetailModal.fullName}
+                                        />
+                                    ) : (
+                                        <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center text-white font-black text-2xl shadow-sm uppercase">
+                                            {showDetailModal.fullName.charAt(0)}
+                                        </div>
+                                    )}
                                     <div>
                                         <h3 className="text-white font-black text-lg uppercase">{showDetailModal.fullName}</h3>
                                         <p className="text-indigo-200 text-xs font-bold">{showDetailModal.finalClass} · {showDetailModal.graduationTerm} {showDetailModal.graduationYear}</p>
@@ -660,6 +695,8 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
                 studentIdCloud: preview.student.idCloud,
                 fullName: preview.student.fullName,
                 gender: preview.student.gender,
+                photo: preview.student.photo,
+                photoUrl: preview.student.photoUrl,
                 graduationYear,
                 graduationTerm,
                 finalClass: preview.className,
@@ -733,9 +770,17 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
                                         onClick={() => s.id && handleSelectAndPreview(s.id)}
                                         className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left group"
                                     >
-                                        <div className="w-10 h-10 bg-gradient-to-br from-violet-400 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black flex-shrink-0">
-                                            {s.fullName.charAt(0).toUpperCase()}
-                                        </div>
+                                        {s.photoUrl || s.photo ? (
+                                            <img 
+                                                src={s.photoUrl ? s.photoUrl : (s.photo ? URL.createObjectURL(s.photo) : '')} 
+                                                className="w-10 h-10 rounded-xl object-cover flex-shrink-0" 
+                                                alt={s.fullName} 
+                                            />
+                                        ) : (
+                                            <div className="w-10 h-10 bg-gradient-to-br from-violet-400 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black flex-shrink-0 text-center uppercase">
+                                                {s.fullName.charAt(0)}
+                                            </div>
+                                        )}
                                         <div className="flex-1 min-w-0">
                                             <p className="font-black text-gray-800 text-sm uppercase truncate group-hover:text-indigo-600">{s.fullName}</p>
                                             <p className="text-[10px] text-gray-400 font-bold">{cls?.name || 'No Class'}</p>
@@ -753,9 +798,17 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
                     <div className="p-6 space-y-5 max-h-[60vh] overflow-y-auto">
                         {/* Student info */}
                         <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl">
-                            <div className="w-10 h-10 bg-gradient-to-br from-violet-400 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black">
-                                {preview.student.fullName.charAt(0).toUpperCase()}
-                            </div>
+                            {preview.student.photoUrl || preview.student.photo ? (
+                                <img 
+                                    src={preview.student.photoUrl ? preview.student.photoUrl : (preview.student.photo ? URL.createObjectURL(preview.student.photo) : '')} 
+                                    className="w-10 h-10 rounded-xl object-cover shadow-sm" 
+                                    alt={preview.student.fullName} 
+                                />
+                            ) : (
+                                <div className="w-10 h-10 bg-gradient-to-br from-violet-400 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black uppercase text-center">
+                                    {preview.student.fullName.charAt(0)}
+                                </div>
+                            )}
                             <div>
                                 <p className="font-black text-gray-800 uppercase">{preview.student.fullName}</p>
                                 <p className="text-[10px] text-gray-500 font-bold">{preview.className}</p>
