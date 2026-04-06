@@ -54,6 +54,7 @@ export const syncService = {
             totalSynced += await this.syncSubjects(schoolId);
             totalSynced += await this.syncClasses(schoolId);
             totalSynced += await this.syncStudents(schoolId);
+            totalSynced += await this.syncGraduateRecords(schoolId); // Priority: Graduates right after students
             totalSynced += await this.syncClassSubjects(schoolId);
 
             // 3. Activity & Financials (Dependent on Identities)
@@ -69,7 +70,6 @@ export const syncService = {
             totalSynced += await this.syncEntity(schoolId, eduDb.budgets, 'budgets', 'id');
             totalSynced += await this.syncEntity(schoolId, eduDb.settings, 'settings', 'key');
             totalSynced += await this.syncPromotionRequests(schoolId);
-            totalSynced += await this.syncGraduateRecords(schoolId);
 
             console.log('[syncService] Sync completed.');
 
@@ -459,7 +459,7 @@ export const syncService = {
                     continue;
                 }
 
-                console.log('[sync] table: students', payload);
+                console.log(`[sync:students] Processing ${item.fullName} (is_deleted: ${payload.is_deleted})`);
 
                 // Upsert to Supabase
                 // Resolves insert vs update automatically, relies on unique `school_id, student_id_string`
@@ -470,15 +470,23 @@ export const syncService = {
                     .single();
 
                 if (error) {
+                    console.error(`[sync:students] Supabase error for ${item.fullName}:`, error);
                     throw error;
+                }
+
+                if (!data) {
+                    console.warn(`[sync:students] Success but no data returned for ${item.fullName}. Attempting local status update anyway.`);
                 }
 
                 // Mark local as synced
                 await eduDb.students.update(item.id!, {
-                    idCloud: data.id,
+                    idCloud: data?.id || item.idCloud,
                     syncStatus: 'synced',
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(),
+                    syncError: null
                 } as any);
+
+                console.log(`[sync:students] Successfully synced ${item.fullName}`);
 
                 syncedCount++;
             } catch (error: any) {
@@ -810,11 +818,18 @@ export const syncService = {
         for (const item of pendingItems) {
             try {
                 // Resolve student cloud ID
-                const studentCloudId = await this.resolveCloudId(eduDb.students, item.studentId);
+                let studentCloudId = item.studentIdCloud; 
+                
+                if (!studentCloudId || !this.isUuid(studentCloudId)) {
+                    studentCloudId = await this.resolveCloudId(eduDb.students, item.studentId);
+                }
+
                 if (!studentCloudId) {
-                    console.warn(`[syncService] Skipping graduate_records sync: no cloud ID for student ${item.studentId}`);
+                    console.warn(`[syncService] Skipping graduate_records sync: no cloud ID for student ${item.fullName} (ID: ${item.studentId})`);
                     continue;
                 }
+
+                console.log(`[sync:graduates] Processing ${item.fullName}`);
 
                 // Map to snake_case for Supabase
                 const payload: any = {
@@ -859,27 +874,28 @@ export const syncService = {
                     payload.graduate_image_url = item.photoUrl;
                 }
 
-                if (item.idCloud) {
-                    const { error } = await supabase
-                        .from('graduate_records')
-                        .update(payload)
-                        .eq('id', item.idCloud);
-                    if (error) throw error;
-                } else {
-                    const { data, error } = await supabase
-                        .from('graduate_records')
-                        .insert(payload)
-                        .select('id')
-                        .single();
-                    if (error) throw error;
-                    item.idCloud = data.id;
+                if (item.idCloud) (payload as any).id = item.idCloud;
+
+                // Upsert to handle potential conflicts or retries
+                const { data, error } = await supabase
+                    .from('graduate_records')
+                    .upsert(payload, { onConflict: 'school_id,student_id' })
+                    .select('id')
+                    .single();
+
+                if (error) {
+                    console.error(`[sync:graduates] Supabase error for ${item.fullName}:`, error);
+                    throw error;
                 }
 
                 await eduDb.graduateRecords.update(item.id!, {
-                    idCloud: item.idCloud,
+                    idCloud: data?.id || item.idCloud,
                     syncStatus: 'synced',
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(),
+                    syncError: null
                 });
+
+                console.log(`[sync:graduates] Successfully synced ${item.fullName}`);
 
                 syncedCount++;
             } catch (error: any) {
