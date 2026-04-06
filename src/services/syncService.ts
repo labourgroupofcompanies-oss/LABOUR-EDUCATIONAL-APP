@@ -1309,9 +1309,13 @@ export const syncService = {
                         }
 
                         if (supabaseTable === 'graduate_records' && item.studentId) {
-                            const cloudStudentId = await this.resolveCloudId(eduDb.students, item.studentId);
+                            let cloudStudentId = item.studentIdCloud;
+                            if (!cloudStudentId || !this.isUuid(cloudStudentId)) {
+                                cloudStudentId = await this.resolveCloudId(eduDb.students, item.studentId);
+                            }
+
                             if (!cloudStudentId) {
-                                console.warn(`[syncService] Skipping graduate_records sync: no cloud ID for student ${item.studentId}`);
+                                console.warn(`[syncService] Skipping graduate_records sync (generic): no cloud ID for student ${item.studentId}`);
                                 return null;
                             }
                             mapped.student_id = cloudStudentId;
@@ -2063,7 +2067,7 @@ export const syncService = {
         if (table === 'expenses') return 'school_id,category,description,date,amount';
         if (table === 'budgets') return 'school_id,category,term,year';
         if (table === 'promotion_requests') return 'student_id,from_class_id,to_class_id,created_at';
-        if (table === 'graduate_records') return 'id';
+        if (table === 'graduate_records' || table === 'graduate_records') return 'school_id,student_id';
 
         return defaultKey;
     },
