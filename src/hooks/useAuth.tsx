@@ -9,12 +9,12 @@ import React, { useContext, useState, useEffect, useMemo, type ReactNode } from 
 import { supabase } from '../supabaseClient';
 import { AuthContext, type AuthUser } from './AuthContext';
 
-// ── Session helpers (sessionStorage for fast page reloads) ────────────────────
+// ── Session helpers (localStorage for offline persistence) ────────────────────
 const SESSION_KEY = 'labour_auth_user';
 
 function loadSession(): AuthUser | null {
     try {
-        const raw = sessionStorage.getItem(SESSION_KEY);
+        const raw = localStorage.getItem(SESSION_KEY);
         return raw ? (JSON.parse(raw) as AuthUser) : null;
     } catch {
         return null;
@@ -22,30 +22,53 @@ function loadSession(): AuthUser | null {
 }
 
 function saveSession(user: AuthUser) {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(user));
 }
 
 function clearSession() {
-    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
 }
 
 // ── AuthProvider ──────────────────────────────────────────────────────────────
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<AuthUser | null>(loadSession);
-    const [isLoading, setIsLoading] = useState(true);
-    const [hasSchool, setHasSchool] = useState<boolean | null>(null);
+    // Sync-initialization: read from cache immediately for instant first render
+    const cachedUser = loadSession();
+    
+    const [user, setUser] = useState<AuthUser | null>(cachedUser);
+    const [isLoading, setIsLoading] = useState(!cachedUser); 
+    const [hasSchool, setHasSchool] = useState<boolean | null>(cachedUser ? true : null);
 
     useEffect(() => {
         let mounted = true;
 
         const initialize = async () => {
-            // Check for an existing Supabase session
-            const { data: { session } } = await supabase.auth.getSession();
+            // STEP 1: Fast-track initialization check (redundant but safe for effect re-runs)
+            const currentCache = loadSession();
+            if (currentCache && !user) {
+                if (mounted) {
+                    setUser(currentCache);
+                    setHasSchool(true);
+                    setIsLoading(false);
+                }
+            }
 
-            // If we have a session, a school must exist (users can only exist with a school)
-            // If no session, show login. We no longer query the schools table here
-            // because the anon role has no SELECT access (security patch).
-            if (mounted) setHasSchool(session ? true : false);
+            // STEP 2: Background Session Verification
+            // We check for an existing Supabase session without blocking the UI if a cache exists.
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (mounted) setHasSchool(session ? true : false);
+
+                if (!session && mounted) {
+                    // Cache was invalid or session expired/signed out elsewhere
+                    setUser(null);
+                    clearSession();
+                    setHasSchool(false);
+                }
+            } catch (err) {
+                // If offline, we swallow the error and trust the local cache (Step 1)
+                console.info('[auth:offline] Supabase session check skipped or failed.');
+            }
 
             // Listen to Supabase Auth state changes
             const { data: { subscription } = {} } = supabase.auth.onAuthStateChange(
@@ -67,7 +90,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                                 username: profile.username,
                                 fullName: profile.full_name,
                                 role: profile.role,
-                                mustChangePassword: false, // Force-password-change feature is disabled
+                                mustChangePassword: false, 
                             };
                             setUser(authUser);
                             saveSession(authUser);

@@ -11,6 +11,8 @@ import { PromotionDialogContainer } from './components/Common/PromotionDialogs';
 import { syncManager } from './services/syncManager';
 import DeveloperPortal from './components/Developer/DeveloperPortal';
 import AccountantDashboard from './components/Accountant/AccountantDashboard';
+import ReloadPrompt from './components/Common/ReloadPrompt';
+import OfflineIndicator from './components/Common/OfflineIndicator';
 import './App.css';
 
 /**
@@ -196,6 +198,8 @@ function App() {
         <ToastContainer />
         <ConfirmDialogContainer />
         <PromotionDialogContainer />
+        <ReloadPrompt />
+        <OfflineIndicator />
       </div>
     </AuthProvider>
   );

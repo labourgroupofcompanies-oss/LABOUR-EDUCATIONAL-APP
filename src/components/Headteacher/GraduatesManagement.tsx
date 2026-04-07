@@ -39,6 +39,46 @@ const GraduatesManagement: React.FC = () => {
 
     const filtered = useMemo(() => {
         let list = graduates || [];
+
+        // 1. Defensive Deduplication (Multi-school safe: schoolId + studentId)
+        const groups = new Map<string, GraduateRecord[]>();
+        for (const g of list) {
+            const key = `${g.schoolId}::${g.studentId}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(g);
+        }
+
+        const deduped: GraduateRecord[] = [];
+        for (const group of groups.values()) {
+            if (group.length === 1) {
+                deduped.push(group[0]);
+            } else {
+                // Safe Winner Selection Hierarchy:
+                // 1. Latest updatedAt
+                // 2. Latest createdAt
+                // 3. Row with a valid idCloud
+                // 4. Highest local id (monotonic tie-breaker)
+                group.sort((a, b) => {
+                    const timeA = a.updatedAt || a.createdAt || 0;
+                    const timeB = b.updatedAt || b.createdAt || 0;
+                    if (timeB !== timeA) return timeB - timeA;
+
+                    const createA = a.createdAt || 0;
+                    const createB = b.createdAt || 0;
+                    if (createB !== createA) return createB - createA;
+
+                    const hasCloudA = a.idCloud && a.idCloud.length > 10 ? 1 : 0;
+                    const hasCloudB = b.idCloud && b.idCloud.length > 10 ? 1 : 0;
+                    if (hasCloudB !== hasCloudA) return hasCloudB - hasCloudA;
+
+                    return (b.id || 0) - (a.id || 0);
+                });
+                deduped.push(group[0]);
+            }
+        }
+        list = deduped;
+
+        // 2. Standard Filters
         if (selectedYear !== 'all') list = list.filter(g => g.graduationYear === parseInt(selectedYear));
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();

@@ -992,5 +992,72 @@ eduDb.version(29).stores({
     }
 });
 
+// Version 30: Refined Multi-School Graduate Records Deduplication
+eduDb.version(30).stores({
+    classes: '++id, idCloud, schoolId, classTeacherId, name, level, teachingMode, isDeleted, syncStatus, [schoolId+name+level]',
+    classSubjects: '++id, idCloud, schoolId, classId, subjectId, teacherId, isDeleted, syncStatus, [classId+subjectId]',
+    subjects: '++id, idCloud, schoolId, name, code, isDeleted, syncStatus, [schoolId+name]',
+    students: '++id, idCloud, schoolId, classId, studentIdString, fullName, isDeleted, syncStatus, [schoolId+studentIdString]',
+    results: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, isDeleted, syncStatus, [classId+subjectId], [studentId+classSubjectId+term+year]',
+    attendance: '++id, idCloud, schoolId, studentId, classId, date, [schoolId+classId+date], [schoolId+studentId+date], syncStatus',
+    settings: '++id, idCloud, schoolId, key, [schoolId+key], syncStatus',
+    assessmentConfigs: '++id, idCloud, schoolId, year, term, isDeleted, [schoolId+year+term], syncStatus',
+    componentScores: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, componentType, status, isDeleted, syncStatus',
+    feeStructures: '++id, idCloud, schoolId, classId, term, year, isDeleted, [schoolId+classId+term+year], syncStatus',
+    feePayments: '++id, idCloud, schoolId, studentId, classId, term, year, isDeleted, syncStatus',
+    payrollRecords: '++id, idCloud, schoolId, staffId, staffIdCloud, month, year, isDeleted, [schoolId+staffId+month+year], [schoolId+staffIdCloud+month+year], status, syncStatus',
+    expenses: '++id, idCloud, schoolId, category, date, isDeleted, syncStatus',
+    budgets: '++id, idCloud, schoolId, category, term, year, isDeleted, [schoolId+category+term+year], syncStatus',
+    subscriptions: '++id, idCloud, schoolId, term, academicYear, status, verifiedAt, [schoolId+term+academicYear], syncStatus',
+    promotionRequests: '++id, idCloud, schoolId, studentId, fromClassId, toClassId, status, syncStatus, isDeleted',
+    graduateRecords: '++id, idCloud, schoolId, studentId, graduationYear, photoUrl, isDeleted, syncStatus, [schoolId+studentId]'
+}).upgrade(async tx => {
+    const graduates = await tx.table('graduateRecords').toArray();
+    const groups = new Map<string, any[]>();
+
+    for (const g of graduates) {
+        // Multi-school safe identity key
+        const key = `${g.schoolId}::${g.studentId}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(g);
+    }
+
+    const toDelete: number[] = [];
+    for (const group of groups.values()) {
+        if (group.length <= 1) continue;
+
+        // Safe Winner Selection Hierarchy:
+        // 1. Latest updatedAt
+        // 2. Latest createdAt
+        // 3. Row with a valid idCloud (preserves server link)
+        // 4. Highest local id (monotonic tie-breaker)
+        group.sort((a, b) => {
+            const timeA = a.updatedAt || a.createdAt || 0;
+            const timeB = b.updatedAt || b.createdAt || 0;
+            if (timeB !== timeA) return timeB - timeA;
+
+            const createA = a.createdAt || 0;
+            const createB = b.createdAt || 0;
+            if (createB !== createA) return createB - createA;
+
+            const hasCloudA = a.idCloud && a.idCloud.length > 10 ? 1 : 0;
+            const hasCloudB = b.idCloud && b.idCloud.length > 10 ? 1 : 0;
+            if (hasCloudB !== hasCloudA) return hasCloudB - hasCloudA;
+
+            return (b.id || 0) - (a.id || 0);
+        });
+        
+        // Survivor is group[0], delete the rest
+        for (let i = 1; i < group.length; i++) {
+            toDelete.push(group[i].id!);
+        }
+    }
+
+    if (toDelete.length > 0) {
+        console.log(`[db:migration:v30] Cleaning ${toDelete.length} legacy duplicates/orphans.`);
+        await tx.table('graduateRecords').bulkDelete(toDelete);
+    }
+});
+
 export { eduDb };
 

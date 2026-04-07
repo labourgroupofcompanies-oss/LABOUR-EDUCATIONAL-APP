@@ -160,6 +160,9 @@ export const syncService = {
             await this.pullEntity(schoolId, eduDb.promotionRequests, 'promotion_requests');
             await this.pullEntity(schoolId, eduDb.graduateRecords, 'graduate_records');
 
+            // Post-pull self-healing: Clean up any local duplicates born during sync latency
+            await this.deduplicateLocalGraduates(schoolId);
+
             // Cleanup duplicate settings to prevent stale reads
             try {
                 const allSettings = await eduDb.settings.where('schoolId').equals(schoolId).toArray();
@@ -1533,7 +1536,7 @@ export const syncService = {
                 if (!match && mapped.schoolId) {
                     match = await table.where({ schoolId: mapped.schoolId }).first();
                 }
-            } else if (['subjects', 'classes', 'class_subjects', 'students', 'results', 'component_scores', 'assessment_configs', 'fee_structures', 'fee_payments', 'payroll_records', 'expenses', 'budgets', 'staff_profiles', 'settings', 'school_subscriptions', 'promotion_requests'].includes(supabaseTable)) {
+            } else if (['subjects', 'classes', 'class_subjects', 'students', 'results', 'component_scores', 'assessment_configs', 'fee_structures', 'fee_payments', 'payroll_records', 'expenses', 'budgets', 'staff_profiles', 'settings', 'school_subscriptions', 'promotion_requests', 'graduate_records'].includes(supabaseTable)) {
                 if ((mapped as any).idCloud) {
                     match = await table.where({ idCloud: (mapped as any).idCloud }).first();
                 }
@@ -1756,10 +1759,8 @@ export const syncService = {
                     if (localStudentId) (mapped as any).studentId = localStudentId;
 
                     if (!match && localStudentId) {
-                        match = await table.where({
-                            schoolId: mapped.schoolId,
-                            studentId: localStudentId
-                        }).first();
+                        // Use strict compound index for multi-school safety
+                        match = await table.where('[schoolId+studentId]').equals([schoolId, localStudentId]).first();
                     }
                 }
 
@@ -2155,6 +2156,57 @@ export const syncService = {
             }
         } catch (err) {
             console.error('[syncService] Healing failed:', err);
+        }
+    },
+
+    async deduplicateLocalGraduates(schoolId: string) {
+        try {
+            const graduates = await eduDb.graduateRecords.where('schoolId').equals(schoolId).toArray();
+            const groups = new Map<string, any[]>(); // multi-school safe key: schoolId::studentId
+
+            for (const g of graduates) {
+                const key = `${g.schoolId}::${g.studentId}`;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key)!.push(g);
+            }
+
+            const toDelete: number[] = [];
+            for (const group of groups.values()) {
+                if (group.length <= 1) continue;
+
+                // Priority Hierarchy for "Best" row:
+                // 1. Latest updatedAt
+                // 2. Latest createdAt
+                // 3. Cloud stability: Presence of valid UUID idCloud
+                // 4. Dexie internal tie-breaker: Highest ID
+                group.sort((a, b) => {
+                    const timeA = a.updatedAt || a.createdAt || 0;
+                    const timeB = b.updatedAt || b.createdAt || 0;
+                    if (timeB !== timeA) return timeB - timeA;
+
+                    const createA = a.createdAt || 0;
+                    const createB = b.createdAt || 0;
+                    if (createB !== createA) return createB - createA;
+
+                    const hasCloudA = a.idCloud && a.idCloud.length > 10 ? 1 : 0;
+                    const hasCloudB = b.idCloud && b.idCloud.length > 10 ? 1 : 0;
+                    if (hasCloudB !== hasCloudA) return hasCloudB - hasCloudA;
+
+                    return (b.id || 0) - (a.id || 0);
+                });
+
+                // Keep group[0], discard others
+                for (let i = 1; i < group.length; i++) {
+                    toDelete.push(group[i].id!);
+                }
+            }
+
+            if (toDelete.length > 0) {
+                console.log(`[sync:heal] removing ${toDelete.length} local graduate duplicates for school ${schoolId}.`);
+                await eduDb.graduateRecords.bulkDelete(toDelete);
+            }
+        } catch (err) {
+            console.error('[sync:heal] Graduate deduplication failed:', err);
         }
     }
 };
