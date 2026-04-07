@@ -676,46 +676,77 @@ const GraduateStudentModal: React.FC<GraduateStudentModalProps> = ({ schoolId, u
 
     const handleGraduate = async () => {
         if (!preview || !selectedStudentId) return;
+        if (isProcessing) return; // Prevent double trigger
         setIsProcessing(true);
         try {
-            // ── Duplicate guard ──────────────────────────────────────────
+            // ── Duplicate guard / Restore Logic ─────────────────────────
+            // Use the strict compound index to find existing records (active or deleted)
             const existing = await eduDb.graduateRecords
-                .where('schoolId').equals(schoolId)
-                .filter(g => g.studentId === selectedStudentId && !g.isDeleted)
+                .where('[schoolId+studentId]').equals([schoolId, selectedStudentId])
                 .first();
-            if (existing) {
-                showToast(`${preview.student.fullName} already has a graduate record.`, 'error');
-                return;
-            }
 
             const now = Date.now();
-            await eduDb.graduateRecords.add({
-                schoolId,
-                studentId: selectedStudentId,
-                studentIdCloud: preview.student.idCloud,
-                fullName: preview.student.fullName,
-                gender: preview.student.gender,
-                photo: preview.student.photo,
-                photoUrl: preview.student.photoUrl,
-                graduationYear,
-                graduationTerm,
-                finalClass: preview.className,
-                overallAverage: preview.overallAverage,
-                totalSubjects: preview.totalSubjects,
-                passedSubjects: preview.passedSubjects,
-                finalGrade: preview.finalGrade,
-                academicSummary: `${preview.passedSubjects}/${preview.totalSubjects} subjects passed with an overall average of ${preview.overallAverage}%.`,
-                totalFeesPaid: preview.totalFeesPaid,
-                outstandingBalance: preview.outstandingBalance,
-                feeStatus: preview.feeStatus,
-                headteacherNote: headteacherNote.trim() || undefined,
-                notedBy: headteacherNote.trim() ? userName : undefined,
-                notedAt: headteacherNote.trim() ? now : undefined,
-                isDeleted: false,
-                createdAt: now,
-                updatedAt: now,
-                syncStatus: 'pending',
-            });
+            
+            if (existing) {
+                if (!existing.isDeleted) {
+                    showToast(`${preview.student.fullName} is already graduated (active record).`, 'error');
+                    setIsProcessing(false);
+                    return;
+                }
+                
+                // If it was soft-deleted, restore it instead of adding a new one
+                // This prevents "duplicate key violations" in Supabase by reusing the primary identity
+                await eduDb.graduateRecords.update(existing.id!, {
+                    isDeleted: false,
+                    graduationYear,
+                    graduationTerm,
+                    finalClass: preview.className,
+                    overallAverage: preview.overallAverage,
+                    totalSubjects: preview.totalSubjects,
+                    passedSubjects: preview.passedSubjects,
+                    finalGrade: preview.finalGrade,
+                    academicSummary: `${preview.passedSubjects}/${preview.totalSubjects} subjects passed with an overall average of ${preview.overallAverage}%.`,
+                    totalFeesPaid: preview.totalFeesPaid,
+                    outstandingBalance: preview.outstandingBalance,
+                    feeStatus: preview.feeStatus,
+                    // If new note provided, overwrite; otherwise keep existing
+                    headteacherNote: headteacherNote.trim() || existing.headteacherNote,
+                    notedBy: headteacherNote.trim() ? userName : existing.notedBy,
+                    notedAt: headteacherNote.trim() ? now : existing.notedAt,
+                    updatedAt: now,
+                    syncStatus: 'pending',
+                });
+                console.log(`[Graduates] Restored previously deleted record for student ID: ${selectedStudentId}`);
+            } else {
+                // New record creation (only if no identity match found)
+                await eduDb.graduateRecords.add({
+                    schoolId,
+                    studentId: selectedStudentId,
+                    studentIdCloud: preview.student.idCloud,
+                    fullName: preview.student.fullName,
+                    gender: preview.student.gender,
+                    photo: preview.student.photo,
+                    photoUrl: preview.student.photoUrl,
+                    graduationYear,
+                    graduationTerm,
+                    finalClass: preview.className,
+                    overallAverage: preview.overallAverage,
+                    totalSubjects: preview.totalSubjects,
+                    passedSubjects: preview.passedSubjects,
+                    finalGrade: preview.finalGrade,
+                    academicSummary: `${preview.passedSubjects}/${preview.totalSubjects} subjects passed with an overall average of ${preview.overallAverage}%.`,
+                    totalFeesPaid: preview.totalFeesPaid,
+                    outstandingBalance: preview.outstandingBalance,
+                    feeStatus: preview.feeStatus,
+                    headteacherNote: headteacherNote.trim() || undefined,
+                    notedBy: headteacherNote.trim() ? userName : undefined,
+                    notedAt: headteacherNote.trim() ? now : undefined,
+                    isDeleted: false,
+                    createdAt: now,
+                    updatedAt: now,
+                    syncStatus: 'pending',
+                });
+            }
 
             // Soft-delete the student from the active student list so they
             // vanish from class rosters, teacher portals, and fee screens.

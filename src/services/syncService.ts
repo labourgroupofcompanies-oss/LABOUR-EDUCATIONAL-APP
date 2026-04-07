@@ -813,23 +813,68 @@ export const syncService = {
             .filter((item) => item.schoolId === schoolId)
             .toArray();
 
+        if (pendingItems.length === 0) return 0;
+
         let syncedCount = 0;
 
+        // ── STEP 1: Deduplicate locally before sending to cloud ──────
+        // If multiple rows exist for same student, keep ONLY the newest one.
+        const bestRows = new Map<number, any>(); // keyed by studentId
+        const duplicatedIds: number[] = [];
+
+        // Helper for strict deterministic "Latest Wins"
+        const pickBest = (a: any, b: any) => {
+            const timeA = a.updatedAt || a.createdAt || 0;
+            const timeB = b.updatedAt || b.createdAt || 0;
+            if (timeB > timeA) return b;
+            if (timeA > timeB) return a;
+            // Tie-breaker: Monotonic numeric Dexie ID
+            return (b.id || 0) > (a.id || 0) ? b : a;
+        };
+
         for (const item of pendingItems) {
+            const studentId = item.studentId;
+            const existing = bestRows.get(studentId);
+            
+            if (!existing) {
+                bestRows.set(studentId, item);
+            } else {
+                const winner = pickBest(existing, item);
+                const loser = winner.id === existing.id ? item : existing;
+                
+                duplicatedIds.push(loser.id!);
+                bestRows.set(studentId, winner);
+            }
+        }
+
+        // Cleanup redundant local rows that won't be synced
+        if (duplicatedIds.length > 0) {
+            console.log(`[sync:graduates] Cleaning up ${duplicatedIds.length} redundant local duplicates.`);
+            await eduDb.graduateRecords.bulkDelete(duplicatedIds);
+        }
+
+        const itemsToSync = Array.from(bestRows.values());
+
+        for (const item of itemsToSync) {
             try {
-                // Resolve student cloud ID
+                // Resolve student cloud ID (MUST be a UUID)
                 let studentCloudId = item.studentIdCloud; 
                 
                 if (!studentCloudId || !this.isUuid(studentCloudId)) {
                     studentCloudId = await this.resolveCloudId(eduDb.students, item.studentId);
                 }
 
-                if (!studentCloudId) {
-                    console.warn(`[syncService] Skipping graduate_records sync: no cloud ID for student ${item.fullName} (ID: ${item.studentId})`);
+                if (!studentCloudId || !this.isUuid(studentCloudId)) {
+                    console.warn(`[sync:graduates] Skipping sync for ${item.fullName}: No valid Cloud UUID for studentId ${item.studentId}`);
+                    // Mark as failed so it doesn't loop forever without a cloud ID
+                    await eduDb.graduateRecords.update(item.id!, {
+                        syncStatus: 'failed',
+                        syncError: 'Student Cloud ID not found. Sync student first.'
+                    } as any);
                     continue;
                 }
 
-                console.log(`[sync:graduates] Processing ${item.fullName}`);
+                console.log(`[sync:graduates] Pushing record for ${item.fullName} (Cloud ID: ${studentCloudId})`);
 
                 // Map to snake_case for Supabase
                 const payload: any = {
@@ -850,61 +895,63 @@ export const syncService = {
                     fee_status: item.feeStatus ?? null,
                     headteacher_note: item.headteacherNote ?? null,
                     noted_by: item.notedBy ?? null,
-                    noted_at: this.toIso(item.notedAt),
                     is_deleted: item.isDeleted ?? false,
-                    updated_at: this.toIso(Date.now())
+                    // IMPORTANT: Derive cloud updated_at from local logical time, not sync time
+                    updated_at: this.toIso(item.updatedAt || item.createdAt || Date.now())
                 };
 
-                // Handle Photo uploading/Base64 conversion
+                // Handle Photo (Blob or URL)
                 if (item.photo instanceof Blob) {
-                    const filename = `grad_${item.studentIdCloud || item.studentId || Date.now()}.png`;
+                    const filename = `grad_${studentCloudId}.png`;
                     const result = await storageService.uploadAsset(schoolId, 'students', filename, item.photo);
                     if (result && result.path) {
                         payload.graduate_image_url = result.path;
-                    } else {
-                        // Fallback to base64 if storage fails
-                        const reader = new FileReader();
-                        const base64Promise = new Promise<string>((resolve) => {
-                            reader.onloadend = () => resolve(reader.result as string);
-                            reader.readAsDataURL(item.photo as Blob);
-                        });
-                        payload.graduate_image_url = await base64Promise;
                     }
                 } else if (item.photoUrl) {
                     payload.graduate_image_url = item.photoUrl;
                 }
 
-                if (item.idCloud) (payload as any).id = item.idCloud;
+                // Strictly only include ID if it is a valid cloud UUID (idCloud)
+                if (item.idCloud && this.isUuid(item.idCloud)) {
+                    payload.id = item.idCloud;
+                }
 
-                // Upsert to handle potential conflicts or retries
+                // UPSERT with strict conflict target: school_id + student_id
                 const { data, error } = await supabase
                     .from('graduate_records')
-                    .upsert(payload, { onConflict: 'school_id,student_id' })
+                    .upsert(payload, { 
+                        onConflict: 'school_id,student_id',
+                        ignoreDuplicates: false // We want to update if it exists
+                    })
                     .select('id')
                     .single();
 
                 if (error) {
-                    console.error(`[sync:graduates] Supabase error for ${item.fullName}:`, error);
+                    // Check for duplicate key one last time (should be handled by upsert but POSTGREST can be picky)
+                    if (error.code === '23505') {
+                         console.error(`[sync:graduates] 409 Conflict after upsert attempt for ${item.fullName}. check indices.`);
+                    }
                     throw error;
                 }
 
+                // Mark local as successfully synced
                 await eduDb.graduateRecords.update(item.id!, {
                     idCloud: data?.id || item.idCloud,
                     syncStatus: 'synced',
-                    updatedAt: Date.now(),
-                    syncError: null
+                    syncError: undefined,
+                    updatedAt: Date.now()
                 });
 
                 console.log(`[sync:graduates] Successfully synced ${item.fullName}`);
-
                 syncedCount++;
             } catch (error: any) {
-                console.error('[syncService] Graduate record sync failed:', error);
-                this.lastError = error?.message || 'Graduate record sync failed';
+                console.error(`[sync:graduates] Sync failed for ${item.fullName}:`, error);
+                this.lastError = error?.message || 'Graduate sync failed';
                 await eduDb.graduateRecords.update(item.id!, {
-                    syncStatus: 'pending',
+                    syncStatus: 'failed',
+                    syncError: error.message,
                     updatedAt: Date.now()
-                });
+                } as any);
             }
         }
 
@@ -1149,7 +1196,8 @@ export const syncService = {
     // ─────────────────────────────────────────────────────────────
     isUuid(value: any): boolean {
         if (!value || typeof value !== 'string') return false;
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        // Version-strict regular expression for RFC 4122 compliant UUIDs
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
         return uuidRegex.test(value);
     },
 

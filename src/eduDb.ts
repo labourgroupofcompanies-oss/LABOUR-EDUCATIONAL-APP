@@ -936,5 +936,61 @@ eduDb.version(28).stores({
     graduateRecords: '++id, idCloud, schoolId, studentId, graduationYear, photoUrl, isDeleted, syncStatus, [schoolId+studentId]'
 });
 
+// Version 29: Graduate Records Deduplication and strict unique index
+eduDb.version(29).stores({
+    classes: '++id, idCloud, schoolId, classTeacherId, name, level, teachingMode, isDeleted, syncStatus, [schoolId+name+level]',
+    classSubjects: '++id, idCloud, schoolId, classId, subjectId, teacherId, isDeleted, syncStatus, [classId+subjectId]',
+    subjects: '++id, idCloud, schoolId, name, code, isDeleted, syncStatus, [schoolId+name]',
+    students: '++id, idCloud, schoolId, classId, studentIdString, fullName, isDeleted, syncStatus, [schoolId+studentIdString]',
+    results: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, isDeleted, syncStatus, [classId+subjectId], [studentId+classSubjectId+term+year]',
+    attendance: '++id, idCloud, schoolId, studentId, classId, date, [schoolId+classId+date], [schoolId+studentId+date], syncStatus',
+    settings: '++id, idCloud, schoolId, key, [schoolId+key], syncStatus',
+    assessmentConfigs: '++id, idCloud, schoolId, year, term, isDeleted, [schoolId+year+term], syncStatus',
+    componentScores: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, componentType, status, isDeleted, syncStatus',
+    feeStructures: '++id, idCloud, schoolId, classId, term, year, isDeleted, [schoolId+classId+term+year], syncStatus',
+    feePayments: '++id, idCloud, schoolId, studentId, classId, term, year, isDeleted, syncStatus',
+    payrollRecords: '++id, idCloud, schoolId, staffId, staffIdCloud, month, year, isDeleted, [schoolId+staffId+month+year], [schoolId+staffIdCloud+month+year], status, syncStatus',
+    expenses: '++id, idCloud, schoolId, category, date, isDeleted, syncStatus',
+    budgets: '++id, idCloud, schoolId, category, term, year, isDeleted, [schoolId+category+term+year], syncStatus',
+    subscriptions: '++id, idCloud, schoolId, term, academicYear, status, verifiedAt, [schoolId+term+academicYear], syncStatus',
+    promotionRequests: '++id, idCloud, schoolId, studentId, fromClassId, toClassId, status, syncStatus, isDeleted',
+    graduateRecords: '++id, idCloud, schoolId, studentId, graduationYear, photoUrl, isDeleted, syncStatus, [schoolId+studentId]'
+}).upgrade(async tx => {
+    const graduates = await tx.table('graduateRecords').toArray();
+    const groups = new Map<string, any[]>();
+
+    for (const g of graduates) {
+        const key = `${g.schoolId}_${g.studentId}`;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(g);
+    }
+
+    const toDelete: number[] = [];
+    for (const group of groups.values()) {
+        if (group.length <= 1) continue;
+
+        // Sort by updatedAt DESC, then createdAt DESC, then id DESC (Deterministic)
+        // Winner is group[0]
+        group.sort((a, b) => {
+            const timeA = a.updatedAt || a.createdAt || 0;
+            const timeB = b.updatedAt || b.createdAt || 0;
+            if (timeB > timeA) return 1; // b is better, so it should come first (descending)
+            if (timeA > timeB) return -1; // a is better
+            return (b.id || 0) > (a.id || 0) ? 1 : -1;
+        });
+        
+        // Use a clearer slice to identify losers
+        const losers = group.slice(1);
+        for (const loser of losers) {
+            toDelete.push(loser.id);
+        }
+    }
+
+    if (toDelete.length > 0) {
+        console.log(`[db:migration:v29] Deduplicating ${toDelete.length} graduate records.`);
+        await tx.table('graduateRecords').bulkDelete(toDelete);
+    }
+});
+
 export { eduDb };
 
