@@ -81,16 +81,17 @@ const PayrollHistory: React.FC = () => {
                     <table className="w-full">
                         <thead>
                             <tr className="bg-gray-50 border-b border-gray-100">
-                                {['Month', 'Staff', 'Role', 'Gross', 'Deductions', 'Net Pay', 'Method', 'Status', ''].map(h => (
+                                {['S/N', 'Month', 'Staff', 'Role', 'Gross', 'Deductions', 'Net Pay', 'Method', 'Status', ''].map(h => (
                                     <th key={h} className="px-4 py-3 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">{h}</th>
                                 ))}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                             {filtered.length === 0 ? (
-                                <tr><td colSpan={9} className="px-6 py-16 text-center text-gray-300 text-sm">No payroll records yet</td></tr>
+                                <tr><td colSpan={10} className="px-6 py-16 text-center text-gray-300 text-sm">No payroll records yet</td></tr>
                             ) : filtered.map((r, i) => (
                                 <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="px-4 py-3 text-[10px] font-black text-gray-400">{i + 1}</td>
                                     <td className="px-4 py-3 font-bold text-gray-700 text-sm whitespace-nowrap">{MONTHS[r.month - 1]} {r.year}</td>
                                     <td className="px-4 py-3 font-bold text-gray-800 text-sm whitespace-nowrap">{r.staffName}</td>
                                     <td className="px-4 py-3">
@@ -213,7 +214,7 @@ const PayrollHistory: React.FC = () => {
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 border-y border-gray-200">
-                                    {['Period', 'Staff Name', 'Role', 'Gross (GHS)', 'Deductions', 'Net Pay', 'Method', 'Status'].map(h => (
+                                    {['S/N', 'Period', 'Staff Name', 'Role', 'Gross (GHS)', 'Deductions', 'Net Pay', 'Method', 'Status'].map(h => (
                                         <th key={h} className="px-4 py-3 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">{h}</th>
                                     ))}
                                 </tr>
@@ -221,6 +222,7 @@ const PayrollHistory: React.FC = () => {
                             <tbody className="divide-y divide-gray-100">
                                 {filtered.map((r, i) => (
                                     <tr key={i}>
+                                        <td className="px-4 py-3 text-xs font-bold text-gray-500">{i + 1}</td>
                                         <td className="px-4 py-3 text-sm font-bold text-gray-700">{MONTHS[r.month - 1]} {r.year}</td>
                                         <td className="px-4 py-3 text-sm font-bold text-gray-800">{r.staffName}</td>
                                         <td className="px-4 py-3 text-[10px] font-black text-purple-600 uppercase">{r.staffRole}</td>

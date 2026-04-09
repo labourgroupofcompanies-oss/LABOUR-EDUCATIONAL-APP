@@ -226,7 +226,7 @@ const PayrollDashboard: React.FC = () => {
                     <table className="w-full">
                         <thead>
                             <tr className="bg-slate-50/50 border-b border-slate-100">
-                                {['Staff', 'Role', 'Gross (GHS)', 'Deductions', 'Notes', 'Net Pay', 'Method', 'Status', ''].map(h => (
+                                {['S/N', 'Staff', 'Role', 'Gross (GHS)', 'Deductions', 'Notes', 'Net Pay', 'Method', 'Status', ''].map(h => (
                                     <th key={h} className="px-6 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">{h}</th>
                                 ))}
                             </tr>
@@ -247,6 +247,7 @@ const PayrollDashboard: React.FC = () => {
                                 const net = gross - ded;
                                 return (
                                     <tr key={row.staffId} className="hover:bg-slate-50/50 transition-colors group">
+                                        <td className="px-6 py-5 font-black text-slate-400 text-sm whitespace-nowrap">{i + 1}</td>
                                         <td className="px-6 py-5 font-black text-slate-800 text-sm whitespace-nowrap group-hover:text-indigo-600 transition-colors">{row.name}</td>
                                         <td className="px-6 py-5">
                                             <span className="text-[9px] font-black bg-purple-50 text-purple-600 px-2.5 py-1 rounded-md uppercase tracking-widest">{row.role}</span>

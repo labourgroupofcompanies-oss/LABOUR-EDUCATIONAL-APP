@@ -668,11 +668,12 @@ export const dbService = {
             }
 
             if (existing?.id) {
-                return await eduDb.payrollRecords.update(existing.id, {
+                await eduDb.payrollRecords.update(existing.id, {
                     ...record,
                     updatedAt: Date.now(),
                     syncStatus: 'pending'
                 });
+                return existing.id;
             }
 
             return await eduDb.payrollRecords.add({

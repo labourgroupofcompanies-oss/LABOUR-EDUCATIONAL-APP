@@ -204,7 +204,7 @@ const StudentFeeList: React.FC = () => {
                     <table className="w-full">
                         <thead>
                             <tr className="bg-slate-50/50 border-b border-slate-100">
-                                {['Student Info', 'Fee Target', 'Collected', 'Balance', 'Status', ''].map(h => (
+                                {['S/N', 'Student Info', 'Fee Target', 'Collected', 'Balance', 'Status', ''].map(h => (
                                     <th key={h} className="px-8 py-5 text-left text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{h}</th>
                                 ))}
                             </tr>
@@ -212,7 +212,7 @@ const StudentFeeList: React.FC = () => {
                         <tbody className="divide-y divide-slate-50">
                             {filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-8 py-24 text-center">
+                                    <td colSpan={7} className="px-8 py-24 text-center">
                                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
                                             <i className="fas fa-search text-2xl text-slate-300"></i>
                                         </div>
@@ -221,6 +221,7 @@ const StudentFeeList: React.FC = () => {
                                 </tr>
                             ) : filtered.map((row, i) => (
                                 <tr key={i} className="group hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-8 py-5 font-black text-slate-400 text-sm whitespace-nowrap">{i + 1}</td>
                                     <td className="px-8 py-5">
                                         <p className="font-black text-slate-800 text-sm group-hover:text-indigo-600 transition-colors">{row.student.fullName}</p>
                                         <div className="flex items-center gap-2 mt-1">
