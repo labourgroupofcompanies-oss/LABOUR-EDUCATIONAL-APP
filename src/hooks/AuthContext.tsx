@@ -10,6 +10,7 @@ export interface AuthUser {
     schoolId: string;   // UUID from schools.id
     username: string;
     fullName: string;
+    email?: string; // Supabase Auth Email
     role: 'headteacher' | 'staff' | 'developer';  // matches staff_profiles.role values
     mustChangePassword: boolean; // Flag for first-login enforcement
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { type School } from '../../db';
 import { getSupabaseEmail } from '../../utils/auth';
+import DeveloperModal from './DeveloperModal';
 
 interface PasswordResetToolProps {
     school: School;
@@ -39,78 +40,75 @@ WHERE
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md animate-fadeIn" onClick={onClose}></div>
-
-            <div className="relative w-full max-w-lg bg-white rounded-[2rem] lg:rounded-[2.5rem] shadow-2xl animate-zoomIn overflow-hidden border border-slate-100 mx-4 lg:mx-0">
-                <div className="bg-amber-500 p-6 lg:p-8 text-white relative h-28 lg:h-32 flex items-center shrink-0">
-                    <div className="relative z-10">
-                        <h3 className="text-xl lg:text-2xl font-black tracking-tight">Master Reset</h3>
-                        <p className="text-amber-100/80 text-[10px] font-bold uppercase tracking-widest mt-1">Administrative Override</p>
+        <DeveloperModal
+            isOpen={true}
+            onClose={onClose}
+            title="Master Reset"
+            subtitle="Administrative Override"
+            icon="fa-key"
+            iconBg="bg-amber-500"
+            width="max-w-lg"
+            footer={
+                <>
+                    <button
+                        onClick={onClose}
+                        className="flex-1 py-4 px-6 rounded-2xl bg-slate-100 text-slate-500 font-black text-sm hover:bg-slate-200 transition-all active:scale-95"
+                    >
+                        Dismiss
+                    </button>
+                    <button
+                        onClick={handleCopy}
+                        disabled={!newPassword}
+                        className="flex-1 py-4 px-6 rounded-2xl bg-amber-500 text-white font-black text-sm shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
+                    >
+                        Copy SQL Code
+                    </button>
+                </>
+            }
+        >
+            <div className="space-y-6">
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Account Email</label>
+                    <div className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-100 text-slate-500 font-bold overflow-hidden truncate text-sm">
+                        {email}
                     </div>
-                    <i className="fas fa-key absolute right-6 lg:right-8 text-6xl lg:text-7xl text-white/10 rotate-12"></i>
                 </div>
 
-                <div className="p-6 lg:p-8 space-y-5 lg:space-y-6">
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">Account Email</label>
-                        <div className="w-full px-5 py-3.5 rounded-2xl bg-slate-50 border-2 border-slate-100 text-slate-500 font-bold overflow-hidden truncate text-sm">
-                            {email}
-                        </div>
+                <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">New Password</label>
+                    <div className="relative">
+                        <i className="fas fa-shield-alt absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></i>
+                        <input
+                            type="text"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="Enter secure password..."
+                            className="w-full pl-12 pr-6 py-3.5 rounded-2xl bg-white border-2 border-slate-100 focus:border-amber-500 focus:outline-none transition-all font-bold text-slate-800 text-sm"
+                        />
                     </div>
+                </div>
 
-                    <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block ml-1">New Password</label>
-                        <div className="relative">
-                            <i className="fas fa-shield-alt absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 text-sm"></i>
-                            <input
-                                type="text"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="Enter secure password..."
-                                className="w-full pl-12 pr-6 py-3.5 rounded-2xl bg-white border-2 border-slate-100 focus:border-amber-500 focus:outline-none transition-all font-bold text-slate-800 text-sm"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="p-4 lg:p-5 bg-slate-900 rounded-2xl lg:rounded-3xl space-y-3 border-2 border-slate-800">
-                        <div className="flex justify-between items-center px-1">
-                            <span className="text-[8px] lg:text-[9px] font-black text-slate-500 uppercase tracking-widest">SQL Snippet</span>
-                            <button
-                                onClick={handleCopy}
-                                className={`text-[8px] lg:text-[9px] font-black uppercase tracking-widest transition-all ${copied ? 'text-green-400' : 'text-blue-400 hover:text-white'}`}
-                            >
-                                {copied ? 'Copied!' : 'Copy'}
-                            </button>
-                        </div>
-                        <pre className="text-[10px] lg:text-[11px] text-blue-300 font-mono leading-relaxed bg-slate-800/50 p-3 lg:p-4 rounded-xl border border-white/5 overflow-x-auto whitespace-pre-wrap break-all max-h-40 overflow-y-auto custom-scrollbar">
-                            {simpleSQL}
-                        </pre>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-3 lg:gap-4">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 py-3.5 lg:py-4 px-6 rounded-2xl bg-slate-100 text-slate-500 font-black text-xs lg:text-sm hover:bg-slate-200 transition-all active:scale-95"
-                        >
-                            Dismiss
-                        </button>
+                <div className="p-5 bg-slate-900 rounded-3xl space-y-3 border-2 border-slate-800">
+                    <div className="flex justify-between items-center px-1">
+                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">SQL Snippet</span>
                         <button
                             onClick={handleCopy}
-                            disabled={!newPassword}
-                            className="flex-1 py-3.5 lg:py-4 px-6 rounded-2xl bg-amber-500 text-white font-black text-xs lg:text-sm shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
+                            className={`text-[9px] font-black uppercase tracking-widest transition-all ${copied ? 'text-green-400' : 'text-blue-400 hover:text-white'}`}
                         >
-                            Copy SQL Code
+                            {copied ? 'Copied!' : 'Copy'}
                         </button>
                     </div>
-
-                    <p className="text-center text-[10px] text-slate-400 font-medium">
-                        <i className="fas fa-info-circle mr-1"></i>
-                        Run this code in your Supabase SQL Editor to finalize the reset.
-                    </p>
+                    <pre className="text-[11px] text-blue-300 font-mono leading-relaxed bg-slate-800/50 p-4 rounded-xl border border-white/5 overflow-x-auto whitespace-pre-wrap break-all max-h-40 overflow-y-auto custom-scrollbar">
+                        {simpleSQL}
+                    </pre>
                 </div>
+
+                <p className="text-center text-[10px] text-slate-400 font-medium">
+                    <i className="fas fa-info-circle mr-1"></i>
+                    Run this code in your Supabase SQL Editor to finalize the reset.
+                </p>
             </div>
-        </div>
+        </DeveloperModal>
     );
 };
 

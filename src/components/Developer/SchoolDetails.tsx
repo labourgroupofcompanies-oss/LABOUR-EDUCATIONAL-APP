@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
 import { type School } from '../../db';
+import { showConfirm } from '../Common/ConfirmDialog';
+import { showToast } from '../Common/Toast';
+import DeveloperModal from './DeveloperModal';
 
 interface SchoolDetailsProps {
     school: School;
@@ -119,32 +122,16 @@ const SchoolDetails: React.FC<SchoolDetailsProps> = ({ school, onClose }) => {
     ] as const;
 
     return (
-        <div className="fixed inset-0 z-[100] flex justify-end">
-            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-fadeIn" onClick={onClose} />
+        <DeveloperModal
+            isOpen={true}
+            onClose={onClose}
+            title={schoolName}
+            subtitle={schoolCode}
+            icon="fa-university"
+            width="max-w-3xl"
+        >
 
-            <div className="relative w-full sm:max-w-2xl bg-white h-full shadow-2xl animate-slideInRight overflow-hidden flex flex-col">
-
-                {/* ── Header ── */}
-                <div className="shrink-0 bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 lg:p-8">
-                    <div className="flex items-start justify-between gap-4 mb-5">
-                        <div className="flex items-center gap-4 min-w-0">
-                            <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center font-black text-2xl shrink-0 overflow-hidden">
-                                {full.logo ? (
-                                    <img src={full.logo.startsWith('data:') ? full.logo : `data:image/png;base64,${full.logo}`} alt="Logo" className="w-full h-full object-cover" />
-                                ) : (
-                                    schoolName.charAt(0)
-                                )}
-                            </div>
-                            <div className="min-w-0">
-                                <h3 className="text-xl font-black tracking-tight truncate">{schoolName}</h3>
-                                <p className="text-slate-400 text-[10px] font-mono uppercase tracking-widest mt-0.5">{schoolCode}</p>
-                            </div>
-                        </div>
-                        <button onClick={onClose} className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center transition-all shrink-0 mt-1">
-                            <i className="fas fa-times text-sm"></i>
-                        </button>
-                    </div>
-
+                <div className="flex flex-col gap-6">
                     {/* KPI strip */}
                     <div className="grid grid-cols-4 gap-2">
                         {[
@@ -199,7 +186,7 @@ const SchoolDetails: React.FC<SchoolDetailsProps> = ({ school, onClose }) => {
                                         <Field label="Registered On" value={registeredAt} />
                                         <Field label="Free Trial Term" value={onboardingTerm} badge badgeColor="emerald" />
                                         <Field label="Free Trial Year" value={onboardingYear} badge badgeColor="emerald" />
-                                        <Field label="Trial Status" value={(live?.subscriptions ?? []).some(s => s.status === 'trial') ? 'Trial Row Written ✓' : 'No Trial Record'} badge badgeColor={(live?.subscriptions ?? []).some(s => s.status === 'trial') ? 'green' : 'amber'} />
+                                        <Field label="Trial Status" value={(live?.subscriptions ?? []).some((sub: any) => sub.status === 'trial') ? 'Trial Row Written ✓' : 'No Trial Record'} badge badgeColor={(live?.subscriptions ?? []).some((sub: any) => sub.status === 'trial') ? 'green' : 'amber'} />
                                         <Field label="Account Status" value={(full.is_active ?? true) ? 'Active' : 'Deactivated'} badge badgeColor={(full.is_active ?? true) ? 'green' : 'red'} />
                                     </Section>
 
@@ -216,8 +203,8 @@ const SchoolDetails: React.FC<SchoolDetailsProps> = ({ school, onClose }) => {
                                     <Section icon="fa-user-shield" title="Headteacher" color="purple">
                                         <Field label="Full Name" value={full.headteacher_name || school.headteacherName} />
                                         <Field label="Email / Username" value={full.email || school.email || (school as any).username} />
-                                        <Field label="Auth Email" value={(live?.staffProfiles ?? []).find(p => p.role === 'headteacher')?.auth_email ?? '—'} mono />
-                                        <Field label="Staff UUID" value={(live?.staffProfiles ?? []).find(p => p.role === 'headteacher')?.id ?? '—'} mono />
+                                        <Field label="Auth Email" value={(live?.staffProfiles ?? []).find((p: any) => p.role === 'headteacher')?.auth_email ?? '—'} mono />
+                                        <Field label="Staff UUID" value={(live?.staffProfiles ?? []).find((p: any) => p.role === 'headteacher')?.id ?? '—'} mono />
                                     </Section>
 
                                     {/* Location */}
@@ -239,16 +226,23 @@ const SchoolDetails: React.FC<SchoolDetailsProps> = ({ school, onClose }) => {
                                     <div className="pt-4 flex flex-wrap gap-3">
                                         <button
                                             onClick={async () => {
-                                                if (!confirm(`Are you sure you want to manually grant a free trial for ${onboardingTerm} — ${onboardingYear}?`)) return;
+                                                const confirmed = await showConfirm({
+                                                    title: 'Grant Manual Trial',
+                                                    message: `Are you sure you want to manually grant a free trial for ${onboardingTerm} — ${onboardingYear}?`,
+                                                    confirmText: 'Grant Trial',
+                                                    variant: 'info'
+                                                });
+                                                if (!confirmed) return;
+                                                
                                                 const { error } = await supabase.rpc('backfill_trial_subscription', {
                                                     p_school_id: schoolUuid,
                                                     p_term: onboardingTerm,
                                                     p_year: onboardingYear
                                                 });
-                                                if (error) alert('Failed: ' + error.message);
+                                                if (error) showToast('Failed: ' + error.message, 'error');
                                                 else {
-                                                    alert('Trial granted successfully!');
-                                                    onClose(); // Refresh parent or close
+                                                    showToast('Trial granted successfully!', 'success');
+                                                    onClose(); 
                                                 }
                                             }}
                                             className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-200 hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2"
@@ -257,7 +251,12 @@ const SchoolDetails: React.FC<SchoolDetailsProps> = ({ school, onClose }) => {
                                             Grant Manual Trial
                                         </button>
                                         <button
-                                            onClick={() => alert('School Secret: ' + (full.school_code || 'N/A'))}
+                                            onClick={() => showConfirm({
+                                                title: 'School Secret Key',
+                                                message: `The school code for validation is: ${full.school_code || 'N/A'}`,
+                                                confirmText: 'Acknowledged',
+                                                variant: 'info'
+                                            })}
                                             className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-900 hover:text-white transition-all shadow-sm flex items-center gap-2"
                                         >
                                             <i className="fas fa-shield-halved"></i>
@@ -275,7 +274,7 @@ const SchoolDetails: React.FC<SchoolDetailsProps> = ({ school, onClose }) => {
                                             <i className="fas fa-users text-4xl mb-4"></i>
                                             <p className="font-black text-xs uppercase tracking-widest">No staff profiles found</p>
                                         </div>
-                                    ) : (live?.staffProfiles ?? []).map((p, i) => (
+                                    ) : (live?.staffProfiles ?? []).map((p: any, i: number) => (
                                         <div key={p.id || i} className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4">
                                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
                                                 p.role === 'headteacher' ? 'bg-purple-100 text-purple-700' :
@@ -311,7 +310,7 @@ const SchoolDetails: React.FC<SchoolDetailsProps> = ({ school, onClose }) => {
                                             <i className="fas fa-credit-card text-4xl mb-4"></i>
                                             <p className="font-black text-xs uppercase tracking-widest">No subscription records</p>
                                         </div>
-                                    ) : (live?.subscriptions ?? []).map((sub, i) => (
+                                    ) : (live?.subscriptions ?? []).map((sub: any, i: number) => (
                                         <div key={sub.id || i} className="bg-slate-50 rounded-2xl p-5 space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <div>
@@ -367,18 +366,7 @@ const SchoolDetails: React.FC<SchoolDetailsProps> = ({ school, onClose }) => {
                         </>
                     )}
                 </div>
-
-                {/* ── Footer ── */}
-                <div className="shrink-0 p-4 bg-red-50 border-t border-red-100 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center text-red-500 shrink-0">
-                        <i className="fas fa-exclamation-triangle text-xs"></i>
-                    </div>
-                    <p className="text-[10px] text-red-600 font-medium leading-relaxed">
-                        <span className="font-black">Sensitive Data.</span> You are viewing live cloud records. Handle with care.
-                    </p>
-                </div>
-            </div>
-        </div>
+        </DeveloperModal>
     );
 };
 

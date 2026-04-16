@@ -70,6 +70,7 @@ export const syncService = {
             totalSynced += await this.syncEntity(schoolId, eduDb.budgets, 'budgets', 'id');
             totalSynced += await this.syncEntity(schoolId, eduDb.settings, 'settings', 'key');
             totalSynced += await this.syncPromotionRequests(schoolId);
+            totalSynced += await this.syncEntity(schoolId, eduDb.schoolEvents, 'school_events', 'id');
 
             console.log('[syncService] Sync completed.');
 
@@ -158,6 +159,7 @@ export const syncService = {
 
             await this.pullEntity(schoolId, eduDb.settings, 'settings');
             await this.pullEntity(schoolId, eduDb.promotionRequests, 'promotion_requests');
+            await this.pullEntity(schoolId, eduDb.schoolEvents, 'school_events');
             await this.pullEntity(schoolId, eduDb.graduateRecords, 'graduate_records');
 
             // Post-pull self-healing: Clean up any local duplicates born during sync latency
@@ -1332,10 +1334,14 @@ export const syncService = {
                         // CRITICAL: Ensure we never send "id": null or empty string to Supabase.
                         // PostgREST will try to insert literal NULL into the PK column, which violates 
                         // the NOT NULL constraint even if there is a DEFAULT gen_random_uuid().
-                        if ('id' in mapped && !mapped.id) {
+                        
+                        // Pass idCloud as the primary UUID if available, otherwise delete numeric ID
+                        if (item.idCloud) {
+                            mapped.id = item.idCloud;
+                        } else if ('id' in mapped && (!mapped.id || typeof mapped.id === 'number')) {
                             delete mapped.id;
                         }
-                        
+
                         // Prevent NOT NULL constraint violations globally
                         if (supabaseTable !== 'schools') {
                             mapped.is_deleted = mapped.is_deleted ?? false;
@@ -1478,7 +1484,12 @@ export const syncService = {
                                 // Fallback to matching by conflict columns (natural keys) as id_local is not in schema
                                 return conflictCols.every(col => {
                                     const camelCol = col.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
-                                    const localVal = localItem[camelCol] ?? localItem[col] ?? null;
+                                    // Let cloud 'id' match the local 'idCloud' if the local 'id' is a Dexie autoincrement integer
+                                    let localVal = localItem[camelCol] ?? localItem[col] ?? null;
+                                    if (col === 'id' && localItem.idCloud) {
+                                        localVal = localItem.idCloud;
+                                    }
+                                    
                                     const cloudVal = (cloudItem as any)[col] ?? null;
                                     
                                     // Soft string matching for ID comparisons (UUIDs)
@@ -1536,7 +1547,7 @@ export const syncService = {
                 if (!match && mapped.schoolId) {
                     match = await table.where({ schoolId: mapped.schoolId }).first();
                 }
-            } else if (['subjects', 'classes', 'class_subjects', 'students', 'results', 'component_scores', 'assessment_configs', 'fee_structures', 'fee_payments', 'payroll_records', 'expenses', 'budgets', 'staff_profiles', 'settings', 'school_subscriptions', 'promotion_requests', 'graduate_records'].includes(supabaseTable)) {
+            } else if (['subjects', 'classes', 'class_subjects', 'students', 'results', 'component_scores', 'assessment_configs', 'fee_structures', 'fee_payments', 'payroll_records', 'expenses', 'budgets', 'staff_profiles', 'settings', 'school_subscriptions', 'promotion_requests', 'graduate_records', 'school_events'].includes(supabaseTable)) {
                 if ((mapped as any).idCloud) {
                     match = await table.where({ idCloud: (mapped as any).idCloud }).first();
                 }
@@ -1631,6 +1642,14 @@ export const syncService = {
                         schoolId: schoolId,
                         term: mapped.term,
                         academicYear: mapped.academicYear
+                    }).first();
+                }
+
+                if (!match && supabaseTable === 'school_events') {
+                    match = await table.where({
+                        schoolId: schoolId,
+                        title: mapped.title,
+                        startDate: mapped.startDate
                     }).first();
                 }
 
@@ -1905,7 +1924,9 @@ export const syncService = {
             'lockedAt',
             'lastSyncAt',
             'deletedAt',
-            'notedAt'
+            'notedAt',
+            'startDate',
+            'endDate'
         ];
 
         for (const key in obj) {
@@ -2076,7 +2097,9 @@ export const syncService = {
                     'submitted_at',
                     'approved_at',
                     'deleted_at',
-                    'noted_at'
+                    'noted_at',
+                    'start_date',
+                    'end_date'
                 ].includes(key)
             ) {
                 newObj[camelKey] = obj[key] ? new Date(obj[key]).getTime() : 0;
@@ -2117,6 +2140,7 @@ export const syncService = {
         if (table === 'budgets') return 'school_id,category,term,year';
         if (table === 'promotion_requests') return 'student_id,from_class_id,to_class_id,created_at';
         if (table === 'graduate_records' || table === 'graduate_records') return 'school_id,student_id';
+        if (table === 'school_events') return 'id';
 
         return defaultKey;
     },

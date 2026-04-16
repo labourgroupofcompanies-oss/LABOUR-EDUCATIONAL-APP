@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../supabaseClient';
+import { showConfirm } from '../Common/ConfirmDialog';
 
 interface Announcement {
     id: string;
@@ -85,7 +86,13 @@ const AnnouncementManager: React.FC = () => {
     };
 
     const deleteAnnouncement = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this announcement?')) return;
+        const confirmed = await showConfirm({
+            title: 'Delete Announcement',
+            message: 'Are you sure you want to permanently delete this announcement? This will remove it from all portals immediately.',
+            confirmText: 'Delete Now',
+            variant: 'danger'
+        });
+        if (!confirmed) return;
         try {
             const { error } = await supabase
                 .from('system_announcements')

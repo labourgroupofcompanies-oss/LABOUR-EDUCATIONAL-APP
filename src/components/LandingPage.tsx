@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ContactModal from './Common/ContactModal';
 
 interface LandingPageProps {
     onStart: () => void;
@@ -62,6 +63,7 @@ const portals = [
 
 const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
     const [active, setActive] = useState(0);
+    const [showContact, setShowContact] = useState(false);
     const p = portals[active];
 
     return (
@@ -77,7 +79,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                 {/* logo */}
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px', position: 'relative' }}>
                     <div style={{ width: '88px', height: '88px', borderRadius: '24px', background: '#fff', boxShadow: '0 16px 48px rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.2)' }}>
-                        <img src="/labour.png" alt="Labour Edu App" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
+                        <img src="/images/labour_logo.png" alt="Labour Edu App" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                     </div>
                 </div>
 
@@ -108,6 +110,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.7)'; }}
                     >
                         Login to Existing School
+                    </button>
+
+                    <button
+                        onClick={() => setShowContact(true)}
+                        style={{ marginTop: '10px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', padding: '8px 24px', borderRadius: '100px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.2)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.1)'; }}
+                    >
+                        <i className="fas fa-headset mr-2"></i>
+                        Contact Sales
                     </button>
                 </div>
             </div>
@@ -184,6 +196,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, onLogin }) => {
                     Data stored securely on your device &nbsp;·&nbsp; Labour Edu App © {new Date().getFullYear()}
                 </p>
             </div>
+
+            {showContact && <ContactModal onClose={() => setShowContact(false)} />}
         </div>
     );
 };

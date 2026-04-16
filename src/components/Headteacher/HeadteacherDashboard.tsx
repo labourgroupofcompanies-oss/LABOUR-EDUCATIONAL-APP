@@ -23,9 +23,13 @@ import SubscriptionGate from '../Subscription/SubscriptionGate';
 import SubscriptionPage from '../Subscription/SubscriptionPage';
 import PromotionApprovals from './PromotionApprovals';
 import SubscriptionStatusIndicator from '../Common/SubscriptionStatusIndicator';
+import NotificationBell from '../Common/NotificationBell';
+import ContactModal from '../Common/ContactModal';
 import GraduatesManagement from './GraduatesManagement';
+import CalendarManager from './CalendarManager';
+import AcademicAnalytics from './AcademicAnalytics';
 
-type ViewType = 'overview' | 'students' | 'staff' | 'classes' | 'subjects' | 'results' | 'attendance' | 'settings' | 'subscription' | 'promotions' | 'payslip' | 'graduates';
+type ViewType = 'overview' | 'students' | 'staff' | 'classes' | 'subjects' | 'results' | 'attendance' | 'settings' | 'subscription' | 'promotions' | 'payslip' | 'graduates' | 'calendar' | 'analytics';
 
 const tabConfig: { key: ViewType; label: string; shortLabel: string; icon: string }[] = [
     { key: 'overview', label: 'Overview', shortLabel: 'Home', icon: 'fa-home' },
@@ -37,6 +41,8 @@ const tabConfig: { key: ViewType; label: string; shortLabel: string; icon: strin
     { key: 'promotions', label: 'Promotions', shortLabel: 'Promos', icon: 'fa-level-up-alt' },
     { key: 'attendance', label: 'Attendance', shortLabel: 'Attend.', icon: 'fa-calendar-check' },
     { key: 'results', label: 'Results', shortLabel: 'Results', icon: 'fa-chart-bar' },
+    { key: 'analytics', label: 'Analytics', shortLabel: 'Analytics', icon: 'fa-chart-line' },
+    { key: 'calendar', label: 'Calendar', shortLabel: 'Events', icon: 'fa-calendar-alt' },
     { key: 'payslip', label: 'My Payslips', shortLabel: 'Payslips', icon: 'fa-file-invoice-dollar' },
     { key: 'settings', label: 'Settings', shortLabel: 'Settings', icon: 'fa-cog' },
     { key: 'subscription', label: 'Subscription', shortLabel: 'Subscribe', icon: 'fa-crown' },
@@ -49,6 +55,7 @@ const HeadteacherDashboard: React.FC = () => {
 
     const [view, setView] = useState<ViewType>('overview');
     const [isSyncing, setIsSyncing] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
 
     const [reportCardSelection, setReportCardSelection] = useState<{ studentId?: string; classId?: string } | null>(null);
 
@@ -113,18 +120,48 @@ const HeadteacherDashboard: React.FC = () => {
     }, [user?.schoolId]);
 
     const stats = useLiveQuery(async () => {
-        if (!user?.schoolId) return { students: 0, teachers: 0, classes: 0, subjects: 0 };
-        const [students, teachers, classes, subjects] = await Promise.all([
-            dbService.students.getAll(user.schoolId).then(res => 
-                res.filter((s, i, arr) => 
-                    arr.findIndex(t => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
-                ).length
-            ),
-            dbService.staff.getTeachers(user.schoolId).then(res => res.length),
-            dbService.classes.getAll(user.schoolId).then(res => res.length),
-            dbService.subjects.getAll(user.schoolId).then(res => res.length)
-        ]);
-        return { students, teachers, classes, subjects };
+        if (!user?.schoolId) return { studentCount: 0, staffCount: 0, classCount: 0, subjectCount: 0, upcomingEvents: [] };
+        
+        try {
+            const [students, teachers, classes, subjects, events] = await Promise.all([
+                dbService.students.getAll(user.schoolId).then(res => 
+                    res.filter((s, i, arr) => 
+                        arr.findIndex(t => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
+                    ).length
+                ),
+                dbService.staff.getTeachers(user.schoolId).then(res => res.length),
+                dbService.classes.getAll(user.schoolId).then(res => res.length),
+                dbService.subjects.getAll(user.schoolId).then(res => res.length),
+                // Safe query for newly added schoolEvents table
+                (async () => {
+                    try {
+                        return await eduDb.schoolEvents
+                            .where('schoolId').equals(user.schoolId)
+                            .toArray();
+                    } catch (err) {
+                        console.warn("schoolEvents table not ready:", err);
+                        return [];
+                    }
+                })()
+            ]);
+
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            return { 
+                studentCount: students, 
+                staffCount: teachers, 
+                classCount: classes, 
+                subjectCount: subjects,
+                upcomingEvents: events
+                    .filter((e: any) => new Date(e.startDate).getTime() >= startOfToday.getTime())
+                    .sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
+                    .slice(0, 3)
+            };
+        } catch (error) {
+            console.error("Dashboard Stats Block Failed:", error);
+            return { studentCount: 0, staffCount: 0, classCount: 0, subjectCount: 0, upcomingEvents: [] };
+        }
     }, [user?.schoolId]);
 
     const syncStatus = useLiveQuery(async () => {
@@ -219,45 +256,118 @@ const HeadteacherDashboard: React.FC = () => {
                                 </div>
                             )}
 
-                            {/* Stats Cards */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+                            {/* 1. Primary Stats Row */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                                 {[
-                                    { label: 'Students', value: stats?.students || 0, icon: 'fa-user-graduate', color: 'text-blue-600', bg: 'bg-blue-50' },
-                                    { label: 'Teachers', value: stats?.teachers || 0, icon: 'fa-chalkboard-teacher', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                                    { label: 'Classes', value: stats?.classes || 0, icon: 'fa-chalkboard', color: 'text-purple-600', bg: 'bg-purple-50' },
-                                    { label: 'Subjects', value: stats?.subjects || 0, icon: 'fa-book', color: 'text-orange-600', bg: 'bg-orange-50' },
+                                    { label: 'Total Students', value: stats?.studentCount || 0, icon: 'fa-user-graduate', color: 'text-blue-600', bg: 'bg-blue-50' },
+                                    { label: 'Teaching Staff', value: stats?.staffCount || 0, icon: 'fa-chalkboard-teacher', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                                    { label: 'Active Classes', value: stats?.classCount || 0, icon: 'fa-chalkboard', color: 'text-purple-600', bg: 'bg-purple-50' },
+                                    { label: 'Total Subjects', value: stats?.subjectCount || 0, icon: 'fa-book', color: 'text-emerald-600', bg: 'bg-emerald-50' },
                                 ].map((stat, idx) => (
-                                    <div key={idx} className="bg-white p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm border border-gray-100 hover:shadow-xl transition-all group">
-                                        <div className={`w-10 h-10 md:w-14 md:h-14 ${stat.bg} ${stat.color} rounded-xl md:rounded-2xl flex items-center justify-center text-lg md:text-2xl mb-3 md:mb-6 group-hover:scale-110 transition-transform shadow-sm`}>
-                                            <i className={`fas ${stat.icon}`}></i>
+                                    <div key={idx} className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">{stat.label}</p>
+                                                <h3 className="text-3xl font-black text-slate-800 tracking-tight">{stat.value}</h3>
+                                            </div>
+                                            <div className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center text-xl`}>
+                                                <i className={`fas ${stat.icon}`}></i>
+                                            </div>
                                         </div>
-                                        <h3 className="text-2xl md:text-4xl font-black text-gray-800 mb-1">{stat.value}</h3>
-                                        <p className="text-[9px] md:text-[10px] text-gray-400 font-black uppercase tracking-widest">{stat.label}</p>
                                     </div>
                                 ))}
                             </div>
 
-                            {/* Quick Actions */}
-                            <div className="space-y-4 md:space-y-8">
-                                <h2 className="text-lg font-black text-gray-800 flex items-center gap-3">
-                                    <span className="w-8 h-8 rounded-lg bg-yellow-400 text-white flex items-center justify-center text-sm">
-                                        <i className="fas fa-bolt"></i>
-                                    </span>
-                                    Quick Actions
-                                </h2>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                                    {quickActions.map((action, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={action.action}
-                                            className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all text-left flex items-center gap-3 md:flex-col md:gap-4 group hover:border-primary/20 active:scale-95"
+                            {/* 2. Main Content Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+                                
+                                {/* Quick Actions */}
+                                <div className="lg:col-span-2 space-y-4">
+                                    <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                                        <i className="fas fa-bolt text-amber-400 text-base"></i>
+                                        Management Portal Actions
+                                    </h2>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-5">
+                                        {quickActions.slice(0, 6).map((action, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={action.action}
+                                                className="bg-white p-5 rounded-[1.25rem] border border-slate-100 shadow-sm hover:border-indigo-200 hover:shadow-md hover:bg-slate-50 transition-all text-left flex flex-col items-start gap-4 active:scale-95 group"
+                                            >
+                                                <div className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform`}>
+                                                    <i className={`fas ${action.icon} text-lg`}></i>
+                                                </div>
+                                                <span className="font-bold text-sm text-slate-700 tracking-tight group-hover:text-indigo-700 transition-colors">
+                                                    {action.label}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    
+                                    {/* Secondary Actions Row */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                         {quickActions.slice(6).map((action, idx) => (
+                                             <button
+                                                 key={idx + 6}
+                                                 onClick={action.action}
+                                                 className="bg-slate-50 p-4 rounded-xl border border-slate-100 hover:bg-slate-100 hover:border-slate-300 transition-colors text-left flex items-center gap-4 active:scale-95"
+                                             >
+                                                 <div className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0`}>
+                                                     <i className={`fas ${action.icon}`}></i>
+                                                 </div>
+                                                 <span className="font-bold text-sm text-slate-700">
+                                                     {action.label}
+                                                 </span>
+                                             </button>
+                                         ))}
+                                    </div>
+                                </div>
+
+                                {/* Right Sidebar: Calendar */}
+                                <div className="lg:col-span-1 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                                            <i className="fas fa-calendar-alt text-indigo-500 text-base"></i>
+                                            School Calendar
+                                        </h2>
+                                        <button onClick={() => setView('calendar')} className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors">View All &rarr;</button>
+                                    </div>
+                                    
+                                    <div className="bg-white p-6 md:p-8 rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col h-[calc(100%-2.5rem)]">
+                                        <div className="space-y-6 flex-1">
+                                            {stats?.upcomingEvents && stats.upcomingEvents.length > 0 ? stats.upcomingEvents.map((e: any) => (
+                                                <div key={e.id} className="flex gap-4 group cursor-pointer" onClick={() => setView('calendar')}>
+                                                    <div className="w-12 h-12 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-slate-600 font-black border border-slate-200 flex-shrink-0 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                                                        <span className="text-[9px] uppercase leading-none mb-1">{new Date(e.startDate).toLocaleString('default', { month: 'short' })}</span>
+                                                        <span className="text-lg leading-none">{new Date(e.startDate).getDate()}</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 pt-0.5">
+                                                        <p className="text-sm font-black text-slate-800 leading-tight group-hover:text-indigo-600 transition-colors truncate">{e.title}</p>
+                                                        <p className="text-xs font-bold text-slate-400 mt-1 flex items-center gap-1.5 uppercase tracking-wider">
+                                                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                                                            {e.type}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )) : (
+                                                <div className="flex flex-col items-center justify-center py-12 text-center h-full">
+                                                    <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-300 border border-slate-100">
+                                                        <i className="fas fa-calendar-times text-xl"></i>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-slate-400">No upcoming events</p>
+                                                    <p className="text-[10px] text-slate-300 mt-1 max-w-[150px]">Your calendar is clear for now</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button 
+                                            onClick={() => setView('calendar')}
+                                            className="w-full mt-8 py-3 text-sm font-black text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 group"
                                         >
-                                            <div className={`w-10 h-10 md:w-12 md:h-12 ${action.color} rounded-xl md:rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-sm group-hover:scale-110 transition-transform`}>
-                                                <i className={`fas ${action.icon} text-lg`}></i>
-                                            </div>
-                                            <span className="font-black text-[11px] md:text-[10px] uppercase tracking-wide md:tracking-widest text-gray-600 group-hover:text-primary transition-colors">{action.label}</span>
+                                            <i className="fas fa-plus transition-transform group-hover:rotate-90"></i>
+                                            Add School Event
                                         </button>
-                                    ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -268,6 +378,8 @@ const HeadteacherDashboard: React.FC = () => {
             case 'subjects': return <SubscriptionGate><SubjectManagement /></SubscriptionGate>;
             case 'students': return <SubscriptionGate><StudentManagement /></SubscriptionGate>;
             case 'results': return <SubscriptionGate><ResultsManagement initialSelection={reportCardSelection} /></SubscriptionGate>;
+            case 'analytics': return <SubscriptionGate><AcademicAnalytics /></SubscriptionGate>;
+            case 'calendar': return <SubscriptionGate><CalendarManager /></SubscriptionGate>;
             case 'attendance': return <SubscriptionGate><AttendanceDashboard /></SubscriptionGate>;
             case 'promotions': return <SubscriptionGate><PromotionApprovals /></SubscriptionGate>;
             case 'graduates': return <SubscriptionGate><GraduatesManagement /></SubscriptionGate>;
@@ -344,6 +456,14 @@ const HeadteacherDashboard: React.FC = () => {
                             <p className="text-blue-100/60 text-[7px] font-bold tracking-widest uppercase">ID: {schoolData?.schoolCode || user?.schoolId}</p>
                         </div>
                         <button
+                            onClick={() => setShowHelp(true)}
+                            className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl text-white border border-white/20 transition-all active:scale-90 flex-shrink-0"
+                            title="Help & Support"
+                        >
+                            <i className="fas fa-question text-sm"></i>
+                        </button>
+                        <NotificationBell canCompose={true} />
+                        <button
                             onClick={logout}
                             className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-red-500/70 rounded-xl text-white border border-white/20 transition-all active:scale-90 flex-shrink-0"
                             title="Log Out"
@@ -377,10 +497,20 @@ const HeadteacherDashboard: React.FC = () => {
                             </p>
                         </div>
                     </div>
-                    <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                    <div className="flex flex-col flex-wrap md:flex-row items-end md:items-center gap-3 flex-shrink-0">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setShowHelp(true)}
+                                className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl text-white border border-white/20 transition-all active:scale-90 flex-shrink-0"
+                                title="Help & Support"
+                            >
+                                <i className="fas fa-question text-sm"></i>
+                            </button>
+                            <NotificationBell canCompose={true} />
+                        </div>
                         <div 
                             onClick={() => setView('subscription')}
-                            className="cursor-pointer hover:scale-110 transition-transform active:scale-95"
+                            className="cursor-pointer hover:scale-110 transition-transform active:scale-95 ml-2"
                             title={isSubscribed ? (subscription?.status === 'trial' ? 'Trial Mode' : 'Account Active') : 'Inactive Plan'}
                         >
                             <SubscriptionStatusIndicator isSubscribed={isSubscribed} isLoading={isSubLoading} />
@@ -457,9 +587,7 @@ const HeadteacherDashboard: React.FC = () => {
                 )}
             </nav>
 
-            <div className="text-center pt-4 text-gray-300 text-[10px] font-black uppercase tracking-[0.2em]">
-                <p>Labour Edu App System • Internal Build v1.1 • Stability: Optimal</p>
-            </div>
+            {showHelp && <ContactModal onClose={() => setShowHelp(false)} />}
         </div>
     );
 };

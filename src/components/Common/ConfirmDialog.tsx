@@ -44,25 +44,28 @@ const DialogModal: React.FC<{ state: ConfirmState; onClose: () => void }> = ({ s
 
     const variants = {
         danger: {
-            iconBg: 'bg-red-100',
-            iconColor: 'text-red-600',
+            iconBg: 'bg-red-500',
+            iconColor: 'text-white',
             icon: 'fa-triangle-exclamation',
             confirmBg: 'bg-red-600 hover:bg-red-700 shadow-red-200',
-            titleColor: 'text-red-700',
+            titleColor: 'text-slate-900',
+            accent: 'from-red-500 to-rose-600'
         },
         warning: {
-            iconBg: 'bg-amber-100',
-            iconColor: 'text-amber-600',
+            iconBg: 'bg-amber-500',
+            iconColor: 'text-white',
             icon: 'fa-circle-exclamation',
             confirmBg: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200',
-            titleColor: 'text-amber-700',
+            titleColor: 'text-slate-900',
+            accent: 'from-amber-400 to-orange-500'
         },
         info: {
-            iconBg: 'bg-blue-100',
-            iconColor: 'text-blue-600',
+            iconBg: 'bg-blue-600',
+            iconColor: 'text-white',
             icon: 'fa-circle-question',
-            confirmBg: 'bg-blue-600 hover:bg-blue-700 shadow-blue-200',
-            titleColor: 'text-blue-700',
+            confirmBg: 'bg-slate-900 hover:bg-black shadow-slate-200',
+            titleColor: 'text-slate-900',
+            accent: 'from-blue-600 to-indigo-600'
         },
     };
 
@@ -71,46 +74,43 @@ const DialogModal: React.FC<{ state: ConfirmState; onClose: () => void }> = ({ s
     return (
         /* Backdrop */
         <div
-            className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 transition-all duration-250 ${visible ? 'bg-black/40 backdrop-blur-sm' : 'bg-transparent'}`}
+            className={`fixed inset-0 z-[99999] flex items-center justify-center p-4 lg:p-6 transition-all duration-300 ${visible ? 'bg-slate-900/40 backdrop-blur-md' : 'bg-transparent'}`}
             onClick={() => dismiss(false)}
         >
             {/* Card */}
             <div
-                className={`w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-250 ${visible ? 'scale-100 opacity-100 translate-y-0' : 'scale-90 opacity-0 translate-y-4'}`}
+                className={`w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl shadow-black/20 overflow-hidden transition-all duration-300 ${visible ? 'scale-100 opacity-100 translate-y-0' : 'scale-95 opacity-0 translate-y-8'}`}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Top accent strip */}
-                <div className={`h-1.5 w-full ${state.variant === 'danger' ? 'bg-gradient-to-r from-red-500 to-rose-500' :
-                        state.variant === 'warning' ? 'bg-gradient-to-r from-amber-400 to-orange-400' :
-                            'bg-gradient-to-r from-blue-500 to-indigo-500'
-                    }`} />
-
-                <div className="p-8 text-center">
-                    {/* Icon */}
-                    <div className={`w-16 h-16 ${v.iconBg} rounded-2xl flex items-center justify-center mx-auto mb-5`}>
-                        <i className={`fas ${v.icon} ${v.iconColor} text-2xl`}></i>
+                {/* Header Accent */}
+                <div className={`h-24 lg:h-28 bg-gradient-to-br ${v.accent} relative flex items-center justify-center overflow-hidden`}>
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
+                    <div className={`w-14 h-14 lg:w-16 lg:h-16 ${v.iconBg} rounded-2xl lg:rounded-3xl flex items-center justify-center shadow-xl shadow-black/20 z-10`}>
+                        <i className={`fas ${v.icon} ${v.iconColor} text-2xl lg:text-3xl`}></i>
                     </div>
+                </div>
 
+                <div className="p-8 lg:p-10 text-center">
                     {/* Title */}
-                    <h3 className={`text-xl font-black ${v.titleColor} mb-2 tracking-tight`}>{state.title}</h3>
+                    <h3 className={`text-xl lg:text-2xl font-black ${v.titleColor} mb-3 tracking-tighter`}>{state.title}</h3>
 
                     {/* Message */}
-                    <p className="text-gray-500 text-sm leading-relaxed font-medium">{state.message}</p>
+                    <p className="text-slate-500 text-sm lg:text-base leading-relaxed font-medium">{state.message}</p>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="px-6 pb-6 flex gap-3">
-                    <button
-                        onClick={() => dismiss(false)}
-                        className="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-2xl font-black text-sm uppercase tracking-wider hover:bg-gray-200 transition-all active:scale-95"
-                    >
-                        {state.cancelText ?? 'Cancel'}
-                    </button>
+                <div className="px-8 lg:px-10 pb-8 lg:pb-10 flex flex-col gap-3">
                     <button
                         onClick={() => dismiss(true)}
-                        className={`flex-[1.5] py-3.5 text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg transition-all active:scale-95 ${v.confirmBg}`}
+                        className={`w-full py-4 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg transition-all active:scale-95 ${v.confirmBg}`}
                     >
-                        {state.confirmText ?? 'Confirm'}
+                        {state.confirmText ?? 'Confirm Action'}
+                    </button>
+                    <button
+                        onClick={() => dismiss(false)}
+                        className="w-full py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                    >
+                        {state.cancelText ?? 'Cancel'}
                     </button>
                 </div>
             </div>

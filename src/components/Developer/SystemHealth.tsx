@@ -59,15 +59,21 @@ const SystemHealth: React.FC = () => {
 
             // 2. Global Counts
             const queries = [
-                supabase.from('schools').select('*', { count: 'exact', head: true }),
+                supabase.from('schools').select('*', { count: 'exact', head: true })
+                    .neq('id', '00000000-0000-0000-0000-000000000000')
+                    .neq('school_name', 'System Administration'),
                 supabase.from('students').select('*', { count: 'exact', head: true }),
                 supabase.from('staff_profiles').select('*', { count: 'exact', head: true }),
                 supabase.from('results').select('*', { count: 'exact', head: true }),
                 // Sync health: Schools that haven't synced in 24h
                 supabase.from('schools').select('*', { count: 'exact', head: true })
+                    .neq('id', '00000000-0000-0000-0000-000000000000')
+                    .neq('school_name', 'System Administration')
                     .lt('last_sync_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()),
                 // Active Today: Schools synced in last 24h
                 supabase.from('schools').select('*', { count: 'exact', head: true })
+                    .neq('id', '00000000-0000-0000-0000-000000000000')
+                    .neq('school_name', 'System Administration')
                     .gt('last_sync_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
             ];
 
@@ -84,7 +90,11 @@ const SystemHealth: React.FC = () => {
 
             // 3. Recent Global Activity (Interleaved)
             const [recentSchools, recentStudents, recentStaff] = await Promise.all([
-                supabase.from('schools').select('school_name, created_at').order('created_at', { ascending: false }).limit(3),
+                supabase.from('schools').select('school_name, created_at')
+                    .neq('id', '00000000-0000-0000-0000-000000000000')
+                    .neq('school_name', 'System Administration')
+                    .order('created_at', { ascending: false })
+                    .limit(3),
                 supabase.from('students').select('full_name, school_name, created_at').order('created_at', { ascending: false }).limit(3),
                 supabase.from('staff_profiles').select('full_name, role, created_at').order('created_at', { ascending: false }).limit(3)
             ]);

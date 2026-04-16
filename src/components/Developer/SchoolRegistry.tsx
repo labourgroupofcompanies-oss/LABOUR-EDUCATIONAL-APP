@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { supabase } from '../../supabaseClient';
 import { type School } from '../../db';
+import { showConfirm } from '../Common/ConfirmDialog';
 import SchoolDetails from './SchoolDetails';
 import PasswordResetTool from './PasswordResetTool';
 
@@ -21,7 +21,10 @@ const SchoolRegistry: React.FC = () => {
         setLoading(true);
         try {
             const [schoolsRes, subsRes] = await Promise.all([
-                supabase.from('schools').select('*').order('created_at', { ascending: false }),
+                supabase.from('schools').select('*')
+                    .neq('id', '00000000-0000-0000-0000-000000000000')
+                    .neq('school_name', 'System Administration')
+                    .order('created_at', { ascending: false }),
                 supabase.from('school_subscriptions').select('school_id, status, term, academic_year')
                     .in('status', ['active', 'trial'])
             ]);
@@ -42,8 +45,16 @@ const SchoolRegistry: React.FC = () => {
     };
 
     const toggleSchoolStatus = async (school: any) => {
-        setToggling(school.id);
         const newStatus = !(school.is_active ?? true);
+        const confirmed = await showConfirm({
+            title: newStatus ? 'Activate School' : 'Deactivate School',
+            message: `Are you sure you want to ${newStatus ? 'activate' : 'deactivate'} access for ${school.school_name || 'this school'}?`,
+            confirmText: newStatus ? 'Activate Now' : 'Deactivate Now',
+            variant: newStatus ? 'info' : 'danger'
+        });
+        if (!confirmed) return;
+
+        setToggling(school.id);
         try {
             const { error } = await supabase
                 .from('schools')
@@ -279,21 +290,19 @@ const SchoolRegistry: React.FC = () => {
                 </div>
             </div>
 
-            {/* Modals using Portal to prevent CSS clipping */}
-            {activeModal === 'details' && selectedSchool && createPortal(
+            {/* Unified Modals */}
+            {activeModal === 'details' && selectedSchool && (
                 <SchoolDetails
                     school={selectedSchool}
                     onClose={() => { setActiveModal(null); setSelectedSchool(null); }}
-                />,
-                document.body
+                />
             )}
 
-            {activeModal === 'password' && selectedSchool && createPortal(
+            {activeModal === 'password' && selectedSchool && (
                 <PasswordResetTool
                     school={selectedSchool}
                     onClose={() => { setActiveModal(null); setSelectedSchool(null); }}
-                />,
-                document.body
+                />
             )}
         </div>
     );

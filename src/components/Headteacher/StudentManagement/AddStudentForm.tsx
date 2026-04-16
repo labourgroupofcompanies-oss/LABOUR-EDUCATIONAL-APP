@@ -56,19 +56,47 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
-    const startCamera = async () => {
+    // Camera device enumeration
+    const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
+    const [activeCameraIndex, setActiveCameraIndex] = useState(0);
+
+    const startCamera = async (cameraIndex?: number) => {
+        // Stop any existing stream before starting a new one
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(t => t.stop());
+            streamRef.current = null;
+        }
+
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } }
-            });
+            // Enumerate available video devices first
+            const allDevices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
+            setCameras(videoDevices);
+
+            const targetIndex = cameraIndex ?? activeCameraIndex;
+            const targetDevice = videoDevices[targetIndex];
+
+            const constraints: MediaStreamConstraints = targetDevice
+                ? { video: { deviceId: { exact: targetDevice.deviceId }, width: { ideal: 640 }, height: { ideal: 640 } } }
+                : { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
-            // Now that we have the stream, we can set the photo mode to 'camera'
-            // which will mount the video element.
+            setActiveCameraIndex(targetIndex);
             setPhotoMode('camera');
         } catch (error) {
             console.error('Camera access error:', error);
             showToast('Camera access denied or unavailable on this device.', 'error');
         }
+    };
+
+    const switchCamera = async () => {
+        if (cameras.length <= 1) {
+            showToast('No other cameras detected.', 'warning');
+            return;
+        }
+        const nextIndex = (activeCameraIndex + 1) % cameras.length;
+        await startCamera(nextIndex);
     };
 
     // Use an effect to attach the stream to the video element once it mounts
@@ -462,7 +490,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                 {photoMode === 'idle' && !photo && (
                                     <div className="relative group">
                                         <div 
-                                            onClick={startCamera}
+                                            onClick={() => startCamera()}
                                             className="w-48 h-48 rounded-[3rem] bg-gradient-to-br from-gray-50 to-gray-100 border-4 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer transition-all duration-500 hover:border-blue-400 hover:bg-blue-50/30 group-hover:scale-[1.02] shadow-sm relative overflow-hidden"
                                         >
                                             <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-gray-400 group-hover:text-blue-500 transition-colors mb-3">
@@ -516,14 +544,17 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
 
                                             {/* Camera Controls Overlay */}
                                             <div className="absolute bottom-6 inset-x-0 flex items-center justify-around px-8">
+                                                {/* Close camera */}
                                                 <button
                                                     type="button"
                                                     onClick={stopCamera}
                                                     className="w-12 h-12 bg-white/10 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-black/40 transition-all border border-white/20"
+                                                    title="Close camera"
                                                 >
                                                     <i className="fas fa-times"></i>
                                                 </button>
-                                                
+
+                                                {/* Shutter */}
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -531,15 +562,31 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                                         setTimeout(captureSnapshot, 150);
                                                     }}
                                                     className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-2xl shadow-white/20 hover:scale-110 active:scale-95 transition-all"
+                                                    title="Capture photo"
                                                 >
                                                     <div className="w-12 h-12 rounded-full border-2 border-black/5 flex items-center justify-center">
                                                         <i className="fas fa-camera text-black text-xl"></i>
                                                     </div>
                                                 </button>
 
-                                                <div className="w-12 h-12 flex items-center justify-center">
-                                                    {/* Empty for spacing */}
-                                                </div>
+                                                {/* Switch Camera */}
+                                                <button
+                                                    type="button"
+                                                    onClick={switchCamera}
+                                                    title={cameras.length > 1 ? `Switch camera (${activeCameraIndex + 1}/${cameras.length})` : 'Switch camera'}
+                                                    className={`w-12 h-12 backdrop-blur-md text-white rounded-full flex flex-col items-center justify-center transition-all border gap-0.5 ${
+                                                        cameras.length > 1
+                                                            ? 'bg-white/20 border-white/30 hover:bg-white/30 hover:scale-110 active:scale-95 cursor-pointer'
+                                                            : 'bg-white/5 border-white/10 opacity-40 cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    <i className="fas fa-camera-rotate text-base"></i>
+                                                    {cameras.length > 1 && (
+                                                        <span className="text-[9px] font-black leading-none tracking-widest opacity-80">
+                                                            {activeCameraIndex + 1}/{cameras.length}
+                                                        </span>
+                                                    )}
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -561,7 +608,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-[3rem] opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-3">
                                             <button 
                                                 type="button" 
-                                                onClick={startCamera} 
+                                                onClick={() => startCamera()} 
                                                 className="w-10 h-10 bg-white text-blue-600 rounded-xl flex items-center justify-center hover:scale-110 transition-all shadow-lg"
                                                 title="Retake"
                                             >

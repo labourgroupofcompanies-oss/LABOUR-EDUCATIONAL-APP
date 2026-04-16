@@ -9,11 +9,16 @@ import RecoveryTools from './RecoveryTools';
 import AnnouncementManager from './AnnouncementManager';
 import SubscriptionManager from './SubscriptionManager';
 import SchoolInvites from './SchoolInvites';
+import FAQManager from './FAQManager';
+import RatingsManager from './RatingsManager';
+import EnquiryManager from './EnquiryManager';
+import DeveloperOverview from './DeveloperOverview';
 
 const DeveloperPortal: React.FC = () => {
     const { user, logout } = useAuth();
 
-    const [view, setView] = useState<'schools' | 'health' | 'recovery' | 'announcements' | 'subscriptions' | 'security' | 'invites'>('schools');
+    const [view, setView] = useState<'overview' | 'schools' | 'health' | 'recovery' | 'announcements' | 'subscriptions' | 'security' | 'invites' | 'faqs' | 'ratings' | 'enquiries'>('overview');
+    const [unreadEnquiries, setUnreadEnquiries] = useState(0);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Security states
@@ -23,14 +28,37 @@ const DeveloperPortal: React.FC = () => {
     const [isUpdating, setIsUpdating] = useState(false);
 
     const menuItems = [
+        { id: 'overview', label: 'Overview', icon: 'fa-th-large' },
         { id: 'schools', label: 'Schools', icon: 'fa-university' },
         { id: 'invites', label: 'School Invites', icon: 'fa-ticket' },
         { id: 'health', label: 'System Health', icon: 'fa-heartbeat' },
         { id: 'announcements', label: 'Announcements', icon: 'fa-bullhorn' },
+        { id: 'faqs', label: 'FAQs', icon: 'fa-question-circle' },
+        { id: 'enquiries', label: 'Customer Enquiries', icon: 'fa-headset' },
+        { id: 'ratings', label: 'User Ratings', icon: 'fa-star' },
         { id: 'subscriptions', label: 'Subscriptions', icon: 'fa-crown' },
         { id: 'recovery', label: 'Recovery Tools', icon: 'fa-key' },
         { id: 'security', label: 'Security', icon: 'fa-shield-halved' },
     ] as const;
+
+    const fetchUnreadEnquiries = async () => {
+        try {
+            const { count, error } = await supabase
+                .from('customer_enquiries')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_read', false);
+            
+            if (!error) setUnreadEnquiries(count || 0);
+        } catch (err) {
+            console.error('Failed to fetch unread enquiry count:', err);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchUnreadEnquiries();
+        const interval = setInterval(fetchUnreadEnquiries, 60000); // Check every minute
+        return () => clearInterval(interval);
+    }, []);
 
     const handlePasswordChange = async () => {
         if (!user?.id) return;
@@ -80,7 +108,7 @@ const DeveloperPortal: React.FC = () => {
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-2">
+            <nav className="flex-1 space-y-2 overflow-y-auto pr-2 custom-nav-scrollbar">
                 {menuItems.map((item) => (
                     <button
                         key={item.id}
@@ -88,13 +116,27 @@ const DeveloperPortal: React.FC = () => {
                             setView(item.id);
                             setIsMobileMenuOpen(false);
                         }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${view === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'hover:bg-slate-800'}`}
+                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all ${view === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'hover:bg-slate-800 text-slate-400'}`}
                     >
-                        <i className={`fas ${item.icon} w-5 text-center`}></i>
-                        {item.label}
+                        <div className="flex items-center gap-3">
+                            <i className={`fas ${item.icon} w-5 text-center`}></i>
+                            {item.label}
+                        </div>
+                        {item.id === 'enquiries' && unreadEnquiries > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
+                                {unreadEnquiries}
+                            </span>
+                        )}
                     </button>
                 ))}
             </nav>
+
+            <style>{`
+                .custom-nav-scrollbar::-webkit-scrollbar { width: 4px; }
+                .custom-nav-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-nav-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+                .custom-nav-scrollbar:hover::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+            `}</style>
 
             <div className="pt-6 border-t border-slate-800 space-y-4">
                 <div className="px-4">
@@ -118,7 +160,7 @@ const DeveloperPortal: React.FC = () => {
             <header className="lg:hidden bg-slate-900 px-6 py-4 flex items-center justify-between sticky top-0 z-[60] shadow-xl">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center p-1.5 shadow-lg">
-                        <img src="/labour.png" alt="Labour Logo" className="w-full h-full object-contain" />
+                        <img src="/images/labour_logo.png" alt="Labour Logo" className="w-full h-full object-contain" />
                     </div>
                     <span className="text-white font-black text-sm tracking-tighter uppercase">LABOUR <span className="text-blue-500 text-base">EDU</span> APP</span>
                 </div>
@@ -156,6 +198,9 @@ const DeveloperPortal: React.FC = () => {
                             {view === 'schools' && 'School Registry'}
                             {view === 'invites' && 'School Invites'}
                             {view === 'announcements' && 'Global Announcements'}
+                            {view === 'faqs' && 'Frequently Asked Questions'}
+                            {view === 'ratings' && 'User Ratings & Stories'}
+                            {view === 'enquiries' && 'Customer Enquiries'}
                             {view === 'health' && 'System Health'}
                             {view === 'recovery' && 'Recovery Tools'}
                             {view === 'subscriptions' && 'Subscriptions'}
@@ -165,6 +210,9 @@ const DeveloperPortal: React.FC = () => {
                             {view === 'schools' && 'Monitor and manage all onboarded educational institutions.'}
                             {view === 'invites' && 'Generate secure single-use links for onboarding new schools.'}
                             {view === 'announcements' && 'Broadcast important updates to all school administrators.'}
+                            {view === 'faqs' && 'Manage system-wide FAQs for the platform and marketing site.'}
+                            {view === 'ratings' && 'Monitor user sentiment and curate testimonials for marketing.'}
+                            {view === 'enquiries' && 'Manage leads and enquiries from the marketing landing page.'}
                             {view === 'health' && 'Global database performance and sync status overview.'}
                             {view === 'recovery' && 'Administrative overrides and account recovery operations.'}
                             {view === 'subscriptions' && 'Review MoMo payment references and activate school subscriptions.'}
@@ -179,9 +227,13 @@ const DeveloperPortal: React.FC = () => {
                 </header>
 
                 <div className="animate-fadeIn">
+                    {view === 'overview' && <DeveloperOverview onNavigate={(v: any) => setView(v)} />}
                     {view === 'schools' && <SchoolRegistry />}
                     {view === 'invites' && <SchoolInvites />}
                     {view === 'announcements' && <AnnouncementManager />}
+                    {view === 'faqs' && <FAQManager />}
+                    {view === 'ratings' && <RatingsManager />}
+                    {view === 'enquiries' && <EnquiryManager onRefreshCount={fetchUnreadEnquiries} />}
                     {view === 'health' && <SystemHealth />}
                     {view === 'recovery' && <RecoveryTools />}
                     {view === 'subscriptions' && <SubscriptionManager />}

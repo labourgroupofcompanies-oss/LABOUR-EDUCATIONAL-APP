@@ -40,6 +40,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         let mounted = true;
+        let authSubscription: any = null;
 
         const initialize = async () => {
             // STEP 1: Fast-track initialization check (redundant but safe for effect re-runs)
@@ -53,30 +54,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
 
             // STEP 2: Background Session Verification
-            // We check for an existing Supabase session without blocking the UI if a cache exists.
             try {
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (mounted) setHasSchool(session ? true : false);
 
                 if (!session && mounted) {
-                    // Cache was invalid or session expired/signed out elsewhere
                     setUser(null);
                     clearSession();
                     setHasSchool(false);
                 }
             } catch (err) {
-                // If offline, we swallow the error and trust the local cache (Step 1)
                 console.info('[auth:offline] Supabase session check skipped or failed.');
             }
+            
+            if (mounted) setIsLoading(false);
 
-            // Listen to Supabase Auth state changes
-            const { data: { subscription } = {} } = supabase.auth.onAuthStateChange(
+            // Listen to Supabase Auth state changes AFTER initial getSession to prevent lock contention
+            const { data: { subscription } } = supabase.auth.onAuthStateChange(
                 async (event, session) => {
                     if (!mounted) return;
 
                     if (session?.user) {
-                        // Fetch the full staff profile to get authoritative role + school info
                         const { data: profile } = await supabase
                             .from('staff_profiles')
                             .select('id, school_id, username, full_name, role')
@@ -89,6 +88,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                                 schoolId: profile.school_id,
                                 username: profile.username,
                                 fullName: profile.full_name,
+                                email: session.user.email,
                                 role: profile.role,
                                 mustChangePassword: false, 
                             };
@@ -105,18 +105,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     }
                 }
             );
-
-            if (mounted) setIsLoading(false);
-
-            return () => {
-                mounted = false;
-                subscription?.unsubscribe();
-            };
+            authSubscription = subscription;
         };
 
         initialize();
 
-        return () => { mounted = false; };
+        return () => { 
+            mounted = false; 
+            if (authSubscription) {
+                authSubscription.unsubscribe();
+            }
+        };
     }, []);
 
     // ── login: called directly from LoginPage after successful sign-in ──────────
@@ -143,6 +142,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 schoolId: profile.school_id,
                 username: profile.username,
                 fullName: profile.full_name,
+                email: session.user.email,
                 role: profile.role,
                 mustChangePassword: false, // Force-password-change feature is disabled
             };

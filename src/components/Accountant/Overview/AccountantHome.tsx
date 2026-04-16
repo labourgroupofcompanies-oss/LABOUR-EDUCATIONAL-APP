@@ -17,14 +17,21 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
         if (!user?.schoolId) return null;
 
         const kpis = await financialService.getFinancialKPIs(user.schoolId, term, year);
-        const recentExpenses = await eduDb.expenses
-            .where('schoolId')
-            .equals(user.schoolId)
-            .reverse()
-            .limit(5)
-            .toArray();
+        const startOfToday = new Date().setHours(0, 0, 0, 0);
+        const [recentExpenses, upcomingEvents] = await Promise.all([
+            eduDb.expenses
+                .where('schoolId')
+                .equals(user.schoolId)
+                .reverse()
+                .limit(5)
+                .toArray(),
+            eduDb.schoolEvents.where('schoolId')
+                .equals(user.schoolId)
+                .filter(e => !e.isDeleted && e.startDate >= startOfToday)
+                .sortBy('startDate')
+        ]);
 
-        return { ...kpis, recentExpenses };
+        return { ...kpis, recentExpenses, upcomingEvents: (upcomingEvents || []).slice(0, 3) };
     }, [user?.schoolId, term, year]);
 
     const kpiCards = [
@@ -134,86 +141,126 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
                 ))}
             </div>
 
-            {/* ── Quick Actions Grid ── */}
-            <div className="space-y-4 md:space-y-6">
-                <h2 className="text-lg md:text-xl font-black text-slate-800 flex items-center gap-3 px-1">
-                    <span className="w-8 h-8 rounded-lg bg-amber-400 text-white flex items-center justify-center text-sm shadow-sm">
-                        <i className="fas fa-bolt"></i>
-                    </span>
-                    Quick Actions
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
-                    {quickActions.map((a, i) => (
-                        <button
-                            key={i}
-                            onClick={a.action}
-                            className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col items-center gap-3 md:gap-4 group hover:border-purple-200 active:scale-95"
-                        >
-                            <div className={`w-12 h-12 md:w-14 md:h-14 ${a.color} rounded-xl md:rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform`}>
-                                <i className={`fas ${a.icon} text-lg md:text-xl`}></i>
-                            </div>
-                            <span className="font-black text-[10px] md:text-[11px] uppercase tracking-wider text-slate-600 group-hover:text-purple-600 transition-colors text-center leading-tight">
-                                {a.label}
+            {/* Main Content Grid: Quick Actions, Recent Expenditure & Upcoming Events */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                {/* Left Side: Actions & Expenditure */}
+                <div className="lg:col-span-8 space-y-8 md:space-y-12">
+                    {/* Quick Actions Grid */}
+                    <div className="space-y-6">
+                        <h2 className="text-xl font-black text-slate-800 flex items-center gap-3 px-1">
+                            <span className="w-8 h-8 rounded-lg bg-amber-400 text-white flex items-center justify-center text-sm shadow-sm">
+                                <i className="fas fa-bolt"></i>
                             </span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* ── Recent Expenditure Table ── */}
-            <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
-                <div className="px-6 md:px-10 py-6 md:py-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">Recent Expenditure</h2>
-                        <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Latest School Outgoings</p>
-                    </div>
-                    <button onClick={() => onNavigate('expenses')} className="w-full md:w-auto px-6 py-3 rounded-xl bg-purple-50 text-purple-600 font-black text-xs uppercase tracking-widest hover:bg-purple-600 hover:text-white transition-all shadow-sm">
-                        View All <i className="fas fa-arrow-right ml-2 opacity-70"></i>
-                    </button>
-                </div>
-
-                {!stats?.recentExpenses?.length ? (
-                    <div className="py-24 flex flex-col items-center justify-center text-slate-300">
-                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                            <i className="fas fa-receipt text-3xl opacity-30"></i>
-                        </div>
-                        <p className="font-black text-xs uppercase tracking-widest">No Activity This Term</p>
-                    </div>
-                ) : (
-                    <div className="divide-y divide-slate-50">
-                        {stats.recentExpenses.map((expense, i) => (
-                            <div key={i} className="px-6 md:px-10 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
-                                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                                    <div className="w-12 h-12 bg-slate-100 rounded-2xl flex flex-shrink-0 items-center justify-center text-slate-400 group-hover:bg-purple-100 group-hover:text-purple-600 transition-all font-black text-sm shadow-sm">
-                                        {expense.category.charAt(0)}
+                            Quick Actions
+                        </h2>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-6">
+                            {quickActions.map((a, i) => (
+                                <button
+                                    key={i}
+                                    onClick={a.action}
+                                    className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col items-center gap-4 group hover:border-purple-200 active:scale-95"
+                                >
+                                    <div className={`w-14 h-14 ${a.color} rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform`}>
+                                        <i className={`fas ${a.icon} text-xl`}></i>
                                     </div>
-                                    <div>
-                                        <p className="font-black text-slate-800 text-sm md:text-base tracking-tight">{expense.description}</p>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[9px] md:text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md uppercase tracking-widest">
-                                                {expense.category}
-                                            </span>
-                                            <span className="w-1 h-1 rounded-full bg-slate-200 hidden md:block"></span>
-                                            <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                                                <i className="far fa-calendar-alt opacity-70"></i>
-                                                {new Date(expense.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                            </span>
+                                    <span className="font-black text-[11px] uppercase tracking-wider text-slate-600 group-hover:text-purple-600 transition-colors text-center leading-tight">
+                                        {a.label}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Recent Expenditure Table */}
+                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
+                        <div className="px-8 py-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Recent Expenditure</h2>
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Latest School Outgoings</p>
+                            </div>
+                            <button onClick={() => onNavigate('expenses')} className="px-6 py-3 rounded-xl bg-purple-50 text-purple-600 font-black text-xs uppercase tracking-widest hover:bg-purple-600 hover:text-white transition-all shadow-sm">
+                                View All <i className="fas fa-arrow-right ml-2 opacity-70"></i>
+                            </button>
+                        </div>
+
+                        {!stats?.recentExpenses?.length ? (
+                            <div className="py-24 flex flex-col items-center justify-center text-slate-300">
+                                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                    <i className="fas fa-receipt text-3xl opacity-30"></i>
+                                </div>
+                                <p className="font-black text-xs uppercase tracking-widest">No Activity This Term</p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-slate-50">
+                                {stats.recentExpenses.map((expense, i) => (
+                                    <div key={i} className="px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
+                                        <div className="flex items-center gap-5">
+                                            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex flex-shrink-0 items-center justify-center text-slate-400 group-hover:bg-purple-100 group-hover:text-purple-600 transition-all font-black text-base shadow-sm">
+                                                {expense.category.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-slate-800 text-base tracking-tight">{expense.description}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                                                        {expense.category}
+                                                    </span>
+                                                    <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                                                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                                        <i className="far fa-calendar-alt opacity-70"></i>
+                                                        {new Date(expense.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-black text-rose-600 text-xl tracking-tight">
+                                                -GHS {expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            </p>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-black text-rose-600 text-base md:text-lg tracking-tight">
-                                        -GHS {expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                    </p>
-                                    <div className="flex items-center justify-end gap-1 mt-1">
-                                        <i className="fas fa-check-circle text-green-500 text-[8px]"></i>
-                                        <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Logged</p>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Side: School Calendar */}
+                <div className="lg:col-span-4 space-y-8 sticky top-24">
+                    <h2 className="text-xl font-black text-slate-800 flex items-center gap-3 px-1">
+                        <span className="w-8 h-8 rounded-lg bg-indigo-500 text-white flex items-center justify-center text-sm shadow-lg">
+                            <i className="fas fa-calendar-stars"></i>
+                        </span>
+                        School Calendar
+                    </h2>
+                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-indigo-900/5 p-8 space-y-8">
+                        <div className="space-y-6">
+                            {stats?.upcomingEvents && stats.upcomingEvents.length > 0 ? stats.upcomingEvents.map(e => (
+                                <div key={e.id} className="flex items-center gap-5 group">
+                                    <div className="w-14 h-14 rounded-2xl bg-slate-50 flex flex-col items-center justify-center text-slate-500 font-black group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all border border-slate-100 flex-shrink-0">
+                                        <span className="text-[10px] uppercase leading-none mb-1">{new Date(e.startDate).toLocaleString('default', { month: 'short' })}</span>
+                                        <span className="text-lg leading-none">{new Date(e.startDate).getDate()}</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-black text-slate-800 truncate uppercase tracking-tight">{e.title}</p>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate mt-0.5">{e.type}</p>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            )) : (
+                                <div className="py-16 text-center border-2 border-dashed border-slate-100 rounded-[2rem]">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200">
+                                        <i className="fas fa-calendar-times text-2xl"></i>
+                                    </div>
+                                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No Events Posted</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="pt-6 border-t border-slate-50">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest text-center">Stay updated with school activities</p>
+                        </div>
                     </div>
-                )}
+                </div>
+
             </div>
         </div>
     );

@@ -293,6 +293,20 @@ export interface GraduateRecord extends BaseEntity {
     isDeleted?: boolean;
 }
 
+export interface SchoolEvent extends BaseEntity {
+    schoolId: string;
+    idCloud?: string;
+    title: string;
+    description?: string;
+    startDate: number;
+    endDate?: number;
+    type: 'Holiday' | 'Exam' | 'Event' | 'Meeting' | 'Sports' | 'Other';
+    location?: string;
+    isPublic: boolean;
+    createdBy: string;
+    isDeleted?: boolean;
+}
+
 const eduDb = new Dexie('LabourEduDB') as Dexie & {
     classes: EntityTable<Class, 'id'>;
     classSubjects: EntityTable<ClassSubject, 'id'>;
@@ -311,6 +325,7 @@ const eduDb = new Dexie('LabourEduDB') as Dexie & {
     subscriptions: EntityTable<Subscription, 'id'>;
     promotionRequests: EntityTable<PromotionRequest, 'id'>;
     graduateRecords: EntityTable<GraduateRecord, 'id'>;
+    schoolEvents: EntityTable<SchoolEvent, 'id'>;
 };
 
 // Older schemas kept for safe upgrades
@@ -735,8 +750,8 @@ eduDb.version(22).stores({
     promotionRequests: '++id, idCloud, schoolId, studentId, fromClassId, toClassId, status, syncStatus, isDeleted'
 });
 
-// Version 23: Strict Permanent Student Deduplication (No fullName fallback)
-eduDb.version(23).stores({
+// Version 24: Add schoolEvents and fix deduplication logic
+eduDb.version(24).stores({
     classes: '++id, idCloud, schoolId, classTeacherId, name, level, teachingMode, isDeleted, syncStatus, [schoolId+name+level]',
     classSubjects: '++id, idCloud, schoolId, classId, subjectId, teacherId, isDeleted, syncStatus, [classId+subjectId]',
     subjects: '++id, idCloud, schoolId, name, code, isDeleted, syncStatus, [schoolId+name]',
@@ -752,7 +767,8 @@ eduDb.version(23).stores({
     expenses: '++id, idCloud, schoolId, category, date, isDeleted, syncStatus',
     budgets: '++id, idCloud, schoolId, category, term, year, isDeleted, [schoolId+category+term+year], syncStatus',
     subscriptions: '++id, idCloud, schoolId, term, academicYear, status, verifiedAt, [schoolId+term+academicYear], syncStatus',
-    promotionRequests: '++id, idCloud, schoolId, studentId, fromClassId, toClassId, status, syncStatus, isDeleted'
+    promotionRequests: '++id, idCloud, schoolId, studentId, fromClassId, toClassId, status, syncStatus, isDeleted',
+    schoolEvents: '++id, idCloud, schoolId, title, startDate, type, isDeleted, syncStatus'
 }).upgrade(async tx => {
     const students = await tx.table('students').toArray();
     
@@ -1057,6 +1073,27 @@ eduDb.version(30).stores({
         console.log(`[db:migration:v30] Cleaning ${toDelete.length} legacy duplicates/orphans.`);
         await tx.table('graduateRecords').bulkDelete(toDelete);
     }
+});
+
+eduDb.version(31).stores({
+    classes: '++id, idCloud, schoolId, classTeacherId, name, level, isDeleted, syncStatus, [schoolId+name+level]',
+    classSubjects: '++id, idCloud, schoolId, classId, subjectId, teacherId, isDeleted, syncStatus, [classId+subjectId]',
+    subjects: '++id, idCloud, schoolId, name, code, isDeleted, syncStatus, [schoolId+name]',
+    students: '++id, idCloud, schoolId, classId, studentIdString, fullName, isDeleted, syncStatus, [schoolId+studentIdString]',
+    results: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, isDeleted, syncStatus, [classId+subjectId], [studentId+classSubjectId+term+year]',
+    attendance: '++id, idCloud, schoolId, studentId, classId, date, [schoolId+classId+date], [schoolId+studentId+date], syncStatus',
+    settings: '++id, idCloud, schoolId, key, [schoolId+key], syncStatus',
+    assessmentConfigs: '++id, idCloud, schoolId, year, term, isDeleted, [schoolId+year+term], syncStatus',
+    componentScores: '++id, idCloud, schoolId, studentId, subjectId, classId, classSubjectId, year, term, componentType, status, isDeleted, syncStatus',
+    feeStructures: '++id, idCloud, schoolId, classId, term, year, isDeleted, [schoolId+classId+term+year], syncStatus',
+    feePayments: '++id, idCloud, schoolId, studentId, classId, term, year, isDeleted, syncStatus',
+    payrollRecords: '++id, idCloud, schoolId, staffId, staffIdCloud, month, year, isDeleted, [schoolId+staffId+month+year], [schoolId+staffIdCloud+month+year], status, syncStatus',
+    expenses: '++id, idCloud, schoolId, category, date, isDeleted, syncStatus',
+    budgets: '++id, idCloud, schoolId, category, term, year, isDeleted, [schoolId+category+term+year], syncStatus',
+    subscriptions: '++id, idCloud, schoolId, term, academicYear, status, verifiedAt, [schoolId+term+academicYear], syncStatus',
+    promotionRequests: '++id, idCloud, schoolId, studentId, fromClassId, toClassId, status, syncStatus, isDeleted',
+    graduateRecords: '++id, idCloud, schoolId, studentId, graduationYear, photoUrl, isDeleted, syncStatus, [schoolId+studentId]',
+    schoolEvents: '++id, idCloud, schoolId, startDate, type, isDeleted, syncStatus'
 });
 
 export { eduDb };

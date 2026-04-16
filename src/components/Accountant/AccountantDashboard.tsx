@@ -18,6 +18,8 @@ import AccountantSettings from './Settings/AccountantSettings';
 import SubscriptionGate from '../Subscription/SubscriptionGate';
 import SubscriptionPage from '../Subscription/SubscriptionPage';
 import SubscriptionStatusIndicator from '../Common/SubscriptionStatusIndicator';
+import NotificationBell from '../Common/NotificationBell';
+import ContactModal from '../Common/ContactModal';
 
 type View = 'overview' | 'fees-structure' | 'fees-students' | 'payroll' | 'payroll-history' | 'expenses' | 'reports' | 'settings' | 'subscription';
 
@@ -28,6 +30,7 @@ const AccountantDashboard: React.FC = () => {
     
     const [view, setView] = useState<View>('overview');
     const [isSyncing, setIsSyncing] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
 
     const handleManualSync = async () => {
         if (!user?.schoolId || isSyncing) return;
@@ -164,7 +167,7 @@ const AccountantDashboard: React.FC = () => {
                             </div>
                         </button>
                     </div>
-                    {/* Right: Sync + Logout */}
+                    {/* Right: Sync + Notifications + Logout */}
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleManualSync}
@@ -174,6 +177,14 @@ const AccountantDashboard: React.FC = () => {
                         >
                             <i className={`fas fa-sync-alt text-sm ${isSyncing ? 'animate-spin' : ''}`}></i>
                         </button>
+                        <button
+                            onClick={() => setShowHelp(true)}
+                            className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl text-white border border-white/20 transition-all active:scale-90 flex-shrink-0"
+                            title="Help & Support"
+                        >
+                            <i className="fas fa-question text-sm md:text-base"></i>
+                        </button>
+                        <NotificationBell />
                         <button
                             onClick={logout}
                             className="flex items-center gap-2 bg-white/10 hover:bg-red-500/80 border border-white/20 text-white px-3 md:px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
@@ -278,6 +289,8 @@ const AccountantDashboard: React.FC = () => {
                     ))}
                 </div>
             </nav>
+
+            {showHelp && <ContactModal onClose={() => setShowHelp(false)} />}
         </div>
     );
 };

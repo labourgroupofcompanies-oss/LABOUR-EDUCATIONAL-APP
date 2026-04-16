@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['labour.png', 'pwa-192x192.png', 'pwa-512x512.png'],
+      includeAssets: ['images/labour_logo.png'],
       manifest: {
         name: 'Labour Edu System',
         short_name: 'LabourEdu',
@@ -20,17 +20,17 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'images/labour_logo.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'images/labour_logo.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'images/labour_logo.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
