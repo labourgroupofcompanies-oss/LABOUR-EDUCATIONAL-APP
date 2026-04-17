@@ -73,8 +73,21 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
         const seen = new Set<string>();
         return raw.filter(s => {
             if (!s.fullName) return true;
+            // Robust deduplication: prioritize records that have an idCloud or studentIdString
             const name = s.fullName.trim().toLowerCase();
             if (seen.has(name)) return false;
+            
+            // If there's another record with the same name, we keep this one if it looks "newer" 
+            // or more likely to be the "real" one (has cloud ID).
+            const isDuplicate = raw.some(other => 
+                other.id !== s.id && 
+                other.fullName?.trim().toLowerCase() === name &&
+                (other.idCloud || other.studentIdString) && 
+                !(s.idCloud || s.studentIdString)
+            );
+            
+            if (isDuplicate) return false;
+
             seen.add(name);
             return true;
         });
@@ -96,7 +109,14 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
     const classTeacher = useLiveQuery(async () => {
         if (!selectedClass) return null;
 
-        // Find teacher assignment for this class
+        // 1. Priority: Use the official classTeacherId if assigned to the class record
+        if (selectedClass.classTeacherId) {
+            const officialTeacher = await db.users.where('idCloud').equals(selectedClass.classTeacherId).first() || 
+                                   await db.users.where('username').equals(selectedClass.classTeacherId).first();
+            if (officialTeacher) return officialTeacher;
+        }
+
+        // 2. Fallback: Find teacher assignment from any subject in this class
         const assignments = await eduDb.classSubjects
             .where('classId')
             .equals(selectedClass.id!)
@@ -104,11 +124,21 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
 
         if (assignments.length === 0) return null;
 
-        // Use the teacher from the first subject assignment (or we could fetch specifically the class teacher if there's a separate model)
         const teacherId = assignments[0].teacherId;
         if (!teacherId) return null;
         return await db.users.where('idCloud').equals(teacherId).first() || await db.users.where('username').equals(teacherId).first();
-    }, [selectedClass?.id]);
+    }, [selectedClass?.id, selectedClass?.classTeacherId]);
+
+    const globalTermDates = useLiveQuery(() => 
+        user?.schoolId ? eduDb.settings
+            .where('schoolId').equals(user.schoolId)
+            .and(s => s.key === 'vacationDate' || s.key === 'termStartDate' || s.key === 'nextTermBegins')
+            .toArray() : []
+    , [user?.schoolId]);
+
+    const termStartDateVal = globalTermDates?.find(d => d.key === 'termStartDate')?.value;
+    const vacationDateVal = globalTermDates?.find(d => d.key === 'vacationDate')?.value;
+    const nextTermBeginsVal = globalTermDates?.find(d => d.key === 'nextTermBegins')?.value;
 
     /* ── build report card data ── */
     const buildCards = async () => {
@@ -129,6 +159,13 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
             if (gradingSystem.length === 0) {
                 console.warn("No grading system found in settings.");
             }
+
+            // Fetch Report Customization Config
+            const reportConfigSetting = await eduDb.settings
+                .where('[schoolId+key]')
+                .equals([user.schoolId, 'report_config'])
+                .first();
+            const reportConfig = reportConfigSetting?.value;
 
             // Subjects for the class (from classSubjects)
             const classAssignments = selectedClass ? await eduDb.classSubjects
@@ -198,8 +235,6 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                 .toArray();
             const vacationDateVal = termDates.find(d => d.key === 'vacationDate')?.value;
             const nextTermBeginsVal = termDates.find(d => d.key === 'nextTermBegins')?.value;
-            const termStartDateVal = termDates.find(d => d.key === 'termStartDate')?.value;
-
             // Fetch Term 3 Promotion Requests to attach status to the report cards
             let approvedPromotions: any[] = [];
             if (selectedTerm.toLowerCase().includes('term 3')) {
@@ -247,10 +282,26 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                 // Attendance calculation using service
                 let attendance: ReportCardData['attendance'] | undefined;
                 if (termStartDateVal && vacationDateVal) {
-                    const startTs = new Date(termStartDateVal).getTime();
-                    const endTs = new Date(vacationDateVal).getTime();
+                    // Normalize to UTC-like comparison or start-of-day absolute timestamps
+                    // We use the 'YYYY-MM-DD' parser from syncService logic to be consistent
+                    const parseLocalDate = (dateStr: string) => {
+                        if (!dateStr) return 0;
+                        const [y, m, d] = dateStr.split('T')[0].split('-').map(Number);
+                        return new Date(y, m - 1, d).setHours(0, 0, 0, 0);
+                    };
+
+                    const startTs = parseLocalDate(termStartDateVal);
+                    const endTs = parseLocalDate(vacationDateVal) + (24 * 60 * 60 * 1000 - 1); // include full end day
+                    
                     const stats = await attendanceService.getStudentStats(student.id!, startTs, endTs);
-                    attendance = { present: stats.present + stats.late, total: stats.total };
+                    
+                    attendance = { 
+                        present: stats.present, 
+                        late: stats.late, 
+                        absent: stats.absent, 
+                        total: stats.total, 
+                        percentage: stats.attendancePercentage 
+                    };
                 }
 
                 // Financial info
@@ -321,6 +372,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                     attendance,
                     feeInfo,
                     promotionStatus,
+                    config: reportConfig,
                 });
             }
 
@@ -516,12 +568,25 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
 
                     {/* Info strip */}
                     {selectedClassId && studentsInClass && (
-                        <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700 font-semibold">
-                            <i className="fas fa-info-circle text-blue-400" />
-                            {mode === 'all'
-                                ? `${studentsInClass.length} learner${studentsInClass.length !== 1 ? 's' : ''} will be included in the print.`
-                                : selectedStudentId ? 'Individual report card selected.' : 'Please select a student above.'
-                            }
+                        <div className="space-y-2">
+                             {/* Warning if term dates are missing */}
+                            {(!termStartDateVal || !vacationDateVal) && (
+                                <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-100 rounded-xl text-xs text-red-700 font-semibold animate-pulse">
+                                    <i className="fas fa-exclamation-triangle text-red-400 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold">Missing Term Dates!</p>
+                                        <p className="font-normal opacity-80">Attendance cannot be calculated. Please set "Term Start" and "Vacation" dates in Settings &gt; General Info first.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-700 font-semibold">
+                                <i className="fas fa-info-circle text-blue-400" />
+                                {mode === 'all'
+                                    ? `${studentsInClass.length} learner${studentsInClass.length !== 1 ? 's' : ''} will be included in the print.`
+                                    : selectedStudentId ? 'Individual report card selected.' : 'Please select a student above.'
+                                }
+                            </div>
                         </div>
                     )}
 

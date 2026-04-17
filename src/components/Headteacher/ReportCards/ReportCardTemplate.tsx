@@ -1,5 +1,13 @@
 import React from 'react';
 
+export interface ReportConfig {
+    themeColor: string;
+    showFees: boolean;
+    showAttendance: boolean;
+    showGradingKey: boolean;
+    templateVariant: 'modern' | 'classic';
+}
+
 export interface ReportSubjectRow {
     subjectName: string;
     caTotal: number;
@@ -45,7 +53,10 @@ export interface ReportCardData {
     // Attendance
     attendance?: {
         present: number;
+        late: number;
+        absent: number;
         total: number;
+        percentage: number;
     };
 
     // Financial
@@ -59,6 +70,9 @@ export interface ReportCardData {
 
     // Promotion
     promotionStatus?: string;
+
+    // Customization
+    config?: ReportConfig;
 }
 
 interface Props {
@@ -83,10 +97,22 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
     const percentage = maxTotal > 0 ? Math.round((data.totalScoreSum / maxTotal) * 100).toString() : '0';
     const MIN_SUBJECT_ROWS = 12; // Ensure table always has at least this many rows for stability
 
+    // Default configuration
+    const config = data.config || {
+        themeColor: '#2563eb', // Default blue
+        showFees: true,
+        showAttendance: true,
+        showGradingKey: true,
+        templateVariant: 'modern',
+    };
+
+    const isClassic = config.templateVariant === 'classic';
+
     const PAPER_BG = '#fdfbf7'; // Parchment/Ivory
     const PRIMARY_TEXT = '#1e293b'; // Deep Slate
-    const ACCENT_GOLD = '#b45309'; // Formal Gold/Amber
-    const BORDER_COLOR = '#475569'; // Slate Border
+    const ACCENT_COLOR = config.themeColor;
+    const BORDER_COLOR = isClassic ? PRIMARY_TEXT : '#475569'; // Classic uses dark, rigid outlines
+
 
     return (
         <div
@@ -120,31 +146,33 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                 overflow: 'hidden',
             }}>
                 {/* ── Background Watermark ── */}
-                <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%) rotate(-30deg)',
-                    opacity: 0.035,
-                    fontSize: '120pt',
-                    fontWeight: 900,
-                    color: PRIMARY_TEXT,
-                    pointerEvents: 'none',
-                    textAlign: 'center',
-                    width: '100%',
-                    zIndex: 0,
-                    userSelect: 'none',
-                }}>
-                    {data.schoolName.split(' ')[0]}
-                </div>
+                {!isClassic && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%) rotate(-30deg)',
+                        opacity: 0.035,
+                        fontSize: '120pt',
+                        fontWeight: 900,
+                        color: PRIMARY_TEXT,
+                        pointerEvents: 'none',
+                        textAlign: 'center',
+                        width: '100%',
+                        zIndex: 0,
+                        userSelect: 'none',
+                    }}>
+                        {data.schoolName.split(' ')[0]}
+                    </div>
+                )}
 
                 {/* ── HEADER ── */}
                 <div style={{
-                    padding: '12px 20px',
+                    padding: isClassic ? '20px' : '12px 20px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '20px',
-                    borderBottom: `2.5px double ${BORDER_COLOR}`,
+                    borderBottom: isClassic ? `3px solid ${PRIMARY_TEXT}` : `2.5px double ${ACCENT_COLOR}`,
                     position: 'relative',
                     zIndex: 1,
                 }}>
@@ -167,7 +195,7 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                     <div style={{ flex: 1, textAlign: 'center' }}>
                         <div style={{ 
                             fontFamily: "'Georgia', serif",
-                            color: ACCENT_GOLD, 
+                            color: isClassic ? PRIMARY_TEXT : ACCENT_COLOR, 
                             fontSize: '9pt', 
                             fontWeight: 700, 
                             letterSpacing: '0.2em', 
@@ -210,15 +238,15 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
 
                     {/* Term Badge */}
                     <div style={{
-                        border: `1px solid ${BORDER_COLOR}`,
-                        borderRadius: '4px', padding: '6px 12px',
+                        border: isClassic ? `2px solid ${PRIMARY_TEXT}` : `1px solid ${ACCENT_COLOR}`,
+                        borderRadius: isClassic ? '0' : '4px', padding: '6px 12px',
                         textAlign: 'center', flexShrink: 0,
                         background: '#fff',
                         minWidth: '100px',
                     }}>
-                        <div style={{ color: '#94a3b8', fontSize: '7pt', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Session</div>
+                        <div style={{ color: isClassic ? PRIMARY_TEXT : '#94a3b8', fontSize: '7pt', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Session</div>
                         <div style={{ color: PRIMARY_TEXT, fontSize: '10pt', fontWeight: 900 }}>{data.term}</div>
-                        <div style={{ color: ACCENT_GOLD, fontSize: '9pt', fontWeight: 800 }}>{data.year}</div>
+                        <div style={{ color: ACCENT_COLOR, fontSize: '9pt', fontWeight: 800 }}>{data.year}</div>
                     </div>
                 </div>
 
@@ -247,16 +275,17 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                     padding: '15px 24px',
                     gap: '24px',
                     zIndex: 1,
-                    background: 'white',
+                    background: isClassic ? 'transparent' : 'white',
                     margin: '10px 15px',
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                    borderRadius: isClassic ? '0' : '8px',
+                    border: isClassic ? `1px solid ${PRIMARY_TEXT}` : '1px solid #e2e8f0',
+                    borderTop: isClassic ? `3px solid ${PRIMARY_TEXT}` : '1px solid #e2e8f0',
+                    boxShadow: isClassic ? 'none' : '0 1px 3px rgba(0,0,0,0.02)',
                 }}>
                     {/* Photo with frame */}
                     <div style={{
                         width: '85px', height: '105px', flexShrink: 0,
-                        border: `3px double ${BORDER_COLOR}`,
+                        border: isClassic ? `2px solid ${PRIMARY_TEXT}` : `2px solid ${ACCENT_COLOR}`,
                         padding: '3px',
                         background: '#fff',
                         position: 'relative',
@@ -275,13 +304,15 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                             <div style={{ fontSize: '7.5pt', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Official Name of Learner</div>
                             <div style={{ fontFamily: "'Georgia', serif", fontSize: '14pt', fontWeight: 900, color: PRIMARY_TEXT }}>{data.studentName}</div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '15px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: config.showAttendance ? '1.2fr 1fr 1.3fr' : '1.2fr 1fr', gap: '15px' }}>
                             <InfoRow label="Student ID" value={data.studentId} />
                             <InfoRow label="Class" value={data.className} />
-                            <InfoRow 
-                                label="Attendance" 
-                                value={data.attendance?.total ? `${Math.round((data.attendance.present/data.attendance.total)*100)}%` : '—'} 
-                            />
+                            {config.showAttendance && (
+                                <InfoRow 
+                                    label="Attendance" 
+                                    value={data.attendance?.total ? `P: ${data.attendance.present} | L: ${data.attendance.late} | A: ${data.attendance.absent} — ${data.attendance.percentage}%` : '—'} 
+                                />
+                            )}
                         </div>
                     </div>
 
@@ -298,8 +329,8 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                         {data.overallGrade && (
                             <div style={{
                                 marginTop: '4px', padding: '2px 14px',
-                                background: gradeColor(data.overallGrade),
-                                color: '#fff', borderRadius: '3px',
+                                background: isClassic ? PRIMARY_TEXT : ACCENT_COLOR,
+                                color: '#fff', borderRadius: isClassic ? '0' : '3px',
                                 fontSize: '9pt', fontWeight: 900,
                                 letterSpacing: '0.05em'
                             }}>
@@ -308,7 +339,7 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                         )}
                         {data.position && (
                              <div style={{ fontSize: '7.5pt', color: '#64748b', fontWeight: 700, marginTop: '5px' }}>
-                                Rank: <span style={{ color: ACCENT_GOLD }}>{data.position}</span> of {data.totalStudents}
+                                Rank: <span style={{ color: ACCENT_COLOR }}>{data.position}</span> of {data.totalStudents}
                             </div>
                         )}
                     </div>
@@ -318,11 +349,11 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                 <div style={{ padding: '0 15px 10px', flex: 1, zIndex: 1 }}>
                     <div style={{
                         fontFamily: "'Georgia', serif",
-                        fontSize: '10pt', fontWeight: 900, color: PRIMARY_TEXT,
+                        fontSize: '10pt', fontWeight: 900, color: isClassic ? PRIMARY_TEXT : ACCENT_COLOR,
                         textTransform: 'uppercase', letterSpacing: '0.15em',
                         padding: '10px 0 6px',
                         textAlign: 'center',
-                        borderBottom: `1px solid ${BORDER_COLOR}`,
+                        borderBottom: isClassic ? `2px solid ${PRIMARY_TEXT}` : `1px solid ${ACCENT_COLOR}`,
                     }}>
                         Academic Transcript
                     </div>
@@ -368,7 +399,7 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                                 );
                             })}
                             {/* Totals row */}
-                            <tr style={{ background: 'rgba(241, 245, 249, 0.5)', borderTop: `1.5px solid ${PRIMARY_TEXT}` }}>
+                            <tr style={{ background: isClassic ? 'transparent' : 'rgba(241, 245, 249, 0.5)', borderTop: isClassic ? `2px solid ${PRIMARY_TEXT}` : `1.5px solid ${ACCENT_COLOR}` }}>
                                 <td colSpan={2} style={{ ...tdStyle('right', false, true), paddingRight: '15px', fontFamily: "'Georgia', serif" }}>Terminal Aggregate</td>
                                 <td style={tdStyle('center', false, true)} />
                                 <td style={tdStyle('center', false, true)} />
@@ -384,29 +415,31 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '15px', margin: '0 15px 15px', zIndex: 1 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {/* Grading Interpretation */}
-                        <div style={{
-                            padding: '8px 12px',
-                            background: '#fff',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '4px',
-                        }}>
-                            <div style={{ fontSize: '7pt', fontWeight: 800, color: ACCENT_GOLD, textTransform: 'uppercase', marginBottom: '5px', borderBottom: '1px solid #f1f5f9' }}>Grading Interpretation</div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '7pt' }}>
-                                {[
-                                    { g: 'A', r: '80–100', l: 'Excellent' },
-                                    { g: 'B', r: '70–79', l: 'Very Good' },
-                                    { g: 'C', r: '60–69', l: 'Credit' },
-                                    { g: 'D', r: '50–59', l: 'Pass' },
-                                    { g: 'F', r: '< 50', l: 'Fail' },
-                                ].map(item => (
-                                    <div key={item.g} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <span style={{ fontWeight: 900, color: PRIMARY_TEXT }}>{item.g}</span>
-                                        <span style={{ color: '#94a3b8' }}>[{item.r}]</span>
-                                        <span style={{ color: '#64748b' }}>{item.l}</span>
-                                    </div>
-                                ))}
+                        {config.showGradingKey && (
+                            <div style={{
+                                padding: '8px 12px',
+                                background: isClassic ? 'transparent' : '#fff',
+                                border: isClassic ? `1px solid ${PRIMARY_TEXT}` : '1px solid #e2e8f0',
+                                borderRadius: isClassic ? '0' : '4px',
+                            }}>
+                                <div style={{ fontSize: '7pt', fontWeight: 800, color: isClassic ? PRIMARY_TEXT : ACCENT_COLOR, textTransform: 'uppercase', marginBottom: '5px', borderBottom: isClassic ? `1px solid ${PRIMARY_TEXT}` : `1px solid ${ACCENT_COLOR}` }}>Grading Interpretation</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', fontSize: '7pt' }}>
+                                    {[
+                                        { g: 'A', r: '80–100', l: 'Excellent' },
+                                        { g: 'B', r: '70–79', l: 'Very Good' },
+                                        { g: 'C', r: '60–69', l: 'Credit' },
+                                        { g: 'D', r: '50–59', l: 'Pass' },
+                                        { g: 'F', r: '< 50', l: 'Fail' },
+                                    ].map(item => (
+                                        <div key={item.g} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span style={{ fontWeight: 900, color: PRIMARY_TEXT }}>{item.g}</span>
+                                            <span style={{ color: '#94a3b8' }}>[{item.r}]</span>
+                                            <span style={{ color: '#64748b' }}>{item.l}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Remarks */}
                         {data.overallRemarks && (
@@ -435,17 +468,17 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                             fontSize: '8pt',
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                <span style={{ color: '#94a3b8', fontWeight: 700 }}>Vacation:</span>
+                                <span style={{ color: isClassic ? PRIMARY_TEXT : '#94a3b8', fontWeight: 700 }}>Vacation:</span>
                                 <span style={{ fontWeight: 800 }}>{data.vacationDate ? new Date(data.vacationDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ color: '#94a3b8', fontWeight: 700 }}>Resumption:</span>
-                                <span style={{ fontWeight: 800, color: ACCENT_GOLD }}>{data.nextTermStarts ? new Date(data.nextTermStarts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
+                                <span style={{ color: isClassic ? PRIMARY_TEXT : '#94a3b8', fontWeight: 700 }}>Resumption:</span>
+                                <span style={{ fontWeight: 800, color: isClassic ? PRIMARY_TEXT : ACCENT_COLOR }}>{data.nextTermStarts ? new Date(data.nextTermStarts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</span>
                             </div>
                         </div>
 
                         {/* Financial Status Strip */}
-                        {data.feeInfo && (
+                        {config.showFees && data.feeInfo && (
                             <div style={{
                                 padding: '8px 12px',
                                 background: data.feeInfo.status === 'Paid' ? '#f0fdf4' : data.feeInfo.status === 'Partial' ? '#fffbeb' : '#fef2f2',
@@ -487,9 +520,9 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                 <div style={{
                     margin: '0 15px 15px',
                     padding: '15px 15px 10px',
-                    border: `1px solid ${BORDER_COLOR}`,
-                    background: '#fff',
-                    borderRadius: '4px',
+                    border: isClassic ? `1px solid ${PRIMARY_TEXT}` : `1px solid ${ACCENT_COLOR}`,
+                    background: isClassic ? 'transparent' : '#fff',
+                    borderRadius: isClassic ? '0' : '4px',
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr 100px',
                     gap: '20px',
@@ -528,13 +561,13 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
 
                 {/* ── FOOTER ── */}
                 <div style={{
-                    background: PRIMARY_TEXT,
+                    background: isClassic ? PRIMARY_TEXT : ACCENT_COLOR,
                     padding: '8px 20px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     fontSize: '7pt',
-                    color: 'rgba(255,255,255,0.7)',
+                    color: 'rgba(255,255,255,0.9)',
                     zIndex: 1,
                 }}>
                     <span style={{ fontWeight: 600 }}>Official Academic Record — Not Valid Without Seal</span>

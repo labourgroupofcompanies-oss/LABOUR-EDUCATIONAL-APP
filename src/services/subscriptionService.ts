@@ -33,11 +33,20 @@ export const subscriptionService = {
             const currentTermNorm = (currentTerm || '').trim().toLowerCase();
             const currentYearNorm = (academicYear || '').toString().trim().toLowerCase();
 
+            // Check if settings have ever been explicitly modified
+            const hasCustomSettings = await eduDb.settings
+                .where('schoolId').equals(schoolId)
+                .and(s => s.key === 'currentTerm' || s.key === 'academicYear')
+                .count();
+
             if (school) {
-                const schoolTerm = (school.onboardingTerm || '').trim().toLowerCase();
+                const schoolTerm = (school.onboardingTerm || 'Term 1').trim().toLowerCase();
                 const schoolYear = (school.onboardingAcademicYear || '').trim().toLowerCase();
 
-                if (schoolTerm === currentTermNorm && schoolYear === currentYearNorm) {
+                // Trial applies if they haven't explicitly set a new term, OR if it strictly matches their onboarding term
+                const isExplicitTrialTerm = schoolTerm === currentTermNorm && (schoolYear ? schoolYear === currentYearNorm : true);
+                
+                if (isExplicitTrialTerm || hasCustomSettings === 0) {
                     return { 
                         isSubscribed: true, 
                         type: 'trial', 
@@ -50,7 +59,7 @@ export const subscriptionService = {
             // 1.1 HEAL/FALLBACK: For new schools with missing metadata, default to trial if Term 1 and no history exists
             if (!school || !school.onboardingTerm) {
                 const localSubs = await eduDb.subscriptions.where('schoolId').equals(schoolId).toArray();
-                if (localSubs.length === 0 && currentTermNorm === 'term 1') {
+                if (localSubs.length === 0 && (currentTermNorm === 'term 1' || hasCustomSettings === 0)) {
                     return {
                         isSubscribed: true,
                         type: 'trial',

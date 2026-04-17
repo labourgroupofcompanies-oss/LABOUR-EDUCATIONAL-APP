@@ -1862,6 +1862,14 @@ export const syncService = {
 
             if (supabaseTable === 'students') {
                 await dbService.students.save({ ...match, ...mapped, syncStatus: 'synced' } as any);
+            } else if (supabaseTable === 'settings' && match && mapped.value) {
+                // SPECIAL CASE: For settings, deep-merge the JSON 'value' field (at least shallowly)
+                // to prevent older cloud objects from wiping out new local keys like 'templateVariant'
+                const mergedValue = typeof mapped.value === 'object' && typeof match.value === 'object'
+                    ? { ...match.value, ...mapped.value }
+                    : mapped.value;
+                
+                await table.put({ ...match, ...mapped, value: mergedValue, syncStatus: 'synced' });
             } else {
                 await table.put({ ...match, ...mapped, syncStatus: 'synced' });
             }

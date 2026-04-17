@@ -11,7 +11,7 @@ import { syncService } from '../../services/syncService';
 
 const Settings: React.FC = () => {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'general' | 'academic' | 'assessment' | 'system' | 'security'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'academic' | 'assessment' | 'system' | 'security' | 'report_design'>('general');
     const [isLoading, setIsLoading] = useState(false);
 
     // School Data
@@ -84,6 +84,13 @@ const Settings: React.FC = () => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    // Report Design States
+    const [reportThemeColor, setReportThemeColor] = useState('#2563eb');
+    const [reportShowFees, setReportShowFees] = useState(true);
+    const [reportShowAttendance, setReportShowAttendance] = useState(true);
+    const [reportShowGradingKey, setReportShowGradingKey] = useState(true);
+    const [reportTemplate, setReportTemplate] = useState<'modern' | 'classic'>('modern');
 
     // Fetch Existing Assessment Config
     const existingConfig = useLiveQuery(async () => {
@@ -165,6 +172,22 @@ const Settings: React.FC = () => {
             if (academicSettings.vacationDate) setVacationDate(academicSettings.vacationDate);
             if (academicSettings.nextTermBegins) setNextTermBegins(academicSettings.nextTermBegins);
             if (academicSettings.termStartDate) setTermStartDate(academicSettings.termStartDate);
+            
+            if (academicSettings.report_config) {
+                const cfg = academicSettings.report_config;
+                if (cfg.themeColor) setReportThemeColor(cfg.themeColor);
+                if (cfg.showFees !== undefined) setReportShowFees(cfg.showFees);
+                if (cfg.showAttendance !== undefined) setReportShowAttendance(cfg.showAttendance);
+                if (cfg.showGradingKey !== undefined) setReportShowGradingKey(cfg.showGradingKey);
+                
+                // Prioritize existing state if the loaded config is missing the variant (sync safety)
+                if (cfg.templateVariant) {
+                    setReportTemplate(cfg.templateVariant);
+                } else if (academicSettings.report_config && !cfg.templateVariant) {
+                    // If we have a config but it's missing the variant, preserve what's currently in state 
+                    // unless this is the very first load.
+                }
+            }
         }
     }, [academicSettings]);
 
@@ -264,6 +287,47 @@ const Settings: React.FC = () => {
         } catch (error) {
             console.error(error);
             showMessage('error', 'Failed to save academic settings.');
+        }
+    };
+
+    const handleSaveReportDesign = async () => {
+        if (!user?.schoolId) return;
+        try {
+            const now = Date.now();
+            const config = {
+                themeColor: reportThemeColor,
+                showFees: reportShowFees,
+                showAttendance: reportShowAttendance,
+                showGradingKey: reportShowGradingKey,
+                templateVariant: reportTemplate
+            };
+
+            const existing = await eduDb.settings
+                .where('[schoolId+key]')
+                .equals([user.schoolId, 'report_config'])
+                .first();
+
+            if (existing) {
+                await eduDb.settings.update(existing.id!, {
+                    value: config,
+                    updatedAt: now,
+                    syncStatus: 'pending'
+                });
+            } else {
+                await eduDb.settings.add({
+                    schoolId: user.schoolId,
+                    key: 'report_config',
+                    value: config,
+                    createdAt: now,
+                    updatedAt: now,
+                    syncStatus: 'pending'
+                });
+            }
+            showMessage('success', 'Report design settings saved successfully!');
+            syncService.syncAll(user.schoolId).catch(console.error);
+        } catch (error) {
+            console.error(error);
+            showMessage('error', 'Failed to save report design settings.');
         }
     };
 
@@ -465,6 +529,7 @@ const Settings: React.FC = () => {
                 <TabButton id="general" label="General Info" icon="fa-school" />
                 <TabButton id="academic" label="Academic" icon="fa-graduation-cap" />
                 <TabButton id="assessment" label="Assessment" icon="fa-clipboard-list" />
+                <TabButton id="report_design" label="Report Design" icon="fa-palette" />
                 <TabButton id="security" label="Security" icon="fa-shield-alt" />
                 <TabButton id="system" label="Backup" icon="fa-cogs" />
             </div>
@@ -1006,6 +1071,165 @@ const Settings: React.FC = () => {
                             className="bg-primary text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-primary/30 hover:scale-105 transition-all"
                         >
                             Save Assessment Configuration
+                        </button>
+                    </div>
+                )}
+
+                {activeTab === 'report_design' && (
+                    <div className="max-w-2xl space-y-8 animate-fadeIn">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800 border-b pb-4">Report Card Design</h2>
+                            <p className="text-sm text-gray-500 mt-2">
+                                Customize the look and feel of your school's report cards to match your brand and preferences.
+                            </p>
+                        </div>
+
+                        {/* Theme Color Selection */}
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-700">Primary Theme Color</h3>
+                                <p className="text-xs text-gray-500 mt-1">This color will be used for headers, borders, and accents on the report card.</p>
+                            </div>
+                            <div className="flex flex-wrap gap-4 items-center">
+                                {[
+                                    { name: 'Blue', color: '#2563eb' },
+                                    { name: 'Indigo', color: '#4f46e5' },
+                                    { name: 'Purple', color: '#9333ea' },
+                                    { name: 'Teal', color: '#0d9488' },
+                                    { name: 'Emerald', color: '#059669' },
+                                    { name: 'Rose', color: '#e11d48' },
+                                    { name: 'Slate', color: '#475569' },
+                                    { name: 'Black', color: '#111827' }
+                                ].map(theme => (
+                                    <button
+                                        key={theme.name}
+                                        onClick={() => setReportThemeColor(theme.color)}
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${reportThemeColor === theme.color ? 'ring-4 ring-offset-2 ring-gray-300 scale-110' : 'hover:scale-105'}`}
+                                        style={{ backgroundColor: theme.color }}
+                                        title={theme.name}
+                                    >
+                                        {reportThemeColor === theme.color && <i className="fas fa-check text-white text-xs"></i>}
+                                    </button>
+                                ))}
+                                <div className="h-8 w-px bg-gray-200 mx-2"></div>
+                                <div className="flex items-center gap-2">
+                                    <input 
+                                        type="color" 
+                                        value={reportThemeColor} 
+                                        onChange={(e) => setReportThemeColor(e.target.value)}
+                                        className="w-10 h-10 rounded cursor-pointer border-0 p-0"
+                                    />
+                                    <span className="text-xs font-bold text-gray-500">Custom</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Template Variant Selection */}
+                        <div className="space-y-4 pt-4 border-t border-gray-100">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-700">Template Layout</h3>
+                                <p className="text-xs text-gray-500 mt-1">Choose between a modern dynamic layout or a classic minimal layout.</p>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => setReportTemplate('modern')}
+                                    className={`p-4 rounded-2xl border-2 text-left transition-all ${reportTemplate === 'modern' ? 'border-primary bg-blue-50 ring-4 ring-blue-500/10' : 'border-gray-100 bg-white hover:border-gray-300'}`}
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="font-bold text-gray-800">Modern</h4>
+                                        <i className={`fas fa-circle-check ${reportTemplate === 'modern' ? 'text-primary' : 'text-gray-300'}`}></i>
+                                    </div>
+                                    <div className="w-full h-24 bg-gray-100 rounded-lg flex flex-col gap-2 p-2 border border-gray-200" style={{ borderColor: reportTemplate === 'modern' ? reportThemeColor : '#e5e7eb' }}>
+                                        <div className="w-full h-8 rounded bg-white overflow-hidden flex">
+                                            <div className="w-8 h-full bg-blue-100" style={{ backgroundColor: reportThemeColor, opacity: 0.2 }}></div>
+                                            <div className="flex-1 p-1"><div className="w-12 h-2 bg-gray-200 rounded"></div></div>
+                                        </div>
+                                        <div className="flex gap-2 h-full">
+                                            <div className="flex-1 bg-white rounded border border-gray-100"></div>
+                                            <div className="w-1/3 bg-white rounded border border-gray-100"></div>
+                                        </div>
+                                    </div>
+                                </button>
+                                
+                                <button
+                                    onClick={() => setReportTemplate('classic')}
+                                    className={`p-4 rounded-2xl border-2 text-left transition-all ${reportTemplate === 'classic' ? 'border-primary bg-blue-50 ring-4 ring-blue-500/10' : 'border-gray-100 bg-white hover:border-gray-300'}`}
+                                >
+                                    <div className="flex items-center justify-between mb-2">
+                                        <h4 className="font-bold text-gray-800">Classic</h4>
+                                        <i className={`fas fa-circle-check ${reportTemplate === 'classic' ? 'text-primary' : 'text-gray-300'}`}></i>
+                                    </div>
+                                    <div className="w-full h-24 bg-white rounded-lg flex flex-col gap-2 p-2 border-2 border-double border-gray-300">
+                                        <div className="w-full h-6 border-b-2 border-gray-800 flex items-center justify-center">
+                                            <div className="w-16 h-2 bg-gray-800 rounded"></div>
+                                        </div>
+                                        <div className="flex flex-col gap-1 h-full pt-1">
+                                            <div className="w-full border-b border-gray-300 pb-1 flex justify-between"><div className="w-10 h-1 bg-gray-300"></div><div className="w-4 h-1 bg-gray-300"></div></div>
+                                            <div className="w-full border-b border-gray-300 pb-1 flex justify-between"><div className="w-12 h-1 bg-gray-300"></div><div className="w-4 h-1 bg-gray-300"></div></div>
+                                            <div className="w-full border-b border-gray-300 pb-1 flex justify-between"><div className="w-8 h-1 bg-gray-300"></div><div className="w-4 h-1 bg-gray-300"></div></div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Section Toggles */}
+                        <div className="space-y-4 pt-4 border-t border-gray-100">
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-700">Display Sections</h3>
+                                <p className="text-xs text-gray-500 mt-1">Choose which information blocks are visible on the final report.</p>
+                            </div>
+                            
+                            <div className="space-y-3">
+                                <label className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+                                    <div>
+                                        <p className="font-bold text-gray-800 flex items-center gap-2">
+                                            <i className="fas fa-file-invoice-dollar text-gray-400 w-5"></i>
+                                            Financial Status (Fees)
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-0.5">Show or hide the outstanding fee balance block.</p>
+                                    </div>
+                                    <div className={`w-12 h-6 rounded-full p-1 transition-colors ${reportShowFees ? 'bg-primary' : 'bg-gray-300'}`}>
+                                        <div className={`w-4 h-4 rounded-full bg-white transition-transform ${reportShowFees ? 'translate-x-6' : ''}`}></div>
+                                    </div>
+                                    <input type="checkbox" checked={reportShowFees} onChange={e => setReportShowFees(e.target.checked)} className="hidden" />
+                                </label>
+
+                                <label className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+                                    <div>
+                                        <p className="font-bold text-gray-800 flex items-center gap-2">
+                                            <i className="fas fa-clipboard-user text-gray-400 w-5"></i>
+                                            Attendance Summary
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-0.5">Show the Present/Absent breakdown.</p>
+                                    </div>
+                                    <div className={`w-12 h-6 rounded-full p-1 transition-colors ${reportShowAttendance ? 'bg-primary' : 'bg-gray-300'}`}>
+                                        <div className={`w-4 h-4 rounded-full bg-white transition-transform ${reportShowAttendance ? 'translate-x-6' : ''}`}></div>
+                                    </div>
+                                    <input type="checkbox" checked={reportShowAttendance} onChange={e => setReportShowAttendance(e.target.checked)} className="hidden" />
+                                </label>
+
+                                <label className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+                                    <div>
+                                        <p className="font-bold text-gray-800 flex items-center gap-2">
+                                            <i className="fas fa-key text-gray-400 w-5"></i>
+                                            Grading Key
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-0.5">Display the legend for the grading system (e.g. 80-100 = A).</p>
+                                    </div>
+                                    <div className={`w-12 h-6 rounded-full p-1 transition-colors ${reportShowGradingKey ? 'bg-primary' : 'bg-gray-300'}`}>
+                                        <div className={`w-4 h-4 rounded-full bg-white transition-transform ${reportShowGradingKey ? 'translate-x-6' : ''}`}></div>
+                                    </div>
+                                    <input type="checkbox" checked={reportShowGradingKey} onChange={e => setReportShowGradingKey(e.target.checked)} className="hidden" />
+                                </label>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handleSaveReportDesign}
+                            className="bg-primary text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-primary/30 hover:scale-105 transition-all"
+                        >
+                            Save Design Settings
                         </button>
                     </div>
                 )}
