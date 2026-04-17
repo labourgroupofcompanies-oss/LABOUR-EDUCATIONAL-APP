@@ -84,7 +84,7 @@ export const attendanceService = {
 
         const rawRecords = await eduDb.attendance
             .filter(r => 
-                !!((r.studentId == studentId || (student.idCloud && r.studentId == student.idCloud) || (student.studentIdString && r.studentId == student.studentIdString)) && r.date >= startDate && r.date <= endDate && !r.isDeleted)
+                !!((r.studentId === studentId || (student.idCloud && String(r.studentId) === student.idCloud) || (student.studentIdString && String(r.studentId) === student.studentIdString)) && r.date >= startDate && r.date <= endDate && !r.isDeleted)
             )
             .toArray();
 

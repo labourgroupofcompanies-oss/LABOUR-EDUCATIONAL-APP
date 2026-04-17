@@ -228,13 +228,6 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                 if (setting?.value) remarksMap[s.id!] = setting.value;
             }
 
-            // Fetch dates for vacation and next term starts
-            const termDates = await eduDb.settings
-                .where('schoolId').equals(user.schoolId)
-                .and(s => s.key === 'vacationDate' || s.key === 'nextTermBegins' || s.key === 'termStartDate')
-                .toArray();
-            const vacationDateVal = termDates.find(d => d.key === 'vacationDate')?.value;
-            const nextTermBeginsVal = termDates.find(d => d.key === 'nextTermBegins')?.value;
             // Fetch Term 3 Promotion Requests to attach status to the report cards
             let approvedPromotions: any[] = [];
             if (selectedTerm.toLowerCase().includes('term 3')) {
