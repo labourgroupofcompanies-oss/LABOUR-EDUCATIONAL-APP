@@ -14,6 +14,18 @@ const Settings: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'general' | 'academic' | 'assessment' | 'system' | 'security' | 'report_design'>('general');
     const [isLoading, setIsLoading] = useState(false);
 
+    // Helper to ensure gradingSystem is always an array (heals conversion-to-object corruption)
+    const normalizeGradingSystem = (val: any) => {
+        if (Array.isArray(val)) return val;
+        if (val && typeof val === 'object' && Object.keys(val).length > 0) {
+            console.warn('[Settings] Healed corrupted gradingSystem value');
+            return Object.keys(val)
+                .sort((a, b) => Number(a) - Number(b))
+                .map(k => (val as any)[k]);
+        }
+        return [];
+    };
+
     // School Data
     const schoolData = useLiveQuery(async () => {
         if (user?.schoolId) {
@@ -168,7 +180,9 @@ const Settings: React.FC = () => {
         if (academicSettings) {
             if (academicSettings.academicYear) setAcademicYear(academicSettings.academicYear);
             if (academicSettings.currentTerm) setCurrentTerm(academicSettings.currentTerm);
-            if (academicSettings.gradingSystem) setGradingSystem(academicSettings.gradingSystem);
+            if (academicSettings.gradingSystem) {
+                setGradingSystem(normalizeGradingSystem(academicSettings.gradingSystem));
+            }
             if (academicSettings.vacationDate) setVacationDate(academicSettings.vacationDate);
             if (academicSettings.nextTermBegins) setNextTermBegins(academicSettings.nextTermBegins);
             if (academicSettings.termStartDate) setTermStartDate(academicSettings.termStartDate);
@@ -256,7 +270,7 @@ const Settings: React.FC = () => {
             const now = Date.now();
             await eduDb.transaction('rw', eduDb.settings, async () => {
                 const keys = ['academicYear', 'currentTerm', 'gradingSystem'];
-                const values = [academicYear.trim(), currentTerm.trim(), gradingSystem];
+                const values = [academicYear.trim(), currentTerm.trim(), normalizeGradingSystem(gradingSystem)];
 
                 for (let i = 0; i < keys.length; i++) {
                     const existing = await eduDb.settings
@@ -715,7 +729,7 @@ const Settings: React.FC = () => {
                         <h2 className="text-xl font-bold text-gray-800 border-b pb-4 pt-4">Grading System</h2>
                         {/* Mobile: card rows; Desktop: table */}
                         <div className="space-y-3 md:hidden">
-                            {gradingSystem.map((g, idx) => (
+                            {normalizeGradingSystem(gradingSystem).map((g, idx) => (
                                 <div key={idx} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2">
@@ -755,7 +769,7 @@ const Settings: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {gradingSystem.map((g, idx) => (
+                                    {normalizeGradingSystem(gradingSystem).map((g, idx) => (
                                         <tr key={idx} className="border-b border-gray-50">
                                             <td className="p-2"><input type="number" value={g.min} onChange={e => { const n = [...gradingSystem]; n[idx].min = parseInt(e.target.value); setGradingSystem(n); }} className="w-20 p-2 bg-gray-50 rounded-lg font-bold" /></td>
                                             <td className="p-2"><input type="number" value={g.max} onChange={e => { const n = [...gradingSystem]; n[idx].max = parseInt(e.target.value); setGradingSystem(n); }} className="w-20 p-2 bg-gray-50 rounded-lg font-bold" /></td>
