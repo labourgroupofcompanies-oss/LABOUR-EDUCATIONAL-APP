@@ -209,10 +209,14 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                 if (match) {
                     const prefix = match[1];
                     const numStr = match[2];
-                    const nextNum = parseInt(numStr, 10) + 1;
-                    // Pad with same number of zeros
-                    const nextNumStr = nextNum.toString().padStart(numStr.length, '0');
-                    setFormData(prev => ({ ...prev, studentIdString: `${prefix}${nextNumStr}` }));
+                    let nextNum = parseInt(numStr, 10) + 1;
+                    let candidate = `${prefix}${nextNum.toString().padStart(numStr.length, '0')}`;
+                    // Keep incrementing until we find a truly unique ID
+                    while (students.some(s => s.studentIdString?.toLowerCase() === candidate.toLowerCase())) {
+                        nextNum++;
+                        candidate = `${prefix}${nextNum.toString().padStart(numStr.length, '0')}`;
+                    }
+                    setFormData(prev => ({ ...prev, studentIdString: candidate }));
                 }
             }
         }
@@ -288,6 +292,20 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
         }, 45000);
 
         try {
+            // Validate Student ID uniqueness before proceeding to prevent record hijacking
+            if (formData.studentIdString) {
+                const isDuplicate = students?.some(s => {
+                    if (s.studentIdString?.toLowerCase() !== formData.studentIdString?.toLowerCase()) return false;
+                    return studentId ? s.id !== studentId : true; // Ignore self if editing
+                });
+                
+                if (isDuplicate) {
+                    setLoading(false);
+                    clearTimeout(safetyTimeout);
+                    return showToast('Student ID is already assigned to another learner. Please use a unique ID.', 'error');
+                }
+            }
+
             const parsedArrears = formData.arrears ? parseFloat(formData.arrears) : 0;
             const safeArrears = isNaN(parsedArrears) ? 0 : parsedArrears;
 
