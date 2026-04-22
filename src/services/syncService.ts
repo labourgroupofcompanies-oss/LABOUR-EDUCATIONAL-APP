@@ -72,6 +72,7 @@ export const syncService = {
             totalSynced += await this.syncEntity(schoolId, eduDb.settings, 'settings', 'key');
             totalSynced += await this.syncPromotionRequests(schoolId);
             totalSynced += await this.syncEntity(schoolId, eduDb.schoolEvents, 'school_events', 'id');
+            totalSynced += await this.syncEntity(schoolId, eduDb.subscriptions, 'school_subscriptions', 'id');
 
             console.log('[syncService] Sync completed.');
 
@@ -660,7 +661,8 @@ export const syncService = {
                 console.error('[syncService] ComponentScore sync failed:', error);
                 this.lastError = error?.message || 'ComponentScore sync failed';
                 await eduDb.componentScores.update(item.id!, {
-                    syncStatus: 'pending',
+                    syncStatus: 'failed',
+                    syncError: error?.message,
                     updatedAt: Date.now()
                 });
             }
@@ -730,7 +732,8 @@ export const syncService = {
                 console.error('[syncService] Promotion request sync failed:', error);
                 this.lastError = error?.message || 'Promotion request sync failed';
                 await eduDb.promotionRequests.update(item.id!, {
-                    syncStatus: 'pending',
+                    syncStatus: 'failed',
+                    syncError: error?.message,
                     updatedAt: Date.now()
                 });
             }
@@ -799,8 +802,10 @@ export const syncService = {
                 syncedCount++;
             } catch (error: any) {
                 console.error('[syncService] AssessmentConfig sync failed:', error);
+                this.lastError = error?.message || 'AssessmentConfig sync failed';
                 await eduDb.assessmentConfigs.update(item.id!, {
-                    syncStatus: 'pending',
+                    syncStatus: 'failed',
+                    syncError: error?.message,
                     updatedAt: Date.now()
                 });
             }
@@ -1018,7 +1023,8 @@ export const syncService = {
                 console.error('[syncService] FeeStructure sync failed:', error);
                 this.lastError = error?.message || 'FeeStructure sync failed';
                 await eduDb.feeStructures.update(item.id!, {
-                    syncStatus: 'pending',
+                    syncStatus: 'failed',
+                    syncError: error?.message,
                     updatedAt: Date.now()
                 });
             }
@@ -2154,25 +2160,39 @@ export const syncService = {
     },
 
     getConflictKeys(table: string, defaultKey: string) {
+        // NOTE: 'table' is the Supabase table name (snake_case), NOT the local Dexie table name.
         if (table === 'schools') return 'school_code';
         if (table === 'users' || table === 'staff_profiles') return 'school_id,username';
         if (table === 'students') return 'school_id,student_id_string';
         if (table === 'settings') return 'school_id,key';
+        // assessment_configs (snake_case Supabase name)
         if (table === 'assessment_configs') return 'school_id,year,term';
+        // school_subscriptions (snake_case Supabase name)
         if (table === 'school_subscriptions') return 'school_id,term,academic_year';
         if (table === 'results') return 'student_id,class_subject_id,term,year';
         if (table === 'attendance') return 'school_id,student_id,date';
+        // component_scores (snake_case Supabase name)
         if (table === 'component_scores') return 'student_id,class_subject_id,year,term,component_type,component_number';
+        // fee_structures (snake_case Supabase name)
         if (table === 'fee_structures') return 'school_id,class_id_local,term,year';
+        // fee_payments (snake_case Supabase name)
         if (table === 'fee_payments') return 'school_id,receipt_no';
-        if (table === 'payroll_records') return 'school_id,staff_id_local,month,year';
+        // payroll_records (snake_case Supabase name)
+        if (table === 'payroll_records') return 'school_id,staff_id,month,year';
+        // expenses (snake_case Supabase name)
         if (table === 'expenses') return 'school_id,category,description,date,amount';
+        // budgets (snake_case Supabase name)
         if (table === 'budgets') return 'school_id,category,term,year';
+        // promotion_requests (snake_case Supabase name)
         if (table === 'promotion_requests') return 'student_id,from_class_id,to_class_id,created_at';
-        if (table === 'graduate_records' || table === 'graduate_records') return 'school_id,student_id';
+        // graduate_records (snake_case Supabase name)
+        if (table === 'graduate_records') return 'school_id,student_id';
+        // school_events (snake_case Supabase name)
         if (table === 'school_events') return 'school_id,title,start_date';
         if (table === 'classes') return 'school_id,name,level';
         if (table === 'subjects') return 'school_id,name';
+        // class_subjects (snake_case Supabase name)
+        if (table === 'class_subjects') return 'class_id,subject_id';
 
         return defaultKey;
     },
