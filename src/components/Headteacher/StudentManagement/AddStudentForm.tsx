@@ -59,8 +59,8 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
     // Camera device enumeration
     const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
     const [activeCameraIndex, setActiveCameraIndex] = useState(0);
-    const [isCameraSupported] = useState(() => 
-        typeof navigator !== 'undefined' && 
+    const [isCameraSupported] = useState(() =>
+        typeof navigator !== 'undefined' &&
         !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
     );
 
@@ -72,21 +72,40 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
         }
 
         try {
-            // Enumerate available video devices first
-            const allDevices = await navigator.mediaDevices.enumerateDevices();
-            const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
-            setCameras(videoDevices);
+            let stream: MediaStream;
 
-            const targetIndex = cameraIndex ?? activeCameraIndex;
-            const targetDevice = videoDevices[targetIndex];
+            if (cameraIndex !== undefined && cameras.length > 0) {
+                // We have enumerated devices and a specific one was requested
+                const targetDevice = cameras[cameraIndex];
+                const constraints: MediaStreamConstraints = targetDevice && targetDevice.deviceId
+                    ? { video: { deviceId: { exact: targetDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } }
+                    : { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+                
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                setActiveCameraIndex(cameraIndex);
+            } else {
+                // First request a generic stream to trigger permission prompt.
+                // Mobile devices will prioritize the back camera via facingMode: environment.
+                // This step is critical because enumerateDevices() won't reveal external USB cameras 
+                // until permission is explicitly granted.
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: { ideal: 'environment' }, 
+                        width: { ideal: 1280 }, 
+                        height: { ideal: 720 } 
+                    } 
+                });
 
-            const constraints: MediaStreamConstraints = targetDevice
-                ? { video: { deviceId: { exact: targetDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } }
-                : { video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } };
+                // Now that permission is granted, enumerate all devices securely
+                const allDevices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
+                setCameras(videoDevices);
+                
+                // Keep index at 0 or wherever it was, since we just got the default environment camera
+                setActiveCameraIndex(0);
+            }
 
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
-            setActiveCameraIndex(targetIndex);
             setPhotoMode('camera');
         } catch (error) {
             console.error('Camera access error:', error);
@@ -107,7 +126,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
     useEffect(() => {
         const video = videoRef.current;
         const stream = streamRef.current;
-        
+
         if (photoMode === 'camera' && video && stream) {
             video.srcObject = stream;
             video.onloadedmetadata = () => {
@@ -184,7 +203,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                 // Sort by creation time descending to get the latest
                 studentsWithIds.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
                 const lastId = studentsWithIds[0].studentIdString!;
-                
+
                 // Extract prefix and number
                 const match = lastId.match(/^(.*?)(\d+)$/);
                 if (match) {
@@ -260,14 +279,14 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
 
         setLoading(true);
         console.log('[DIAGNOSTIC] [AddStudentForm] Starting handleSubmit...');
-        
+
         // Safety timeout — increased to 45s for production stability
         const safetyTimeout = setTimeout(() => {
             console.warn('[DIAGNOSTIC] [AddStudentForm] Submit timed out (45s fallback triggered). Force-releasing loading state.');
             setLoading(false);
             showToast('The request timed out. If your internet is slow, the student may still be saving in the background.', 'warning');
         }, 45000);
-        
+
         try {
             const parsedArrears = formData.arrears ? parseFloat(formData.arrears) : 0;
             const safeArrears = isNaN(parsedArrears) ? 0 : parsedArrears;
@@ -345,7 +364,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                 console.log('[DIAGNOSTIC] [AddStudentForm] Mode: Add NEW student');
                 const newIdStr = formData.studentIdString || await generateStudentId();
                 console.log('[DIAGNOSTIC] [AddStudentForm] Generated ID:', newIdStr);
-                
+
                 const localClass = await eduDb.classes.get(parseInt(formData.classId));
                 const classCloudId = localClass?.idCloud || null;
                 console.log('[DIAGNOSTIC] [AddStudentForm] Resolved Class Cloud ID:', classCloudId);
@@ -391,15 +410,15 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                 console.log('[DIAGNOSTIC] [AddStudentForm] Local save starting...');
                 await dbService.students.save({
                     ...studentData,
-                    idCloud: data.id, 
+                    idCloud: data.id,
                     studentIdString: newIdStr,
                     createdAt: Date.now(),
                     isDeleted: false,
-                    deletedAt: null, 
+                    deletedAt: null,
                     syncStatus: photo ? 'pending' : 'synced'
                 } as unknown as Student);
                 console.log('[DIAGNOSTIC] [AddStudentForm] Local save success.');
-                
+
                 showToast('Student added successfully!', 'success');
             }
 
@@ -407,12 +426,12 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                 console.log('[DIAGNOSTIC] [AddStudentForm] Broadcasting sync needed...');
                 syncService.broadcastSyncNeeded(user.schoolId);
             }
-            
+
             onSave();
         } catch (error: any) {
             console.error('[DIAGNOSTIC] [AddStudentForm] Error saving student:', error);
             const errMsg = error.message || '';
-            
+
             if (errMsg.includes('42501') || errMsg.toLowerCase().includes('permission denied')) {
                 showToast('Cloud permission denied. Please log out and back in to refresh your security token.', 'error');
             } else if (errMsg.includes('Cloud Sync Error')) {
@@ -491,34 +510,33 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                 {/* IDLE STATE — choice mode or profile placeholder */}
                                 {photoMode === 'idle' && !photo && (
                                     <div className="relative group">
-                                        <button 
+                                        <button
                                             type="button"
                                             onClick={() => startCamera()}
                                             disabled={!isCameraSupported}
-                                            className={`w-48 h-48 rounded-[3rem] flex flex-col items-center justify-center transition-all duration-500 shadow-sm relative overflow-hidden border-4 border-dashed ${
-                                                isCameraSupported 
-                                                ? 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 hover:border-blue-400 hover:bg-blue-50/30 group-hover:scale-[1.02] cursor-pointer' 
-                                                : 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed'
-                                            }`}
+                                            className={`w-48 h-48 rounded-[3rem] flex flex-col items-center justify-center transition-all duration-500 shadow-sm relative overflow-hidden border-4 border-dashed ${isCameraSupported
+                                                    ? 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 hover:border-blue-400 hover:bg-blue-50/30 group-hover:scale-[1.02] cursor-pointer'
+                                                    : 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed'
+                                                }`}
                                         >
                                             <div className={`w-16 h-16 rounded-2xl shadow-sm flex items-center justify-center mb-3 transition-colors ${isCameraSupported ? 'bg-white text-gray-400 group-hover:text-blue-500' : 'bg-gray-100 text-gray-300'}`}>
                                                 <i className={`fas ${isCameraSupported ? 'fa-camera' : 'fa-camera-slash'} text-2xl`}></i>
                                             </div>
                                             <p className={`text-xs font-black uppercase tracking-widest transition-colors text-center px-4 ${isCameraSupported ? 'text-gray-400 group-hover:text-blue-600' : 'text-gray-300'}`}>
                                                 {isCameraSupported ? (
-                                                    <>Take Photo <br/> <span className="text-[10px] font-medium normal-case">(Click to start)</span></>
+                                                    <>Take Photo <br /> <span className="text-[10px] font-medium normal-case">(Click to start)</span></>
                                                 ) : (
-                                                    <>Camera <br/> Unavailable</>
+                                                    <>Camera <br /> Unavailable</>
                                                 )}
                                             </p>
                                             {!isCameraSupported && (
                                                 <span className="absolute bottom-4 text-[7px] font-bold text-gray-400 px-4 leading-tight">Requires Secure Connection (HTTPS)</span>
                                             )}
                                         </button>
-                                        
+
                                         {/* Quick Upload Button */}
-                                        <button 
-                                            type="button" 
+                                        <button
+                                            type="button"
                                             onClick={() => fileInputRef.current?.click()}
                                             className="btn-icon !w-12 !h-12 !bg-indigo-600 !text-white !rounded-2xl absolute -bottom-2 -right-2 shadow-lg shadow-indigo-200 border-4 border-white"
                                             title="Upload from device"
@@ -539,7 +557,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                                 muted
                                                 className="w-full h-full object-cover"
                                             />
-                                            
+
                                             {/* Face guide overlay */}
                                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                                 <div className="w-64 h-72 border-2 border-white/20 rounded-[4rem] relative">
@@ -589,11 +607,10 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                                     type="button"
                                                     onClick={switchCamera}
                                                     title={cameras.length > 1 ? `Switch camera (${activeCameraIndex + 1}/${cameras.length})` : 'Switch camera'}
-                                                    className={`btn-icon !w-12 !h-12 backdrop-blur-md !text-white !rounded-full transition-all border gap-0.5 ${
-                                                        cameras.length > 1
+                                                    className={`btn-icon !w-12 !h-12 backdrop-blur-md !text-white !rounded-full transition-all border gap-0.5 ${cameras.length > 1
                                                             ? '!bg-white/20 !border-white/30 hover:!bg-white/30 hover:scale-110 active:scale-95 cursor-pointer'
                                                             : '!bg-white/5 !border-white/10 !opacity-40 cursor-not-allowed'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <i className="fas fa-camera-rotate text-base"></i>
                                                     {cameras.length > 1 && (
@@ -613,7 +630,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                         <div className="w-48 h-48 rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white">
                                             {photoPreview && <img src={photoPreview} alt="Student" className="w-full h-full object-cover" />}
                                         </div>
-                                        
+
                                         {/* Status Badge */}
                                         <div className="absolute -top-3 -right-3 px-3 py-1 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg border-2 border-white flex items-center gap-1.5">
                                             <i className="fas fa-check"></i> Ready
@@ -621,17 +638,17 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
 
                                         {/* Actions Overlay — appear on hover */}
                                         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-[3rem] opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center gap-3">
-                                            <button 
-                                                type="button" 
-                                                onClick={() => startCamera()} 
+                                            <button
+                                                type="button"
+                                                onClick={() => startCamera()}
                                                 className="btn-icon !w-10 !h-10 !bg-white !text-blue-600 !rounded-xl shadow-lg"
                                                 title="Retake"
                                             >
                                                 <i className="fas fa-camera"></i>
                                             </button>
-                                            <button 
-                                                type="button" 
-                                                onClick={clearPhoto} 
+                                            <button
+                                                type="button"
+                                                onClick={clearPhoto}
                                                 className="btn-icon !w-10 !h-10 !bg-white !text-red-500 !rounded-xl shadow-lg"
                                                 title="Remove"
                                             >
