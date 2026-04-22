@@ -74,27 +74,40 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
         try {
             let stream: MediaStream;
 
+            const getStreamWithFallback = async (primaryConstraints: MediaStreamConstraints, fallbackConstraints: MediaStreamConstraints) => {
+                try {
+                    return await navigator.mediaDevices.getUserMedia(primaryConstraints);
+                } catch (err: any) {
+                    console.warn('Failed with primary constraints, trying fallback:', err);
+                    return await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                }
+            };
+
             if (cameraIndex !== undefined && cameras.length > 0) {
                 // We have enumerated devices and a specific one was requested
                 const targetDevice = cameras[cameraIndex];
-                const constraints: MediaStreamConstraints = targetDevice && targetDevice.deviceId
+                const primaryConstraints: MediaStreamConstraints = targetDevice && targetDevice.deviceId
                     ? { video: { deviceId: { exact: targetDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } }
                     : { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } };
                 
-                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const fallbackConstraints: MediaStreamConstraints = targetDevice && targetDevice.deviceId
+                    ? { video: { deviceId: { exact: targetDevice.deviceId } } }
+                    : { video: true };
+
+                stream = await getStreamWithFallback(primaryConstraints, fallbackConstraints);
                 setActiveCameraIndex(cameraIndex);
             } else {
                 // First request a generic stream to trigger permission prompt.
                 // Mobile devices will prioritize the back camera via facingMode: environment.
-                // This step is critical because enumerateDevices() won't reveal external USB cameras 
-                // until permission is explicitly granted.
-                stream = await navigator.mediaDevices.getUserMedia({ 
+                const primaryConstraints: MediaStreamConstraints = { 
                     video: { 
                         facingMode: { ideal: 'environment' }, 
                         width: { ideal: 1280 }, 
                         height: { ideal: 720 } 
                     } 
-                });
+                };
+                
+                stream = await getStreamWithFallback(primaryConstraints, { video: true });
 
                 // Now that permission is granted, enumerate all devices securely
                 const allDevices = await navigator.mediaDevices.enumerateDevices();
@@ -107,9 +120,15 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
 
             streamRef.current = stream;
             setPhotoMode('camera');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Camera access error:', error);
-            showToast('Camera access denied or unavailable on this device.', 'error');
+            if (error.name === 'NotReadableError') {
+                showToast('Camera is in use by another application or blocked by hardware.', 'error');
+            } else if (error.name === 'OverconstrainedError') {
+                showToast('Camera does not support the requested resolution.', 'error');
+            } else {
+                showToast('Camera access denied or unavailable on this device.', 'error');
+            }
         }
     };
 
