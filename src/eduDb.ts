@@ -210,6 +210,7 @@ export interface AssessmentConfig {
     bestNCount?: number;
     isDeleted?: boolean;
     syncStatus: 'synced' | 'pending' | 'failed';
+    syncError?: string;
     createdAt: number;
     updatedAt: number;
 }
@@ -228,6 +229,7 @@ export interface PromotionRequest {
     reviewNote?: string;
     isDeleted?: boolean;
     syncStatus: 'synced' | 'pending' | 'failed';
+    syncError?: string;
     createdAt: number;
     updatedAt: number;
     reviewedAt?: number;
