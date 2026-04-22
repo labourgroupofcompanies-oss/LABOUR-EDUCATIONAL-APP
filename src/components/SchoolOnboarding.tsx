@@ -141,23 +141,36 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
         if (step !== 4 || isSubmitting) return;
 
         setIsSubmitting(true);
+        console.log('[DIAGNOSTIC] [SchoolOnboarding] Starting handleSubmit sequence...');
+        
+        const safetyTimeout = setTimeout(() => {
+            console.warn('[DIAGNOSTIC] [SchoolOnboarding] Onboarding timed out (60s fallback triggered). Force-releasing submission state.');
+            setIsSubmitting(false);
+            setErrors({ submit: 'Initialization timed out (60s). The server might be under heavy load or your connection is weak. Please check if your school was created before trying again.' });
+        }, 60000);
+
         try {
             // Check if username exists locally
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Checking local username availability...');
             const existingUser = await db.users.where('username').equals(formData.username).first();
             if (existingUser) {
+                console.warn('[DIAGNOSTIC] [SchoolOnboarding] Local username conflict.');
                 setErrors({ username: 'This username is already taken. Please choose a different one.' });
                 setStep(3);
                 setIsSubmitting(false);
+                clearTimeout(safetyTimeout);
                 return;
             }
 
             const schoolCode = await generateSchoolId();
             const supabaseEmail = getSupabaseEmail(formData.username, schoolCode);
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Generated schoolCode:', schoolCode, 'SupabaseEmail:', supabaseEmail);
 
             // Convert logo to Base64 for cloud sync
             const logoBase64 = logo ? await syncService.blobToBase64(logo) : undefined;
 
             // 1. Create School Record in Supabase FIRST to get UUID
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Step 1: Creating School Record in Supabase...');
             const { data: schoolRes, error: schoolError } = await supabase
                 .from('schools')
                 .insert({
@@ -178,14 +191,18 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                 .single();
 
             if (schoolError) {
-                setErrors({ submit: `Cloud Initialization Error: ${schoolError.message}` });
+                console.error('[DIAGNOSTIC] [SchoolOnboarding] Supabase School Insert Error:', schoolError);
+                setErrors({ submit: `Cloud Initialization Error (Step 1): ${schoolError.message}` });
                 setIsSubmitting(false);
+                clearTimeout(safetyTimeout);
                 return;
             }
 
             const schoolUuid = schoolRes.id;
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] School created with UUID:', schoolUuid);
 
             // 2. Sign up with Supabase Auth
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Step 2: Supabase Auth Sign Up...');
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: supabaseEmail,
                 password: formData.password,
@@ -201,19 +218,25 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
             });
 
             if (authError) {
-                setErrors({ submit: `Authentication Error: ${authError.message}` });
+                console.error('[DIAGNOSTIC] [SchoolOnboarding] Supabase Auth Error:', authError);
+                setErrors({ submit: `Authentication Error (Step 2): ${authError.message}` });
                 setIsSubmitting(false);
+                clearTimeout(safetyTimeout);
                 return;
             }
 
             const authUser = authData.user;
             if (!authUser) {
-                setErrors({ submit: 'Authentication failed. No user returned.' });
+                console.error('[DIAGNOSTIC] [SchoolOnboarding] No user returned from auth.signUp');
+                setErrors({ submit: 'Authentication failed (Step 2). No user returned.' });
                 setIsSubmitting(false);
+                clearTimeout(safetyTimeout);
                 return;
             }
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Auth successful. User ID:', authUser.id);
 
             // 3. Create Staff Profile linked by UUID
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Step 3: Creating Staff Profile...');
             const { error: profileError } = await supabase
                 .from('staff_profiles')
                 .insert({
@@ -226,12 +249,16 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                 });
 
             if (profileError) {
-                setErrors({ submit: `Profile Creation Error: ${profileError.message}` });
+                console.error('[DIAGNOSTIC] [SchoolOnboarding] Staff Profile Error:', profileError);
+                setErrors({ submit: `Profile Creation Error (Step 3): ${profileError.message}` });
                 setIsSubmitting(false);
+                clearTimeout(safetyTimeout);
                 return;
             }
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Staff profile created.');
 
             // 4. Local DB Saves
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Step 4: Local Database Persistence...');
             const hashedPassword = await hashPassword(formData.password);
 
             const schoolData: School = {
@@ -271,15 +298,16 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                 syncStatus: 'synced'
             };
             await db.users.put(userData);
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Local DB saves complete.');
 
             // 5. Save initial academic settings to eduDb and Supabase
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Step 5: Initial Academic Settings...');
             const academicSettings = [
                 { key: 'academicYear', value: formData.onboardingAcademicYear },
                 { key: 'currentTerm', value: formData.onboardingTerm }
             ];
 
             for (const setting of academicSettings) {
-                // Save locally
                 await eduDb.settings.put({
                     schoolId: schoolUuid,
                     key: setting.key,
@@ -289,16 +317,17 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                     updatedAt: Date.now()
                 });
 
-                // Save to cloud
                 await supabase.from('settings').insert({
                     school_id: schoolUuid,
                     key: setting.key,
                     value: setting.value
                 });
             }
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Academic settings saved.');
 
             // 6. Mark secure invite token as used
             if (inviteToken) {
+                console.log('[DIAGNOSTIC] [SchoolOnboarding] Step 6: Redeeming invitation token...');
                 await supabase
                     .from('school_invites')
                     .update({ 
@@ -309,9 +338,8 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                     .eq('id', inviteToken);
             }
 
-            // 7. Write first-term FREE TRIAL subscription row to cloud + local cache
-            //    This ensures the trial is auditable, appears in payment history,
-            //    and the local subscriptionService resolveStatus check stays accurate.
+            // 7. Write first-term FREE TRIAL subscription row
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Step 7: Activating Free Trial...');
             const trialSubPayload = {
                 school_id: schoolUuid,
                 term: formData.onboardingTerm,
@@ -327,28 +355,31 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                 .select('id')
                 .single();
 
-            // Mirror trial record to local IndexedDB for offline-first access
             await eduDb.subscriptions.put({
                 schoolId: schoolUuid,
                 term: formData.onboardingTerm,
                 academicYear: formData.onboardingAcademicYear,
-                status: 'trial', // correctly set as trial
+                status: 'trial',
                 verifiedAt: Date.now(),
                 idCloud: trialSubData?.id ?? undefined,
                 syncStatus: 'synced',
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             });
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Free trial activated.');
 
             setSession(userData);
             setGeneratedId(schoolCode);
             setSuccess(true);
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] Sequence completed successfully.');
         } catch (err) {
-            console.error('Failed to save school:', err);
+            console.error('[DIAGNOSTIC] [SchoolOnboarding] Critical Initialization Failure:', err);
             const errorMessage = err instanceof Error ? err.message : String(err);
             setErrors({ submit: `Initialization Failure: ${errorMessage}. Please check your connection and try again.` });
         } finally {
+            clearTimeout(safetyTimeout);
             setIsSubmitting(false);
+            console.log('[DIAGNOSTIC] [SchoolOnboarding] handleSubmit process finalized.');
         }
     };
 

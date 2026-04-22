@@ -259,13 +259,14 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
         if (!user?.schoolId) return;
 
         setLoading(true);
-        console.log('[AddStudentForm] Starting handleSubmit...');
+        console.log('[DIAGNOSTIC] [AddStudentForm] Starting handleSubmit...');
         
-        // Safety timeout — clear loading after 15s if it hangs
+        // Safety timeout — increased to 45s for production stability
         const safetyTimeout = setTimeout(() => {
+            console.warn('[DIAGNOSTIC] [AddStudentForm] Submit timed out (45s fallback triggered). Force-releasing loading state.');
             setLoading(false);
-            console.warn('[AddStudentForm] Submit timed out (15s fallback triggered).');
-        }, 15000);
+            showToast('The request timed out. If your internet is slow, the student may still be saving in the background.', 'warning');
+        }, 45000);
         
         try {
             const parsedArrears = formData.arrears ? parseFloat(formData.arrears) : 0;
@@ -293,12 +294,12 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
             };
 
             if (studentId) {
-                console.log('[AddStudentForm] Mode: Update', { studentId });
+                console.log('[DIAGNOSTIC] [AddStudentForm] Mode: Update', { studentId });
                 const localStudent = await eduDb.students.get(studentId);
                 const cloudId = localStudent?.idCloud;
 
                 if (cloudId) {
-                    console.log('[AddStudentForm] Cloud update starting...', { cloudId });
+                    console.log('[DIAGNOSTIC] [AddStudentForm] Cloud update starting...', { cloudId });
                     const localClass = await eduDb.classes.get(parseInt(formData.classId));
                     const classCloudId = localClass?.idCloud || null;
 
@@ -326,30 +327,29 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                         .eq('id', cloudId);
 
                     if (error) {
-                        console.error('[AddStudentForm] Supabase Update Error:', error);
+                        console.error('[DIAGNOSTIC] [AddStudentForm] Supabase Update Error:', error);
                         throw new Error(`Cloud Update Error: ${error.message}`);
                     }
-                    console.log('[AddStudentForm] Cloud update success.');
+                    console.log('[DIAGNOSTIC] [AddStudentForm] Cloud update success.');
                 }
 
-                console.log('[AddStudentForm] Local update starting...');
+                console.log('[DIAGNOSTIC] [AddStudentForm] Local update starting...');
                 await dbService.students.update(studentId, {
                     ...studentData,
                     syncStatus: (!cloudId || photo) ? 'pending' : 'synced'
                 });
-                console.log('[AddStudentForm] Local update success.');
+                console.log('[DIAGNOSTIC] [AddStudentForm] Local update success.');
 
                 showToast('Student updated successfully!', 'success');
             } else {
-                console.log('[AddStudentForm] Mode: Add NEW student');
+                console.log('[DIAGNOSTIC] [AddStudentForm] Mode: Add NEW student');
                 const newIdStr = formData.studentIdString || await generateStudentId();
-                console.log('[AddStudentForm] Generated ID:', newIdStr);
+                console.log('[DIAGNOSTIC] [AddStudentForm] Generated ID:', newIdStr);
                 
                 const localClass = await eduDb.classes.get(parseInt(formData.classId));
                 const classCloudId = localClass?.idCloud || null;
-                console.log('[AddStudentForm] Resolved Class Cloud ID:', classCloudId);
+                console.log('[DIAGNOSTIC] [AddStudentForm] Resolved Class Cloud ID:', classCloudId);
 
-                // Create the Supabase payload inline based on our strict schema map
                 const supabasePayload = {
                     school_id: user.schoolId,
                     class_id: classCloudId,
@@ -369,8 +369,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                     is_deleted: false
                 };
 
-                // Online Supabase Insert FIRST
-                console.log('[AddStudentForm] Calling Supabase insert...', supabasePayload);
+                console.log('[DIAGNOSTIC] [AddStudentForm] Calling Supabase insert...', supabasePayload);
                 const { data, error } = await supabase
                     .from('students')
                     .insert(supabasePayload)
@@ -378,19 +377,18 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                     .single();
 
                 if (error) {
-                    console.error('[AddStudentForm] Supabase Insert Error:', error);
+                    console.error('[DIAGNOSTIC] [AddStudentForm] Supabase Insert Error:', error);
                     throw new Error(`Cloud Sync Error: ${error.message}`);
                 }
 
                 if (!data) {
-                    console.error('[AddStudentForm] Supabase returned no data but no error.');
+                    console.error('[DIAGNOSTIC] [AddStudentForm] Supabase returned no data but no error.');
                     throw new Error('Cloud Sync Error: No data returned from server.');
                 }
 
-                console.log('[AddStudentForm] Cloud insert success. Received ID:', data.id);
+                console.log('[DIAGNOSTIC] [AddStudentForm] Cloud insert success. Received ID:', data.id);
 
-                // If online insertion succeeds, mirror to IndexedDB cache
-                console.log('[AddStudentForm] Local save starting...');
+                console.log('[DIAGNOSTIC] [AddStudentForm] Local save starting...');
                 await dbService.students.save({
                     ...studentData,
                     idCloud: data.id, 
@@ -400,22 +398,21 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                     deletedAt: null, 
                     syncStatus: photo ? 'pending' : 'synced'
                 } as unknown as Student);
-                console.log('[AddStudentForm] Local save success.');
+                console.log('[DIAGNOSTIC] [AddStudentForm] Local save success.');
                 
                 showToast('Student added successfully!', 'success');
             }
 
-            // Trigger real-time broadcast to notify other portals (Teachers/Accountants)
             if (user?.schoolId) {
+                console.log('[DIAGNOSTIC] [AddStudentForm] Broadcasting sync needed...');
                 syncService.broadcastSyncNeeded(user.schoolId);
             }
             
             onSave();
         } catch (error: any) {
-            console.error('Error saving student:', error);
+            console.error('[DIAGNOSTIC] [AddStudentForm] Error saving student:', error);
             const errMsg = error.message || '';
             
-            // Explicitly handle "Permission Denied" (likely RLS failure)
             if (errMsg.includes('42501') || errMsg.toLowerCase().includes('permission denied')) {
                 showToast('Cloud permission denied. Please log out and back in to refresh your security token.', 'error');
             } else if (errMsg.includes('Cloud Sync Error')) {
@@ -426,6 +423,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
         } finally {
             clearTimeout(safetyTimeout);
             setLoading(false);
+            console.log('[DIAGNOSTIC] [AddStudentForm] handleSubmit finalized.');
         }
     };
 

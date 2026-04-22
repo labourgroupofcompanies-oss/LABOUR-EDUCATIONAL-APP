@@ -2141,6 +2141,10 @@ export const syncService = {
             } else if ((key === 'logo' || key === 'photo' || key === 'photo_url') && typeof obj[key] === 'string' && obj[key].startsWith('data:image/')) {
                 // Convert Base64 back to Blob
                 newObj[camelKey] = this.base64ToBlob(obj[key]);
+            } else if (supabaseTable === 'staff_profiles' && key === 'role') {
+                // Normalize cloud role (lowercase) to uppercase to match local User type convention
+                // e.g. 'accountant' → 'ACCOUNTANT', 'teacher' → 'TEACHER'
+                newObj['role'] = obj[key] ? String(obj[key]).toUpperCase() : 'STAFF';
             } else {
                 newObj[camelKey] = obj[key];
             }
@@ -2166,7 +2170,9 @@ export const syncService = {
         if (table === 'budgets') return 'school_id,category,term,year';
         if (table === 'promotion_requests') return 'student_id,from_class_id,to_class_id,created_at';
         if (table === 'graduate_records' || table === 'graduate_records') return 'school_id,student_id';
-        if (table === 'school_events') return 'id';
+        if (table === 'school_events') return 'school_id,title,start_date';
+        if (table === 'classes') return 'school_id,name,level';
+        if (table === 'subjects') return 'school_id,name';
 
         return defaultKey;
     },

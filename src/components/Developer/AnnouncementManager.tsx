@@ -48,24 +48,40 @@ const AnnouncementManager: React.FC = () => {
 
     const postAnnouncement = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!title.trim() || !message.trim()) return;
         setLoading(true);
+        console.log('[DIAGNOSTIC] Starting Announcement Post...', { title, level });
+
+        const safetyTimeout = setTimeout(() => {
+            console.warn('[DIAGNOSTIC] Announcement Post timed out (15s fallback). Force-releasing loading state.');
+            setLoading(false);
+            showMessage('error', 'The request timed out. Please check your internet connection.');
+        }, 15000);
+
         try {
+            console.log('[DIAGNOSTIC] Calling Supabase insert for system_announcements...');
             const { error } = await supabase
                 .from('system_announcements')
                 .insert([{ title, message, level, is_active: true }]);
 
-            if (error) throw error;
+            if (error) {
+                console.error('[DIAGNOSTIC] Supabase Insert Error:', error);
+                throw error;
+            }
 
+            console.log('[DIAGNOSTIC] Post successful. Resetting form.');
             setTitle('');
             setMessage('');
             setLevel('info');
             showMessage('success', 'Announcement posted successfully!');
             fetchAnnouncements();
-        } catch (err) {
-            console.error('Failed to post announcement:', err);
-            showMessage('error', 'Failed to post announcement.');
+        } catch (err: any) {
+            console.error('[DIAGNOSTIC] Failed to post announcement. Full error:', err);
+            showMessage('error', `Failed to post announcement: ${err.message || 'Unknown error'}`);
         } finally {
+            clearTimeout(safetyTimeout);
             setLoading(false);
+            console.log('[DIAGNOSTIC] Post process finalized.');
         }
     };
 

@@ -200,15 +200,16 @@ const StaffManagement: React.FC = () => {
                         address: newStaff.address,
                     };
 
-                    // Map UI role (TEACHER/ACCOUNTANT) to Edge Function valid roles ('staff' or 'headteacher')
-                    // While the DB role is 'staff', the service call should pass the label we want to persist.
-                    const targetRole = newStaff.role.toLowerCase() === 'headteacher' ? 'headteacher' : 'staff';
+                    // Map UI role (TEACHER/ACCOUNTANT/HEADTEACHER) to a valid Edge Function role.
+                    // Headteachers map to 'headteacher'; teachers and accountants pass through.
+                    const uiRole = newStaff.role.toLowerCase();
+                    const targetRole = uiRole === 'headteacher' ? 'headteacher' : uiRole;
 
-                    console.log('[StaffManagement] Calling staffService.createStaff...', { username: formData.username, targetRole: newStaff.role });
+                    console.log('[StaffManagement] Calling staffService.createStaff...', { username: formData.username, targetRole });
                     // ONLINE-FIRST: Identity created in cloud first, service handles local cache on success.
                     await staffService.createStaff({
                         ...formData,
-                        role: targetRole as any // Edge Function validation role
+                        role: targetRole as any
                     } as any);
                     console.log('[StaffManagement] staffService.createStaff Success.');
 
@@ -264,7 +265,9 @@ const StaffManagement: React.FC = () => {
             username: s.username,
             password: '',
             fullName: s.fullName,
-            role: s.role as any,
+            // Normalize to uppercase so the select finds the correct option (TEACHER / ACCOUNTANT).
+            // Cloud pulls store lowercase roles; the local User type and option values use uppercase.
+            role: (s.role?.toUpperCase() as any) || 'TEACHER',
             phoneNumber: s.phoneNumber || '',
             email: s.email || '',
             qualification: s.qualification || '',
@@ -450,8 +453,8 @@ const StaffManagement: React.FC = () => {
                                 onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value as any })}
                                 className="w-full px-5 py-4 rounded-xl bg-gray-50 border border-gray-100 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-all font-bold text-gray-700"
                             >
-                                <option value="teacher">Teacher</option>
-                                <option value="accountant">Accountant</option>
+                                <option value="TEACHER">Teacher</option>
+                                <option value="ACCOUNTANT">Accountant</option>
                             </select>
                         </div>
 
@@ -540,9 +543,18 @@ const StaffManagement: React.FC = () => {
                             staff.map((s) => {
                                 const isHeadteacher = s.role?.toUpperCase() === 'HEADTEACHER';
                                 const isAccountant = s.role?.toUpperCase() === 'ACCOUNTANT';
-                                const assignedClasses = classes.filter(c => c.classTeacherId === s.id?.toString());
+                                // Build a set of all IDs this staff member may be stored as:
+                                // - numeric local ID string (legacy)
+                                // - Supabase UUID (post-sync)
+                                // - username (post-migration)
+                                const staffIdSet = new Set<string>([
+                                    s.username,
+                                    ...(s.id ? [s.id.toString()] : []),
+                                    ...((s as any).idCloud ? [(s as any).idCloud] : []),
+                                ]);
+                                const assignedClasses = classes.filter(c => c.classTeacherId && staffIdSet.has(c.classTeacherId));
                                 const isClassTeacher = assignedClasses.length > 0;
-                                const isSubjectTeacher = classSubjects.some(cs => cs.teacherId === s.id?.toString());
+                                const isSubjectTeacher = classSubjects.some(cs => cs.teacherId && staffIdSet.has(cs.teacherId));
 
                                 let statusColor = 'bg-gray-50 text-gray-400';
                                 let statusLabel = s.role === 'TEACHER' ? 'Teacher' : (s.role === 'ACCOUNTANT' ? 'Accountant' : (s.role === 'HEADTEACHER' ? 'Headteacher' : 'Staff'));
@@ -643,9 +655,18 @@ const StaffManagement: React.FC = () => {
                     staff.map((s) => {
                         const isHeadteacher = s.role?.toUpperCase() === 'HEADTEACHER';
                         const isAccountant = s.role?.toUpperCase() === 'ACCOUNTANT';
-                        const assignedClasses = classes.filter(c => c.classTeacherId === s.id?.toString());
+                        // Build a set of all IDs this staff member may be stored as:
+                        // - numeric local ID string (legacy)
+                        // - Supabase UUID (post-sync)
+                        // - username (post-migration)
+                        const staffIdSet = new Set<string>([
+                            s.username,
+                            ...(s.id ? [s.id.toString()] : []),
+                            ...((s as any).idCloud ? [(s as any).idCloud] : []),
+                        ]);
+                        const assignedClasses = classes.filter(c => c.classTeacherId && staffIdSet.has(c.classTeacherId));
                         const isClassTeacher = assignedClasses.length > 0;
-                        const isSubjectTeacher = classSubjects.some(cs => cs.teacherId === s.id?.toString());
+                        const isSubjectTeacher = classSubjects.some(cs => cs.teacherId && staffIdSet.has(cs.teacherId));
 
                         let statusColor = 'bg-gray-50 text-gray-400';
                         let statusLabel = s.role === 'TEACHER' ? 'Teacher' : (s.role === 'ACCOUNTANT' ? 'Accountant' : (s.role === 'HEADTEACHER' ? 'Headteacher' : 'Staff'));

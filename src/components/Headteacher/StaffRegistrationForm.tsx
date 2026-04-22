@@ -18,12 +18,12 @@ type Status =
 const EMPTY_FORM: StaffFormData = {
     school_id: '',
     full_name: '',
-    gender: 'Male',
+    gender: 'male',
     phone: '',
     email: '',
     qualification: '',
     specialization: '',
-    role: 'staff',
+    role: 'STAFF',
     username: '',
     password: '',
     address: '',
@@ -49,29 +49,29 @@ const StaffRegistrationForm: React.FC<Props> = ({ schoolId, onSuccess }) => {
     // ── Submit ────────────────────────────────────────────────────────────────
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('[StaffRegistrationForm] Starting handleSubmit...');
+        console.log('[DIAGNOSTIC] [StaffRegistrationForm] Starting handleSubmit...');
         setStatus({ type: 'loading' });
         
         const safetyTimeout = setTimeout(() => {
-            setStatus({ type: 'idle' });
-            console.warn('[StaffRegistrationForm] Submit timed out (90s fallback).');
+            console.warn('[DIAGNOSTIC] [StaffRegistrationForm] Submit timed out (90s fallback triggered).');
+            setStatus({ 
+                type: 'error', 
+                message: 'The registration request timed out (90s). The server might be slow. Please check the staff list in a moment to see if it succeeded.' 
+            });
         }, 90000);
 
         try {
-            // Get the caller's JWT
-            console.log('[StaffRegistrationForm] Fetching session...');
+            console.log('[DIAGNOSTIC] [StaffRegistrationForm] Fetching session...');
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             if (sessionError || !session) {
+                console.error('[DIAGNOSTIC] [StaffRegistrationForm] Session Error:', sessionError);
                 setStatus({ type: 'error', message: 'Session expired. Please log out and back in.' });
                 return;
             }
 
-            // Call the Edge Function via the service
-            // NOTE: staffService.createStaff only takes the form data as its internal implementation 
-            // already retrieves the session. Passing extras is unnecessary but we ensure the form is correct.
-            console.log('[StaffRegistrationForm] Calling staffService.createStaff...');
+            console.log('[DIAGNOSTIC] [StaffRegistrationForm] Calling staffService.createStaff with form:', form);
             const result = await staffService.createStaff(form);
-            console.log('[StaffRegistrationForm] createStaff result received:', result);
+            console.log('[DIAGNOSTIC] [StaffRegistrationForm] createStaff result received:', result);
 
             setStatus({
                 type: 'success',
@@ -79,18 +79,17 @@ const StaffRegistrationForm: React.FC<Props> = ({ schoolId, onSuccess }) => {
                 username: result.staff.username,
             });
 
-            // Reset form (keep school_id locked in)
+            console.log('[DIAGNOSTIC] [StaffRegistrationForm] Resetting form.');
             setForm({ ...EMPTY_FORM, school_id: schoolId });
             onSuccess?.(result.staff.full_name);
 
         } catch (err: any) {
-            console.error('[StaffRegistrationForm] Error caught in handleSubmit:', err);
+            console.error('[DIAGNOSTIC] [StaffRegistrationForm] Error caught in handleSubmit:', err);
             const message = err?.message || 'An unexpected error occurred.';
-            setStatus({ type: 'error', message });
+            setStatus({ type: 'error', message: `Failed to create staff: ${message}` });
         } finally {
             clearTimeout(safetyTimeout);
-            // We only clear loading if we're not in the success state or error state?
-            // Actually, success/error state replaces loading anyway by setting status.
+            console.log('[DIAGNOSTIC] [StaffRegistrationForm] handleSubmit process finalized.');
         }
     };
 
@@ -162,9 +161,9 @@ const StaffRegistrationForm: React.FC<Props> = ({ schoolId, onSuccess }) => {
                     <div className="field field--half">
                         <label className="field__label" htmlFor="gender">Gender <span className="required-star">*</span></label>
                         <select id="gender" className="field__input" value={form.gender} onChange={set('gender')} required>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
                         </select>
                     </div>
 
@@ -227,8 +226,8 @@ const StaffRegistrationForm: React.FC<Props> = ({ schoolId, onSuccess }) => {
                     <div className="field field--half">
                         <label className="field__label" htmlFor="role">System Role <span className="required-star">*</span></label>
                         <select id="role" className="field__input" value={form.role} onChange={set('role')} required>
-                            <option value="staff">Staff (Teacher / General)</option>
-                            <option value="headteacher">Headteacher</option>
+                            <option value="STAFF">Staff (Teacher / General)</option>
+                            <option value="HEADTEACHER">Headteacher</option>
                         </select>
                     </div>
 

@@ -13,7 +13,7 @@ export interface StaffFormData {
     email: string;
     qualification: string;
     specialization: string;
-    role: 'staff' | 'headteacher' | 'teacher' | 'accountant' | 'developer' | 'admin';
+    role: 'STAFF' | 'HEADTEACHER' | 'TEACHER' | 'ACCOUNTANT' | 'DEVELOPER' | 'ADMIN';
     username: string;
     password: string;
     address: string;
