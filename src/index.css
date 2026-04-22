@@ -142,6 +142,7 @@
     min-height: 100vh;
     background-color: #f9fafb;
     color: #1e293b;
+    overflow-x: hidden; /* Prevent page-wide horizontal overflow on mobile */
   }
 
   #root {

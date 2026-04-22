@@ -4,6 +4,7 @@ import { eduDb } from '../../eduDb';
 import { useAuth } from '../../hooks/useAuth';
 import { showToast } from '../Common/Toast';
 import { showPromotionDialog } from '../Common/PromotionDialogs';
+import { getMovementType, normalizeLevel } from '../../utils/levelUtils';
 
 export default function PromotionApprovals() {
     const { user } = useAuth();
@@ -29,7 +30,10 @@ export default function PromotionApprovals() {
                 fromClassName: fromClass?.name || 'Unknown',
                 toClassName: toClass?.name || 'Unknown',
                 requestedByName: requestedByStaff?.fullName || 'Teacher',
-                currentStudentClassId: student?.classId
+                currentStudentClassId: student?.classId,
+                fromLevel: fromClass?.level || '',
+                toLevel: toClass?.level || '',
+                detectedType: getMovementType(fromClass?.level || '', toClass?.level || '')
             };
         }));
     }, [user?.schoolId]);
@@ -140,7 +144,7 @@ export default function PromotionApprovals() {
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse min-w-[600px]">
                         <thead>
                             <tr className="border-b-2 border-slate-100">
                                 <th className="py-4 px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Student</th>
@@ -182,6 +186,11 @@ export default function PromotionApprovals() {
                                             {req.fromClassId === req.toClassId && (
                                                 <span className="inline-block mt-1.5 px-2 py-0.5 bg-orange-100 text-orange-600 text-[9px] font-black uppercase tracking-widest rounded-md">
                                                     <i className="fas fa-redo-alt mr-1"></i> Repeating
+                                                </span>
+                                            )}
+                                            {req.fromClassId !== req.toClassId && req.detectedType === 'transfer' && (
+                                                <span className="inline-block mt-1.5 px-2 py-0.5 bg-amber-100 text-amber-600 text-[9px] font-black uppercase tracking-widest rounded-md border border-amber-200">
+                                                    <i className="fas fa-exchange-alt mr-1"></i> Lateral Transfer
                                                 </span>
                                             )}
                                             {req.currentStudentClassId !== req.fromClassId && (

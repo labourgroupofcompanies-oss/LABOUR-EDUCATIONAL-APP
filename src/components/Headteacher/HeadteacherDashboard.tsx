@@ -19,6 +19,7 @@ import SyncStatusBadge from '../Common/SyncStatusBadge';
 import Settings from './Settings';
 import { syncService } from '../../services/syncService';
 import { showToast } from '../Common/Toast';
+import { normalizeArray, safeString, safeNumber } from '../../utils/dataSafety';
 import SubscriptionGate from '../Subscription/SubscriptionGate';
 import SubscriptionPage from '../Subscription/SubscriptionPage';
 import PromotionApprovals from './PromotionApprovals';
@@ -123,15 +124,15 @@ const HeadteacherDashboard: React.FC = () => {
         if (!user?.schoolId) return { studentCount: 0, staffCount: 0, classCount: 0, subjectCount: 0, upcomingEvents: [] };
         
         try {
-            const [students, teachers, classes, subjects, events] = await Promise.all([
+            const [students, teachers, classes, subjects, eventsRaw] = await Promise.all([
                 dbService.students.getAll(user.schoolId).then(res => 
-                    res.filter((s, i, arr) => 
-                        arr.findIndex(t => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
+                    normalizeArray(res).filter((s, i, arr) => 
+                        s && s.fullName && arr.findIndex(t => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
                     ).length
                 ),
-                dbService.staff.getTeachers(user.schoolId).then(res => res.length),
-                dbService.classes.getAll(user.schoolId).then(res => res.length),
-                dbService.subjects.getAll(user.schoolId).then(res => res.length),
+                dbService.staff.getTeachers(user.schoolId).then(res => normalizeArray(res).length),
+                dbService.classes.getAll(user.schoolId).then(res => normalizeArray(res).length),
+                dbService.subjects.getAll(user.schoolId).then(res => normalizeArray(res).length),
                 // Safe query for newly added schoolEvents table
                 (async () => {
                     try {
@@ -145,16 +146,17 @@ const HeadteacherDashboard: React.FC = () => {
                 })()
             ]);
 
+            const events = normalizeArray(eventsRaw);
             const startOfToday = new Date();
             startOfToday.setHours(0, 0, 0, 0);
 
             return { 
-                studentCount: students, 
-                staffCount: teachers, 
-                classCount: classes, 
-                subjectCount: subjects,
+                studentCount: safeNumber(students), 
+                staffCount: safeNumber(teachers), 
+                classCount: safeNumber(classes), 
+                subjectCount: safeNumber(subjects),
                 upcomingEvents: events
-                    .filter((e: any) => new Date(e.startDate).getTime() >= startOfToday.getTime())
+                    .filter((e: any) => e && e.startDate && new Date(e.startDate).getTime() >= startOfToday.getTime())
                     .sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
                     .slice(0, 3)
             };
@@ -201,7 +203,7 @@ const HeadteacherDashboard: React.FC = () => {
                 .select('*')
                 .eq('is_active', true)
                 .order('created_at', { ascending: false });
-            if (data) setAnnouncements(data);
+            if (data) setAnnouncements(normalizeArray(data));
         };
         fetchAnnouncements();
     }, []);
@@ -227,146 +229,165 @@ const HeadteacherDashboard: React.FC = () => {
                 return (
                     <SubscriptionGate>
                         <div className="space-y-8 md:space-y-12 animate-fadeIn">
-                            {/* Compact Sync Status Widget */}
+                            {/* Sync Status Alert */}
                             {syncStatus && syncStatus.pending > 0 && (
-                                <div className="bg-amber-50/50 border border-amber-100/50 rounded-2xl p-3 md:p-4 flex flex-col gap-3">
-                                    <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-center md:text-left">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center text-lg shadow-sm flex-shrink-0">
-                                                <i className={`fas fa-sync-alt ${isSyncing ? 'animate-spin' : 'animate-spin-slow'}`}></i>
-                                            </div>
-                                            <div>
-                                                <p className="text-amber-900 font-black text-xs uppercase tracking-tight">Offline Sync Queue</p>
-                                                <p className="text-amber-700 text-[10px] font-medium leading-tight">
-                                                    {syncStatus.pending} items pending online backup.
-                                                </p>
-                                            </div>
+                                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 rounded-[2rem] p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+                                    <div className="flex items-center gap-4 text-center md:text-left">
+                                        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-amber-500 shadow-sm border border-amber-100 flex-shrink-0 relative">
+                                            <i className={`fas fa-sync-alt ${isSyncing ? 'animate-spin' : 'animate-spin-slow'}`}></i>
+                                            {isSyncing && <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse"></span>}
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={handleManualSync}
-                                                disabled={isSyncing}
-                                                className="px-4 py-2 bg-amber-200/50 hover:bg-amber-200 text-amber-900 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
-                                            >
-                                                {isSyncing ? 'Syncing...' : 'Sync Now'}
-                                            </button>
-                                            <SyncStatusBadge status="pending" />
+                                        <div>
+                                            <p className="text-amber-900 font-black text-xs uppercase tracking-widest">Pending Cloud Synchronization</p>
+                                            <p className="text-amber-700/70 text-[10px] font-bold mt-0.5 uppercase tracking-tight">
+                                                {syncStatus.pending} operations waiting for network connection.
+                                            </p>
                                         </div>
                                     </div>
+                                    <button
+                                        onClick={handleManualSync}
+                                        disabled={isSyncing}
+                                        className="w-full md:w-auto px-6 py-2.5 bg-white text-amber-600 border border-amber-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-amber-600 hover:text-white hover:border-amber-600 active:scale-95 disabled:opacity-50 shadow-sm"
+                                    >
+                                        {isSyncing ? 'Executing...' : 'Force Sync Now'}
+                                    </button>
                                 </div>
                             )}
 
                             {/* 1. Primary Stats Row */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                                 {[
-                                    { label: 'Total Students', value: stats?.studentCount || 0, icon: 'fa-user-graduate', color: 'text-blue-600', bg: 'bg-blue-50' },
-                                    { label: 'Teaching Staff', value: stats?.staffCount || 0, icon: 'fa-chalkboard-teacher', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                                    { label: 'Active Classes', value: stats?.classCount || 0, icon: 'fa-chalkboard', color: 'text-purple-600', bg: 'bg-purple-50' },
-                                    { label: 'Total Subjects', value: stats?.subjectCount || 0, icon: 'fa-book', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                                    { label: 'Learners', value: stats?.studentCount || 0, icon: 'fa-user-graduate', color: 'text-blue-600', bg: 'from-blue-500 to-blue-600', shadow: 'shadow-blue-200' },
+                                    { label: 'Staff', value: stats?.staffCount || 0, icon: 'fa-chalkboard-teacher', color: 'text-indigo-600', bg: 'from-indigo-500 to-indigo-600', shadow: 'shadow-indigo-200' },
+                                    { label: 'Classes', value: stats?.classCount || 0, icon: 'fa-chalkboard', color: 'text-purple-600', bg: 'from-purple-500 to-purple-600', shadow: 'shadow-purple-200' },
+                                    { label: 'Subjects', value: stats?.subjectCount || 0, icon: 'fa-book', color: 'text-emerald-600', bg: 'from-emerald-500 to-emerald-600', shadow: 'shadow-emerald-200' },
                                 ].map((stat, idx) => (
-                                    <div key={idx} className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">{stat.label}</p>
-                                                <h3 className="text-3xl font-black text-slate-800 tracking-tight">{stat.value}</h3>
-                                            </div>
-                                            <div className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center text-xl`}>
-                                                <i className={`fas ${stat.icon}`}></i>
-                                            </div>
+                                    <div key={idx} className="bg-white p-5 md:p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                                        <div className="relative z-10">
+                                            <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-1">{stat.label}</p>
+                                            <h3 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">{stat.value}</h3>
+                                        </div>
+                                        <div className={`absolute -right-2 -bottom-2 w-16 h-16 bg-gradient-to-br ${stat.bg} rounded-3xl opacity-20 group-hover:opacity-40 group-hover:scale-125 transition-all flex items-center justify-center p-4`}>
+                                            <i className={`fas ${stat.icon} text-3xl`}></i>
                                         </div>
                                     </div>
                                 ))}
                             </div>
 
-                            {/* 2. Main Content Grid */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+                            {/* 2. Content Grid */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 
-                                {/* Quick Actions */}
-                                <div className="lg:col-span-2 space-y-4">
-                                    <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                                        <i className="fas fa-bolt text-amber-400 text-base"></i>
-                                        Management Portal Actions
-                                    </h2>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-5">
-                                        {quickActions.slice(0, 6).map((action, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={action.action}
-                                                className="bg-white p-5 rounded-[1.25rem] border border-slate-100 shadow-sm hover:border-indigo-200 hover:shadow-md hover:bg-slate-50 transition-all text-left flex flex-col items-start gap-4 active:scale-95 group"
-                                            >
-                                                <div className={`w-12 h-12 ${action.color} rounded-xl flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform`}>
-                                                    <i className={`fas ${action.icon} text-lg`}></i>
-                                                </div>
-                                                <span className="font-bold text-sm text-slate-700 tracking-tight group-hover:text-indigo-700 transition-colors">
-                                                    {action.label}
-                                                </span>
-                                            </button>
-                                        ))}
+                                {/* Quick Operations */}
+                                <div className="lg:col-span-2 space-y-8">
+                                    <div>
+                                        <h2 className="text-sm font-black text-slate-800 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                                            <span className="w-8 h-px bg-slate-200"></span>
+                                            Core Management
+                                            <span className="flex-1 h-px bg-slate-200"></span>
+                                        </h2>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 md:gap-5">
+                                            {quickActions.slice(0, 6).map((action, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    onClick={action.action}
+                                                    className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm hover:border-primary hover:shadow-xl hover:shadow-blue-50 transition-all text-left flex flex-col items-start gap-4 active:scale-95 group relative overflow-hidden"
+                                                >
+                                                    <div className={`w-12 h-12 ${action.color} rounded-2xl flex items-center justify-center text-white shadow-lg shadow-current/20 group-hover:scale-110 group-hover:rotate-6 transition-all`}>
+                                                        <i className={`fas ${action.icon} text-lg`}></i>
+                                                    </div>
+                                                    <span className="font-black text-[11px] md:text-xs uppercase tracking-widest text-slate-600 group-hover:text-primary transition-colors">
+                                                        {action.label}
+                                                    </span>
+                                                    <i className="fas fa-chevron-right absolute top-6 right-6 text-slate-200 text-xs opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all"></i>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                    
-                                    {/* Secondary Actions Row */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                                         {quickActions.slice(6).map((action, idx) => (
-                                             <button
-                                                 key={idx + 6}
-                                                 onClick={action.action}
-                                                 className="bg-slate-50 p-4 rounded-xl border border-slate-100 hover:bg-slate-100 hover:border-slate-300 transition-colors text-left flex items-center gap-4 active:scale-95"
-                                             >
-                                                 <div className={`w-10 h-10 ${action.color} rounded-lg flex items-center justify-center text-white text-sm flex-shrink-0`}>
-                                                     <i className={`fas ${action.icon}`}></i>
-                                                 </div>
-                                                 <span className="font-bold text-sm text-slate-700">
-                                                     {action.label}
-                                                 </span>
-                                             </button>
-                                         ))}
+
+                                    <div>
+                                        <h2 className="text-sm font-black text-slate-800 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                                            <span className="w-8 h-px bg-slate-200"></span>
+                                            Strategic Operations
+                                            <span className="flex-1 h-px bg-slate-200"></span>
+                                        </h2>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                             {quickActions.slice(6).map((action, idx) => (
+                                                 <button
+                                                     key={idx + 6}
+                                                     onClick={action.action}
+                                                     className="bg-slate-50/50 p-5 rounded-2xl border border-slate-100 hover:bg-white hover:border-slate-300 hover:shadow-lg transition-all text-left flex items-center justify-between group active:scale-[0.98]"
+                                                 >
+                                                     <div className="flex items-center gap-4">
+                                                         <div className={`w-10 h-10 ${action.color} rounded-xl flex items-center justify-center text-white text-sm flex-shrink-0 shadow-sm`}>
+                                                             <i className={`fas ${action.icon}`}></i>
+                                                         </div>
+                                                         <span className="font-black text-xs uppercase tracking-widest text-slate-700">
+                                                             {action.label}
+                                                         </span>
+                                                     </div>
+                                                     <i className="fas fa-arrow-right text-slate-300 group-hover:text-slate-600 transition-colors"></i>
+                                                 </button>
+                                             ))}
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Right Sidebar: Calendar */}
-                                <div className="lg:col-span-1 space-y-4">
+                                {/* Right Sidebar: Events & Insights */}
+                                <div className="space-y-8">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
-                                            <i className="fas fa-calendar-alt text-indigo-500 text-base"></i>
-                                            School Calendar
-                                        </h2>
-                                        <button onClick={() => setView('calendar')} className="text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors">View All &rarr;</button>
+                                        <h2 className="text-sm font-black text-slate-800 uppercase tracking-[0.2em]">School Events</h2>
+                                        <button onClick={() => setView('calendar')} className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline">Full View</button>
                                     </div>
                                     
-                                    <div className="bg-white p-6 md:p-8 rounded-[1.5rem] border border-slate-100 shadow-sm flex flex-col h-[calc(100%-2.5rem)]">
+                                    <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col min-h-[400px]">
                                         <div className="space-y-6 flex-1">
                                             {stats?.upcomingEvents && stats.upcomingEvents.length > 0 ? stats.upcomingEvents.map((e: any) => (
                                                 <div key={e.id} className="flex gap-4 group cursor-pointer" onClick={() => setView('calendar')}>
-                                                    <div className="w-12 h-12 rounded-xl bg-slate-50 flex flex-col items-center justify-center text-slate-600 font-black border border-slate-200 flex-shrink-0 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
-                                                        <span className="text-[9px] uppercase leading-none mb-1">{new Date(e.startDate).toLocaleString('default', { month: 'short' })}</span>
-                                                        <span className="text-lg leading-none">{new Date(e.startDate).getDate()}</span>
+                                                    <div className="w-12 h-12 rounded-2xl bg-slate-50 flex flex-col items-center justify-center text-slate-600 border border-slate-100 flex-shrink-0 group-hover:bg-primary group-hover:text-white group-hover:shadow-lg group-hover:shadow-blue-200 transition-all duration-300">
+                                                        <span className="text-[8px] font-black uppercase leading-none mb-1 opacity-60">{new Date(e.startDate).toLocaleString('default', { month: 'short' })}</span>
+                                                        <span className="text-xl font-black leading-none">{new Date(e.startDate).getDate()}</span>
                                                     </div>
                                                     <div className="flex-1 min-w-0 pt-0.5">
-                                                        <p className="text-sm font-black text-slate-800 leading-tight group-hover:text-indigo-600 transition-colors truncate">{e.title}</p>
-                                                        <p className="text-xs font-bold text-slate-400 mt-1 flex items-center gap-1.5 uppercase tracking-wider">
-                                                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                                                            {e.type}
-                                                        </p>
+                                                        <p className="text-sm font-black text-slate-800 leading-tight group-hover:text-primary transition-colors truncate uppercase tracking-tight">{e.title}</p>
+                                                        <div className="flex items-center gap-2 mt-2">
+                                                            <span className="px-2 py-0.5 bg-slate-100 rounded-md text-[8px] font-black text-slate-500 uppercase tracking-widest">{e.type}</span>
+                                                            <span className="text-[10px] font-bold text-slate-400">{new Date(e.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             )) : (
                                                 <div className="flex flex-col items-center justify-center py-12 text-center h-full">
-                                                    <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mb-4 text-slate-300 border border-slate-100">
-                                                        <i className="fas fa-calendar-times text-xl"></i>
+                                                    <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-6 text-slate-300 border border-slate-100 rotate-3">
+                                                        <i className="fas fa-calendar-day text-3xl"></i>
                                                     </div>
-                                                    <p className="text-sm font-bold text-slate-400">No upcoming events</p>
-                                                    <p className="text-[10px] text-slate-300 mt-1 max-w-[150px]">Your calendar is clear for now</p>
+                                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No Events Scheduled</p>
+                                                    <p className="text-[10px] text-slate-300 mt-2 max-w-[200px] font-medium leading-relaxed uppercase tracking-tight">Your school calendar is currently empty. Start planning your term events today!</p>
                                                 </div>
                                             )}
                                         </div>
 
                                         <button 
                                             onClick={() => setView('calendar')}
-                                            className="w-full mt-8 py-3 text-sm font-black text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2 group"
+                                            className="w-full mt-10 py-4 text-[10px] font-black text-white bg-primary rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all flex items-center justify-center gap-3 uppercase tracking-[0.2em]"
                                         >
-                                            <i className="fas fa-plus transition-transform group-hover:rotate-90"></i>
-                                            Add School Event
+                                            <i className="fas fa-plus"></i>
+                                            Add New Event
                                         </button>
+                                    </div>
+
+                                    {/* Analytics Insight Card */}
+                                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 rounded-[2.5rem] shadow-xl relative overflow-hidden group cursor-pointer" onClick={() => setView('analytics')}>
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-16 translate-x-16 group-hover:scale-150 transition-transform duration-700"></div>
+                                        <div className="relative z-10">
+                                            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-blue-400 mb-4 border border-white/10">
+                                                <i className="fas fa-chart-line"></i>
+                                            </div>
+                                            <h3 className="text-white font-black text-sm uppercase tracking-widest mb-1">Academic Insights</h3>
+                                            <p className="text-slate-400 text-xs font-medium leading-relaxed">Analyze performance trends and attendance patterns across all classes.</p>
+                                            <div className="mt-6 flex items-center gap-2 text-blue-400 text-[10px] font-black uppercase tracking-widest">
+                                                Go to Analytics <i className="fas fa-arrow-right ml-1 group-hover:translate-x-2 transition-transform"></i>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -390,8 +411,8 @@ const HeadteacherDashboard: React.FC = () => {
         }
     };
 
-    // Bottom nav: show first 5 tabs + a "More" approach
-    const primaryKeys: ViewType[] = ['overview', 'subscription', 'staff', 'classes', 'students'];
+    // Bottom nav: show first 4 tabs + a "Menu" approach
+    const primaryKeys: ViewType[] = ['overview', 'staff', 'classes', 'students'];
     const primaryTabs = tabConfig.filter(t => primaryKeys.includes(t.key));
     const moreTabs = tabConfig.filter(t => !primaryKeys.includes(t.key));
 
@@ -428,161 +449,212 @@ const HeadteacherDashboard: React.FC = () => {
             )}
 
             {/* ── Header ── */}
-            <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 shadow-2xl shadow-blue-300/40">
-                {/* Blobs */}
-                <div className="pointer-events-none absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
-                <div className="pointer-events-none absolute bottom-0 left-1/3 w-40 h-40 bg-indigo-400/20 rounded-full blur-2xl"></div>
+            <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-blue-800 via-blue-700 to-indigo-900 shadow-2xl shadow-blue-900/20 border-b border-white/10">
+                {/* Visual Elements */}
+                <div className="pointer-events-none absolute -top-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                <div className="pointer-events-none absolute -bottom-24 -left-24 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl"></div>
+                <div className="pointer-events-none absolute top-1/2 left-1/4 w-32 h-32 bg-blue-400/10 rounded-full blur-2xl animate-pulse"></div>
 
                 {/* MOBILE header */}
-                <div className="md:hidden px-5 py-4 relative z-10">
-                    <div className="flex items-center gap-3">
-                        {logoPreview ? (
-                            <img src={logoPreview} alt="Logo" className="w-10 h-10 rounded-xl object-cover border-2 border-white/30 flex-shrink-0" />
-                        ) : (
-                            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/20">
-                                <i className="fas fa-university text-white text-base"></i>
-                            </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                            <p className="text-white/50 text-[8px] font-black uppercase tracking-[0.18em] leading-none mb-0.5">
-                                Headteacher Portal
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <p className="text-white font-black text-base leading-tight truncate">
-                                    {schoolData?.schoolName?.split(' ').slice(0, 2).join(' ') || 'Dashboard'}
+                <div className="md:hidden px-6 py-6 relative z-10">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                            {logoPreview ? (
+                                <img src={logoPreview} alt="Logo" className="w-12 h-12 rounded-2xl object-cover border-2 border-white/20 shadow-lg flex-shrink-0" />
+                            ) : (
+                                <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center flex-shrink-0 border border-white/20 shadow-lg">
+                                    <i className="fas fa-university text-white text-xl"></i>
+                                </div>
+                            )}
+                            <div className="min-w-0">
+                                <p className="text-white/40 text-[7px] font-black uppercase tracking-[0.2em] leading-none mb-1.5 flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                                    Headteacher Portal
                                 </p>
-                                <SubscriptionStatusIndicator isSubscribed={isSubscribed} isLoading={isSubLoading} className="scale-75 origin-left" />
+                                <h1 className="text-white font-black text-lg leading-tight truncate">
+                                    {schoolData?.schoolName || 'Labour Edu'}
+                                </h1>
                             </div>
-                            <p className="text-blue-100/60 text-[7px] font-bold tracking-widest uppercase">ID: {schoolData?.schoolCode || user?.schoolId}</p>
                         </div>
-                        <button
-                            onClick={() => setShowHelp(true)}
-                            className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl text-white border border-white/20 transition-all active:scale-90 flex-shrink-0"
-                            title="Help & Support"
-                        >
-                            <i className="fas fa-question text-sm"></i>
-                        </button>
-                        <NotificationBell canCompose={true} />
-                        <button
-                            onClick={logout}
-                            className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-red-500/70 rounded-xl text-white border border-white/20 transition-all active:scale-90 flex-shrink-0"
-                            title="Log Out"
-                        >
-                            <i className="fas fa-sign-out-alt text-sm"></i>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setShowHelp(true)}
+                                className="w-10 h-10 flex items-center justify-center bg-white/10 text-white rounded-xl border border-white/10 active:scale-90 transition-all"
+                                title="Support"
+                            >
+                                <i className="fas fa-headset text-sm"></i>
+                            </button>
+                            <NotificationBell canCompose={true} />
+                            <button
+                                onClick={logout}
+                                className="w-10 h-10 flex items-center justify-center bg-white/10 text-white rounded-xl border border-white/10 active:scale-90 transition-all"
+                                title="Log Out"
+                            >
+                                <i className="fas fa-power-off text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="mt-6 flex items-center justify-between bg-black/20 backdrop-blur-sm rounded-2xl p-3 border border-white/5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-blue-300">
+                                <i className="fas fa-fingerprint text-xs"></i>
+                            </div>
+                            <div>
+                                <p className="text-[7px] font-black text-white/40 uppercase tracking-widest">School Access ID</p>
+                                <p className="text-[10px] font-black text-white uppercase tracking-wider">{schoolData?.schoolCode || user?.schoolId}</p>
+                            </div>
+                        </div>
+                        <SubscriptionStatusIndicator isSubscribed={isSubscribed} isLoading={isSubLoading} className="scale-75 origin-right" />
                     </div>
                 </div>
 
                 {/* DESKTOP header */}
-                <div className="hidden md:flex items-center justify-between gap-6 p-8 relative z-10">
-                    <div className="flex items-center gap-5 min-w-0">
+                <div className="hidden md:flex items-center justify-between gap-6 p-10 relative z-10">
+                    <div className="flex items-center gap-6 min-w-0">
                         {logoPreview ? (
-                            <img src={logoPreview} alt="School Logo" className="w-20 h-20 rounded-2xl object-cover shadow-xl border-2 border-white/30 flex-shrink-0" />
+                            <img src={logoPreview} alt="School Logo" className="w-24 h-24 rounded-[2rem] object-cover shadow-2xl border-4 border-white/20 flex-shrink-0" />
                         ) : (
-                            <div className="w-20 h-20 bg-white/15 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white shadow-xl border border-white/20 flex-shrink-0">
-                                <i className="fas fa-university text-3xl"></i>
+                            <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-[2rem] flex items-center justify-center text-white shadow-2xl border border-white/20 flex-shrink-0">
+                                <i className="fas fa-university text-4xl"></i>
                             </div>
                         )}
                         <div className="min-w-0">
-                            <p className="text-white/60 font-black text-[9px] uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
-                                <i className="fas fa-circle text-green-400 text-[6px] animate-pulse"></i>
-                                Headteacher Portal — ID: <span className="text-white">{schoolData?.schoolCode || user?.schoolId}</span>
-                            </p>
-                            <h1 className="text-white font-black text-3xl leading-tight tracking-tight truncate">
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="px-3 py-1 bg-white/10 backdrop-blur-sm rounded-full text-[9px] font-black text-blue-100 uppercase tracking-widest border border-white/10">
+                                    Headteacher Portal
+                                </span>
+                                <span className="text-white/40 font-bold text-[10px] uppercase tracking-widest">ID: {schoolData?.schoolCode || user?.schoolId}</span>
+                            </div>
+                            <h1 className="text-white font-black text-4xl leading-none tracking-tight truncate pb-1">
                                 {schoolData?.schoolName || 'Labour Edu'}
                             </h1>
-                            <p className="text-blue-200 text-sm font-medium mt-1 flex items-center gap-2">
-                                <i className="fas fa-map-marker-alt text-red-300"></i>
-                                {schoolData?.district || 'District'}, {schoolData?.region || 'Region'}
-                            </p>
+                            <div className="flex items-center gap-4 mt-3">
+                                <p className="text-blue-200/60 text-xs font-bold flex items-center gap-2 uppercase tracking-widest">
+                                    <i className="fas fa-map-marker-alt text-red-400"></i>
+                                    {schoolData?.district || 'District'} • {schoolData?.region || 'Region'}
+                                </p>
+                                <div className="h-4 w-px bg-white/10"></div>
+                                <SubscriptionStatusIndicator isSubscribed={isSubscribed} isLoading={isSubLoading} />
+                            </div>
                         </div>
                     </div>
-                    <div className="flex flex-col flex-wrap md:flex-row items-end md:items-center gap-3 flex-shrink-0">
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setShowHelp(true)}
-                                className="w-10 h-10 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-xl text-white border border-white/20 transition-all active:scale-90 flex-shrink-0"
-                                title="Help & Support"
-                            >
-                                <i className="fas fa-question text-sm"></i>
-                            </button>
-                            <NotificationBell canCompose={true} />
-                        </div>
-                        <div 
-                            onClick={() => setView('subscription')}
-                            className="cursor-pointer hover:scale-110 transition-transform active:scale-95 ml-2"
-                            title={isSubscribed ? (subscription?.status === 'trial' ? 'Trial Mode' : 'Account Active') : 'Inactive Plan'}
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                        <button
+                            onClick={() => setShowHelp(true)}
+                            className="w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl text-white border border-white/10 transition-all active:scale-90"
+                            title="Support"
                         >
-                            <SubscriptionStatusIndicator isSubscribed={isSubscribed} isLoading={isSubLoading} />
-                        </div>
+                            <i className="fas fa-headset text-lg"></i>
+                        </button>
+                        <NotificationBell canCompose={true} />
+                        <div className="w-px h-10 bg-white/10 mx-2"></div>
                         <button
                             onClick={logout}
-                            className="flex items-center gap-2 bg-white/10 hover:bg-red-500/80 border border-white/20 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                            className="flex items-center gap-3 bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-red-900/20"
                         >
-                            <i className="fas fa-sign-out-alt"></i> Log Out
+                            <i className="fas fa-power-off"></i> 
+                            <span className="hidden lg:inline">Secure Logout</span>
                         </button>
                     </div>
                 </div>
             </div>
 
             {/* ── Main Content Area ── */}
-            <div className="premium-card overflow-hidden mb-4 md:mb-8 bg-white rounded-[2rem] shadow-sm border border-gray-100">
+            <div className="premium-card mb-4 md:mb-8 bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
                 {/* Desktop top tab bar */}
-                <div className="hidden md:flex border-b border-gray-100 overflow-x-auto whitespace-nowrap bg-gray-50/30">
+                <div className="hidden md:flex border-b border-gray-100 overflow-x-auto whitespace-nowrap bg-slate-50/50 scrollbar-hide">
                     {tabConfig.map(({ key, label, icon }) => (
                         <button
                             key={key}
                             onClick={() => setView(key)}
-                            className={`flex flex-row items-center gap-2 flex-shrink-0 px-6 py-5 font-black text-[10px] uppercase tracking-widest transition-all ${view === key ? 'text-primary border-b-2 border-primary bg-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                            className={`flex flex-row items-center gap-3 flex-shrink-0 px-8 py-6 font-black text-[10px] uppercase tracking-[0.2em] transition-all relative group ${view === key ? 'text-primary' : 'text-gray-400 hover:text-gray-600'}`}
                         >
-                            <i className={`fas ${icon} text-sm ${view === key ? 'text-primary' : 'text-gray-300'}`}></i>
+                            <i className={`fas ${icon} text-sm transition-transform group-hover:scale-110 ${view === key ? 'text-primary' : 'text-gray-300'}`}></i>
                             {label}
+                            {view === key && (
+                                <span className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full shadow-[0_-4px_10px_rgba(59,130,246,0.3)]"></span>
+                            )}
                         </button>
                     ))}
                 </div>
 
-                <div className="p-4 md:p-8 min-h-[500px]">
-                    {renderView()}
+                <div className="p-0 md:p-10 min-h-[600px]">
+                    <div className="px-4 py-8 md:px-0 md:py-0">
+                        {renderView()}
+                    </div>
                 </div>
             </div>
 
             {/* ── Mobile Fixed Bottom Navigation ── */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
-                <div className="flex items-center">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
+                <div className="flex items-center justify-around px-4">
                     {primaryTabs.map(({ key, shortLabel, icon }) => (
                         <button
                             key={key}
                             onClick={() => { setView(key); setShowMoreNav(false); }}
-                            className={`relative flex-1 flex flex-col items-center pt-2 pb-3 gap-1 transition-all active:scale-95 ${view === key ? 'text-primary' : 'text-gray-400'}`}
+                            className={`relative flex-1 flex flex-col items-center pt-4 pb-6 gap-1.5 transition-all active:scale-90 ${view === key ? 'text-primary' : 'text-gray-400'}`}
                         >
-                            {view === key && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"></span>}
-                            <i className={`fas ${icon} text-xl`}></i>
-                            <span className="text-[8px] font-black uppercase tracking-tight leading-none">{shortLabel}</span>
+                            {view === key && (
+                                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-b-full shadow-[0_4px_10px_rgba(59,130,246,0.4)]"></span>
+                            )}
+                            <i className={`fas ${icon} text-lg transition-transform ${view === key ? 'scale-110' : ''}`}></i>
+                            <span className="text-[8px] font-black uppercase tracking-widest leading-none">{shortLabel}</span>
                         </button>
                     ))}
 
                     <button
                         onClick={() => setShowMoreNav(prev => !prev)}
-                        className={`relative flex-1 flex flex-col items-center pt-2 pb-3 gap-1 transition-all active:scale-90 ${moreTabs.some(t => t.key === view) ? 'text-primary' : 'text-gray-400'}`}
+                        className={`relative flex-1 flex flex-col items-center pt-4 pb-6 gap-1.5 transition-all active:scale-90 ${moreTabs.some(t => t.key === view) || showMoreNav ? 'text-primary' : 'text-gray-400'}`}
                     >
-                        {moreTabs.some(t => t.key === view) && <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"></span>}
-                        <i className={`fas ${showMoreNav ? 'fa-times' : 'fa-ellipsis-h'} text-xl`}></i>
-                        <span className="text-[8px] font-black uppercase tracking-tight leading-none">More</span>
+                        {(moreTabs.some(t => t.key === view) || showMoreNav) && (
+                            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-b-full shadow-[0_4px_10px_rgba(59,130,246,0.4)]"></span>
+                        )}
+                        <div className={`w-6 h-6 flex items-center justify-center transition-transform duration-500 ${showMoreNav ? 'rotate-90' : ''}`}>
+                            <i className={`fas ${showMoreNav ? 'fa-times' : 'fa-grid-2'} text-lg`}></i>
+                        </div>
+                        <span className="text-[8px] font-black uppercase tracking-widest leading-none">{showMoreNav ? 'Close' : 'More'}</span>
                     </button>
                 </div>
 
+                {/* Premium "More" Overlay */}
                 {showMoreNav && (
-                    <div className="border-t border-gray-100 bg-white grid grid-cols-4 divide-x divide-gray-50 animate-fadeIn">
-                        {moreTabs.map(({ key, shortLabel, icon }) => (
-                            <button
-                                key={key}
-                                onClick={() => { setView(key); setShowMoreNav(false); }}
-                                className={`flex flex-col items-center py-3 gap-1 transition-all active:scale-95 ${view === key ? 'text-primary bg-primary/5' : 'text-gray-400'}`}
-                            >
-                                <i className={`fas ${icon} text-lg`}></i>
-                                <span className="text-[8px] font-black uppercase tracking-tight leading-none">{shortLabel}</span>
-                            </button>
-                        ))}
+                    <div className="absolute bottom-full left-0 right-0 p-6 animate-in slide-in-from-bottom duration-500">
+                        <div className="bg-white/98 backdrop-blur-2xl rounded-[3rem] border border-gray-100 shadow-[0_-20px_60px_rgba(0,0,0,0.15)] overflow-hidden max-h-[75vh] flex flex-col">
+                            <div className="p-8 border-b border-gray-100 bg-slate-50/50 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-[0.2em] flex items-center gap-3">
+                                        <i className="fas fa-layer-group text-primary"></i>
+                                        Portal Ops
+                                    </h3>
+                                    <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">Management Suite</p>
+                                </div>
+                                <button onClick={() => setShowMoreNav(false)} className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 border border-gray-100">
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div className="p-6 overflow-y-auto grid grid-cols-3 gap-4">
+                                {moreTabs.map(({ key, label, icon }) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => { setView(key); setShowMoreNav(false); }}
+                                        className={`flex flex-col items-center justify-center p-5 rounded-3xl transition-all active:scale-95 gap-3 border ${view === key 
+                                            ? 'bg-primary text-white border-primary shadow-xl shadow-blue-200' 
+                                            : 'bg-slate-50 text-slate-500 border-slate-100'}`}
+                                    >
+                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl ${view === key ? 'bg-white/20' : 'bg-white shadow-sm text-slate-400'}`}>
+                                            <i className={`fas ${icon}`}></i>
+                                        </div>
+                                        <span className="text-[9px] font-black text-center leading-tight uppercase tracking-tight">{label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="p-6 bg-slate-50/80 border-t border-gray-100 text-center">
+                                <span className="text-[8px] text-slate-400 font-black uppercase tracking-[0.3em]">
+                                    Labour Edu • School OS
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 )}
             </nav>

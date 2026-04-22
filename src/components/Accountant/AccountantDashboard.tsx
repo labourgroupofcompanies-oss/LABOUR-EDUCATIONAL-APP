@@ -31,6 +31,7 @@ const AccountantDashboard: React.FC = () => {
     const [view, setView] = useState<View>('overview');
     const [isSyncing, setIsSyncing] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
+    const [showMoreNav, setShowMoreNav] = useState(false);
 
     const handleManualSync = async () => {
         if (!user?.schoolId || isSyncing) return;
@@ -199,9 +200,8 @@ const AccountantDashboard: React.FC = () => {
             <div className="flex flex-1 overflow-hidden">
                 {/* ── Sidebar ── */}
                 <aside className={`
-                    fixed md:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100 shadow-xl md:shadow-none
-                    flex flex-col pt-24 md:pt-0 transition-transform duration-300
-                    ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+                    hidden md:flex fixed md:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100
+                    flex-col pt-24 md:pt-0 transition-transform duration-300
                 `}>
                     <div className="p-4 md:p-6 flex-1 overflow-y-auto space-y-1">
                         {/* Overview */}
@@ -251,13 +251,6 @@ const AccountantDashboard: React.FC = () => {
                     </div>
                 </aside>
 
-                {/* Sidebar overlay (mobile) */}
-                {sidebarOpen && (
-                    <div
-                        className="fixed inset-0 bg-black/40 z-20 md:hidden"
-                        onClick={() => setSidebarOpen(false)}
-                    />
-                )}
 
                 {/* ── Main Content ── */}
                 <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
@@ -268,25 +261,84 @@ const AccountantDashboard: React.FC = () => {
             </div>
 
             {/* ── Mobile Fixed Bottom Navigation Bar ── */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
-                <div className="flex items-center justify-around">
-                    {(['overview', 'subscription', 'fees-students', 'payroll', 'expenses', 'reports', 'settings'] as const).map((tab) => (
-                        <button
-                            key={tab}
-                            onClick={() => { setView(tab); setSidebarOpen(false); }}
-                            className={`relative flex-1 flex flex-col items-center pt-2 pb-3 gap-1 transition-all active:scale-95 ${view === tab ? 'text-purple-600' : 'text-gray-400'
-                                }`}
-                        >
-                            {view === tab && (
-                                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-purple-600 rounded-full"></span>
-                            )}
-                            <i className={`fas ${tabIcons[tab]} text-xl transition-colors`}></i>
-                            <span className={`text-[8px] font-black uppercase tracking-tight leading-none ${view === tab ? 'text-purple-600' : 'text-gray-400'
-                                }`}>
-                                {tabLabels[tab]}
-                            </span>
-                        </button>
-                    ))}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.12)]">
+                <div className="flex items-center justify-around px-2">
+                    {(() => {
+                        const primaryTabs = ['overview', 'fees-students', 'payroll', 'expenses'] as const;
+                        const moreTabs = ['fees-structure', 'payroll-history', 'reports', 'settings', 'subscription'] as const;
+                        const isMoreActive = moreTabs.includes(view as any);
+
+                        return (
+                            <>
+                                {primaryTabs.map((tab) => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => { setView(tab); setSidebarOpen(false); setShowMoreNav(false); }}
+                                        className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${view === tab ? 'text-purple-600' : 'text-gray-400'}`}
+                                    >
+                                        {view === tab && (
+                                            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-purple-600 rounded-b-full shadow-[0_2px_10px_rgba(147,51,234,0.5)] animate-slideDown"></span>
+                                        )}
+                                        <i className={`fas ${tabIcons[tab]} text-xl transition-colors ${view === tab ? 'scale-110' : ''}`}></i>
+                                        <span className="text-[9px] font-black uppercase tracking-tight leading-none">
+                                            {tabLabels[tab]}
+                                        </span>
+                                    </button>
+                                ))}
+
+                                <button
+                                    onClick={() => setShowMoreNav(!showMoreNav)}
+                                    className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${isMoreActive || showMoreNav ? 'text-purple-600' : 'text-gray-400'}`}
+                                >
+                                    {(isMoreActive || showMoreNav) && (
+                                        <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-purple-600 rounded-b-full shadow-[0_2px_10px_rgba(147,51,234,0.5)] animate-slideDown"></span>
+                                    )}
+                                    <div className={`w-6 h-6 flex items-center justify-center transition-transform duration-300 ${showMoreNav ? 'rotate-90' : ''}`}>
+                                        <i className={`fas ${showMoreNav ? 'fa-times' : 'fa-th-large'} text-xl`}></i>
+                                    </div>
+                                    <span className="text-[9px] font-black uppercase tracking-tight leading-none">{showMoreNav ? 'Close' : 'Menu'}</span>
+                                </button>
+
+                                {/* More Overlay for Accountant */}
+                                {showMoreNav && (
+                                    <div className="absolute bottom-full left-0 right-0 p-4 animate-in slide-in-from-bottom duration-300">
+                                        <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] border border-white/20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] overflow-hidden max-h-[70vh] flex flex-col">
+                                            <div className="p-6 border-b border-gray-100/50 bg-gray-50/50 flex items-center justify-between">
+                                                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center gap-2">
+                                                    <i className="fas fa-calculator text-purple-600"></i>
+                                                    Accountant Menu
+                                                </h3>
+                                                <div className="px-3 py-1 bg-purple-100 rounded-full">
+                                                    <span className="text-[9px] font-black text-purple-600 uppercase tracking-tighter">Finance Hub</span>
+                                                </div>
+                                            </div>
+                                            <div className="p-4 overflow-y-auto grid grid-cols-3 gap-3">
+                                                {moreTabs.map((tab) => (
+                                                    <button
+                                                        key={tab}
+                                                        onClick={() => { setView(tab); setShowMoreNav(false); }}
+                                                        className={`flex flex-col items-center justify-center p-4 rounded-2xl transition-all active:scale-95 gap-3 border ${view === tab 
+                                                            ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-200' 
+                                                            : 'bg-gray-50/50 text-gray-500 border-gray-100 hover:bg-gray-100'}`}
+                                                    >
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${view === tab ? 'bg-white/20' : 'bg-white shadow-sm text-gray-400'}`}>
+                                                            <i className={`fas ${tabIcons[tab]}`}></i>
+                                                        </div>
+                                                        <span className="text-[9px] font-bold text-center leading-tight uppercase tracking-tight">{tabLabels[tab]}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="p-4 bg-gray-50/80 border-t border-gray-100/50">
+                                                <p className="text-[8px] text-center text-gray-400 font-black uppercase tracking-[0.2em]">
+                                                    Labour Edu System • Accountant Terminal
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
             </nav>
 

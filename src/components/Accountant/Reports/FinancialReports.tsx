@@ -136,21 +136,21 @@ const FinancialReports: React.FC = () => {
             </div>
 
             {/* Main Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40">
-                    <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Total Collections</p>
-                    <p className="text-2xl font-black text-slate-800 tracking-tighter">{fmt(report?.totalCollected || 0)}</p>
-                    <p className="text-[10px] text-slate-400 font-bold mt-2">Fees recorded this term</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/20">
+                    <p className="text-[8px] md:text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1 md:mb-1.5">Collections</p>
+                    <p className="text-lg md:text-2xl font-black text-slate-800 tracking-tighter truncate">{(report?.totalCollected || 0).toLocaleString()}</p>
+                    <p className="hidden md:block text-[10px] text-slate-400 font-bold mt-2">Fees recorded this term</p>
                 </div>
-                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 text-center">
-                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Net Cash Position</p>
-                    <p className="text-3xl font-black text-slate-800 tracking-tighter">{fmt(report?.netCashPosition || 0)}</p>
-                    <div className="mt-2 text-[8px] font-black text-slate-300 uppercase underline decoration-blue-200">Income - Expenditure</div>
+                <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/20 text-center">
+                    <p className="text-[8px] md:text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 md:mb-1.5">Net Position</p>
+                    <p className="text-xl md:text-3xl font-black text-slate-800 tracking-tighter truncate">{(report?.netCashPosition || 0).toLocaleString()}</p>
+                    <div className="hidden md:block mt-2 text-[8px] font-black text-slate-300 uppercase underline decoration-blue-200">Income - Expenditure</div>
                 </div>
-                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 text-right">
-                    <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Outstanding Debt</p>
-                    <p className="text-2xl font-black text-slate-800 tracking-tighter">{fmt(report?.outstandingArrears || 0)}</p>
-                    <p className="text-[10px] text-slate-400 font-bold mt-2 italic">Student arrears total</p>
+                <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/20 text-right col-span-2 md:col-span-1">
+                    <p className="text-[8px] md:text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1 md:mb-1.5">Outstanding Debt</p>
+                    <p className="text-lg md:text-2xl font-black text-slate-800 tracking-tighter truncate">{(report?.outstandingArrears || 0).toLocaleString()}</p>
+                    <p className="hidden md:block text-[10px] text-slate-400 font-bold mt-2 italic">Student arrears total</p>
                 </div>
             </div>
 

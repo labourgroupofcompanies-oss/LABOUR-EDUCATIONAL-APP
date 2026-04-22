@@ -61,23 +61,23 @@ const AttendanceCalendar: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                     <select
                         value={selectedClassId || ''}
                         onChange={(e) => setSelectedClassId(Number(e.target.value))}
-                        className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-purple-500 transition-all"
+                        className="w-full sm:w-auto bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-purple-500 transition-all"
                     >
                         <option value="">Select Class</option>
                         {assignedClasses?.map(c => (
-                            <option key={c.id} value={c.id}>{c.name} {c.level}</option>
+                            <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                     </select>
 
-                    <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100">
+                    <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100 w-full sm:w-auto justify-between sm:justify-start">
                         <button onClick={prevMonth} className="px-3 py-1.5 hover:bg-white rounded-lg transition-all text-gray-500">
                             <i className="fas fa-chevron-left"></i>
                         </button>
-                        <span className="px-4 text-sm font-black text-gray-700 min-w-[120px] text-center">
+                        <span className="px-4 text-xs md:text-sm font-black text-gray-700 min-w-[100px] md:min-w-[120px] text-center">
                             {monthName} {year}
                         </span>
                         <button onClick={nextMonth} className="px-3 py-1.5 hover:bg-white rounded-lg transition-all text-gray-500">
@@ -99,7 +99,7 @@ const AttendanceCalendar: React.FC = () => {
                         
                         {/* Empty slots for first week */}
                         {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-                            <div key={`empty-${i}`} className="h-24 md:h-32 rounded-2xl bg-gray-50/30"></div>
+                            <div key={`empty-${i}`} className="h-16 md:h-32 rounded-lg md:rounded-2xl bg-gray-50/30"></div>
                         ))}
 
                         {/* Days of the month */}
@@ -113,14 +113,14 @@ const AttendanceCalendar: React.FC = () => {
                             return (
                                 <div 
                                     key={day} 
-                                    className={`h-24 md:h-32 rounded-2xl border transition-all p-3 flex flex-col justify-between group cursor-default ${getDayColor(dateKey)} ${isToday ? 'ring-2 ring-purple-500 ring-offset-2' : ''}`}
+                                    className={`h-16 md:h-32 rounded-lg md:rounded-2xl border transition-all p-1.5 md:p-3 flex flex-col justify-between group cursor-default ${getDayColor(dateKey)} ${isToday ? 'ring-2 ring-purple-500 ring-offset-1' : ''}`}
                                 >
-                                    <span className="font-black text-sm">{day}</span>
+                                    <span className="font-black text-[10px] md:text-sm">{day}</span>
                                     {stats ? (
-                                        <div className="space-y-1">
-                                            <p className="text-[10px] font-black uppercase tracking-tighter opacity-70">Present</p>
-                                            <p className="text-lg font-black leading-none">{stats.present}<span className="text-[10px] opacity-40">/{stats.total}</span></p>
-                                            <div className="w-full bg-black/5 h-1.5 rounded-full overflow-hidden mt-2">
+                                        <div className="space-y-0.5 md:space-y-1 overflow-hidden">
+                                            <p className="hidden md:block text-[8px] md:text-[10px] font-black uppercase tracking-tighter opacity-70">Present</p>
+                                            <p className="text-xs md:text-lg font-black leading-none">{stats.present}<span className="text-[8px] md:text-[10px] opacity-40">/{stats.total}</span></p>
+                                            <div className="w-full bg-black/5 h-1 md:h-1.5 rounded-full overflow-hidden mt-1 md:mt-2">
                                                 <div 
                                                     className="h-full bg-current opacity-60" 
                                                     style={{ width: `${(stats.present / stats.total) * 100}%` }}
@@ -129,7 +129,7 @@ const AttendanceCalendar: React.FC = () => {
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center flex-1 opacity-20">
-                                            <i className="fas fa-minus"></i>
+                                            <i className="fas fa-minus text-[10px]"></i>
                                         </div>
                                     )}
                                 </div>

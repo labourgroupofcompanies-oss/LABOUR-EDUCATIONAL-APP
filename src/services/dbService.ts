@@ -9,6 +9,8 @@ import {
     type Expense,
     type Budget
 } from '../eduDb';
+import { getMovementType, normalizeLevel } from '../utils/levelUtils';
+import type { StudentMovementType } from '../utils/levelUtils';
 
 export const dbService = {
     // Student Operations
@@ -110,6 +112,48 @@ export const dbService = {
                     }
                 }))
             );
+        },
+
+        /**
+         * Safely moves students while validating academic level progression
+         */
+        async moveStudents(
+            schoolId: string, 
+            studentIds: number[], 
+            targetClassId: number, 
+            intendedAction: StudentMovementType
+        ) {
+            return await eduDb.transaction('rw', [eduDb.students, eduDb.classes], async () => {
+                const targetClass = await eduDb.classes.get(targetClassId);
+                if (!targetClass) throw new Error("Target class not found");
+
+                const updates = [];
+                for (const studentId of studentIds) {
+                    const student = await eduDb.students.get(studentId);
+                    if (!student || student.schoolId !== schoolId) continue;
+
+                    const sourceClass = await eduDb.classes.get(student.classId!);
+                    if (!sourceClass) {
+                        // If student has no class, any move is fine (initial placement)
+                        updates.push({ key: studentId, changes: { classId: targetClassId }});
+                        continue;
+                    }
+
+                    const actualType = getMovementType(sourceClass.level, targetClass.level);
+                    
+                    // Critical Validation:
+                    if (intendedAction === 'promotion' && actualType !== 'promotion') {
+                        throw new Error(`Invalid Promotion: Moving from ${sourceClass.name} (${sourceClass.level}) to ${targetClass.name} (${targetClass.level}) is a ${actualType}.`);
+                    }
+                    if (intendedAction === 'transfer' && actualType !== 'transfer') {
+                        throw new Error(`Invalid Transfer: Moving from ${sourceClass.name} to ${targetClass.name} is a ${actualType}.`);
+                    }
+
+                    updates.push({ key: studentId, changes: { classId: targetClassId }});
+                }
+
+                return await this.bulkUpdate(updates);
+            });
         }
     },
 

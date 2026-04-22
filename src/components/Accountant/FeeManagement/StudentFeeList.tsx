@@ -7,6 +7,7 @@ import { type Student } from '../../../eduDb';
 import RecordPayment from './RecordPayment';
 import BulkDiscountModal from './BulkDiscountModal';
 import PaymentHistoryModal from './PaymentHistoryModal';
+import { normalizeArray, safeNumber, safeString } from '../../../utils/dataSafety';
 
 type FilterStatus = 'all' | 'paid' | 'partial' | 'unpaid' | 'overpaid';
 
@@ -42,13 +43,17 @@ const StudentFeeList: React.FC = () => {
 
     const rows = useLiveQuery(async (): Promise<StudentFeeRow[]> => {
         if (!user?.schoolId) return [];
-        const [students, structures, allPaymentsRaw] = await Promise.all([
+        const [studentsRaw, structuresRaw, allPaymentsRaw] = await Promise.all([
             dbService.students.getAll(user.schoolId),
             dbService.fees.getAllStructures(user.schoolId, term, year),
             dbService.fees.getPaymentsByTerm(user.schoolId, term, year, false), // Exclude voided
         ]);
-        const allPayments = allPaymentsRaw.filter(p => !p.isVoided);
-        const allClasses = await dbService.classes.getAll(user.schoolId);
+        
+        const students = normalizeArray(studentsRaw);
+        const structures = normalizeArray(structuresRaw);
+        const allPayments = normalizeArray(allPaymentsRaw).filter(p => p && !p.isVoided);
+        const classesRaw = await dbService.classes.getAll(user.schoolId);
+        const allClasses = normalizeArray(classesRaw);
 
         const rows: StudentFeeRow[] = [];
         for (const student of students) {
@@ -137,17 +142,17 @@ const StudentFeeList: React.FC = () => {
             </div>
 
             {/* ── Summary Cards ── */}
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
                 {[
-                    { label: 'Total Students', val: summary.total, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' },
-                    { label: 'Fully Paid', val: summary.paid, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+                    { label: 'Total', val: summary.total, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' },
+                    { label: 'Paid', val: summary.paid, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
                     { label: 'Overpaid', val: summary.overpaid, color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-100' },
                     { label: 'Partial', val: summary.partial, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100' },
                     { label: 'Unpaid', val: summary.unpaid, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' },
-                ].map(s => (
-                    <div key={s.label} className={`px-5 py-4 rounded-[1.5rem] border ${s.border} ${s.bg} flex flex-col justify-center`}>
-                        <p className={`text-2xl font-black ${s.color} leading-none mb-1`}>{s.val}</p>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight">{s.label}</p>
+                ].map((s, idx) => (
+                    <div key={s.label} className={`px-4 py-4 md:px-5 md:py-4 rounded-[1.25rem] md:rounded-[1.5rem] border ${s.border} ${s.bg} flex flex-col justify-center ${idx === 4 ? 'col-span-2 md:col-span-1' : 'col-span-1'}`}>
+                        <p className={`text-xl md:text-2xl font-black ${s.color} leading-none mb-1`}>{s.val}</p>
+                        <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight">{s.label}</p>
                     </div>
                 ))}
             </div>

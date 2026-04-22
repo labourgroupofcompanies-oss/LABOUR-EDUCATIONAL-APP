@@ -139,7 +139,7 @@ const AttendanceRegister: React.FC = () => {
     return (
         <div className="space-y-6 animate-fadeIn">
             {/* Header / Selection */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4">
+            <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center text-indigo-600 text-2xl shadow-sm">
@@ -151,9 +151,9 @@ const AttendanceRegister: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
-                        <div className="min-w-[150px]">
-                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5 ml-1">Class</label>
+                    <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <div className="w-full sm:min-w-[140px]">
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 ml-1">Class</label>
                             <select
                                 value={selectedClassId || ''}
                                 onChange={(e) => setSelectedClassId(Number(e.target.value))}
@@ -161,12 +161,12 @@ const AttendanceRegister: React.FC = () => {
                             >
                                 <option value="">Select Class</option>
                                 {assignedClasses?.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name} {c.level}</option>
+                                    <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
                         </div>
-                        <div className="min-w-[150px]">
-                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5 ml-1">Date</label>
+                        <div className="w-full sm:min-w-[140px]">
+                            <label className="block text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 ml-1">Date</label>
                             <input
                                 type="date"
                                 value={selectedDate}
@@ -179,38 +179,38 @@ const AttendanceRegister: React.FC = () => {
 
                 {selectedClassId && (
                     <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-gray-50">
-                        <div className="flex gap-4">
-                            <div className="bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
-                                <p className="text-[8px] font-black text-green-600 uppercase tracking-widest mb-0.5">Present</p>
-                                <p className="text-lg font-black text-green-700 leading-none">{stats.present}</p>
+                        <div className="flex gap-2 md:gap-4 overflow-x-auto pb-1 md:pb-0 w-full sm:w-auto">
+                            <div className="bg-green-50 px-2.5 py-1.5 rounded-lg border border-green-100 flex-shrink-0 min-w-[60px]">
+                                <p className="text-[7px] md:text-[8px] font-black text-green-600 uppercase tracking-widest mb-0.5">Present</p>
+                                <p className="text-sm md:text-lg font-black text-green-700 leading-none">{stats.present}</p>
                             </div>
-                            <div className="bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-100">
-                                <p className="text-[8px] font-black text-yellow-600 uppercase tracking-widest mb-0.5">Late</p>
-                                <p className="text-lg font-black text-yellow-700 leading-none">{stats.late}</p>
+                            <div className="bg-yellow-50 px-2.5 py-1.5 rounded-lg border border-yellow-100 flex-shrink-0 min-w-[60px]">
+                                <p className="text-[7px] md:text-[8px] font-black text-yellow-600 uppercase tracking-widest mb-0.5">Late</p>
+                                <p className="text-sm md:text-lg font-black text-yellow-700 leading-none">{stats.late}</p>
                             </div>
-                            <div className="bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
-                                <p className="text-[8px] font-black text-red-600 uppercase tracking-widest mb-0.5">Absent</p>
-                                <p className="text-lg font-black text-red-700 leading-none">{stats.absent}</p>
+                            <div className="bg-red-50 px-2.5 py-1.5 rounded-lg border border-red-100 flex-shrink-0 min-w-[60px]">
+                                <p className="text-[7px] md:text-[8px] font-black text-red-600 uppercase tracking-widest mb-0.5">Absent</p>
+                                <p className="text-sm md:text-lg font-black text-red-700 leading-none">{stats.absent}</p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs"></i>
+                        <div className="flex items-center gap-2 md:gap-3 w-full sm:w-auto">
+                            <div className="relative flex-1 sm:w-48">
+                                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 text-[10px]"></i>
                                 <input
                                     type="text"
-                                    placeholder="Search student..."
+                                    placeholder="Search..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs font-bold w-48 focus:ring-2 focus:ring-indigo-500 transition-all"
+                                    className="pl-8 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-bold w-full focus:ring-2 focus:ring-indigo-500 transition-all"
                                 />
                             </div>
                             <button
                                 onClick={markAllPresent}
-                                className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                                className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap"
                             >
-                                <i className="fas fa-check-double mr-2"></i>
-                                Mark All Present
+                                <i className="fas fa-check-double mr-1.5"></i>
+                                All Present
                             </button>
                         </div>
                     </div>
@@ -231,17 +231,17 @@ const AttendanceRegister: React.FC = () => {
                                 const status = attendanceData[student.id!];
                                 return (
                                     <div key={student.id} className={`flex items-center justify-between p-4 md:px-8 hover:bg-gray-50/50 transition-colors ${idx % 2 === 1 ? 'bg-gray-50/20' : ''}`}>
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center font-bold text-sm border-2 border-white shadow-sm overflow-hidden">
+                                        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center font-bold text-xs md:text-sm border-2 border-white shadow-sm overflow-hidden flex-shrink-0">
                                                 {student.photo ? (
                                                     <img src={URL.createObjectURL(student.photo)} className="w-full h-full object-cover" />
                                                 ) : (
                                                     student.fullName.charAt(0)
                                                 )}
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-gray-800 leading-tight">{student.fullName}</p>
-                                                <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">{student.studentIdString || 'No ID'}</p>
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-gray-800 leading-tight text-xs md:text-sm truncate">{student.fullName}</p>
+                                                <p className="text-[9px] md:text-[10px] text-gray-400 font-medium uppercase tracking-wider truncate">{student.studentIdString || 'No ID'}</p>
                                             </div>
                                         </div>
 

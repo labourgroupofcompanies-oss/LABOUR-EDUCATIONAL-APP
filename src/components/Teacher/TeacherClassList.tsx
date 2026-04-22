@@ -327,20 +327,20 @@ const TeacherClassList: React.FC = () => {
             <div className="space-y-6 md:space-y-8 animate-fadeIn">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6 border-b border-gray-100 pb-6 md:pb-8">
-                    <div>
+                    <div className="min-w-0">
                         <button
                             onClick={() => { setSelectedClass(null); setClassView('roster'); }}
                             className="flex items-center text-gray-400 hover:text-indigo-600 font-black text-[9px] md:text-[10px] uppercase tracking-[0.2em] transition-all mb-4"
                         >
                             <i className="fas fa-chevron-left mr-2" /> My Classes
                         </button>
-                        <h2 className="text-2xl md:text-3xl font-black text-gray-800 tracking-tight">{selectedClass.name}</h2>
-                        <p className="text-xs md:text-sm text-gray-400 font-medium">Population: {students?.length || 0} Learners</p>
+                        <h2 className="text-xl md:text-3xl font-black text-gray-800 tracking-tight truncate">{selectedClass.name}</h2>
+                        <p className="text-[10px] md:text-sm text-gray-400 font-medium">Population: {students?.length || 0} Learners</p>
                     </div>
                     <div className="flex gap-4">
-                        <div className={`px-6 py-3 rounded-2xl border ${isCurrentClassTeacher ? 'bg-green-50 border-green-100' : 'bg-indigo-50 border-indigo-100'}`}>
-                            <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isCurrentClassTeacher ? 'text-green-400' : 'text-indigo-400'}`}>Designation</div>
-                            <div className={`font-black text-sm uppercase tracking-widest ${isCurrentClassTeacher ? 'text-green-700' : 'text-indigo-700'}`}>
+                        <div className={`px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl border ${isCurrentClassTeacher ? 'bg-green-50 border-green-100' : 'bg-indigo-50 border-indigo-100'}`}>
+                            <div className={`text-[8px] md:text-[10px] font-black uppercase tracking-widest mb-0.5 md:mb-1 ${isCurrentClassTeacher ? 'text-green-400' : 'text-indigo-400'}`}>Designation</div>
+                            <div className={`font-black text-xs md:text-sm uppercase tracking-widest ${isCurrentClassTeacher ? 'text-green-700' : 'text-indigo-700'}`}>
                                 {isCurrentClassTeacher ? 'Class Teacher' : 'Subject Teacher'}
                             </div>
                         </div>
@@ -381,7 +381,7 @@ const TeacherClassList: React.FC = () => {
                 )}
 
                 {/* Sub-tab selector */}
-                <div className="flex gap-1 bg-gray-50 p-1 rounded-2xl border border-gray-100 w-full sm:w-auto sm:inline-flex">
+                <div className="flex gap-1 bg-gray-50 p-1 rounded-2xl border border-gray-100 w-full sm:w-auto overflow-x-auto whitespace-nowrap scrollbar-hide">
                     {([
                         { key: 'roster', label: 'Learner Roster', icon: 'fa-users' },
                         ...(isCurrentClassTeacher
@@ -395,10 +395,10 @@ const TeacherClassList: React.FC = () => {
                         <button
                             key={tab.key}
                             onClick={() => setClassView(tab.key)}
-                            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 py-2 px-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${classView === tab.key ? 'bg-white shadow-sm text-indigo-600 border border-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
+                            className={`flex items-center justify-center gap-2 py-2 px-3 md:px-4 rounded-xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all flex-shrink-0 ${classView === tab.key ? 'bg-white shadow-sm text-indigo-600 border border-gray-200' : 'text-gray-400 hover:text-gray-600'}`}
                         >
-                            <i className={`fas ${tab.icon}`} />
-                            {tab.label}
+                            <i className={`fas ${tab.icon} text-xs md:text-sm`} />
+                            <span>{tab.label}</span>
                         </button>
                     ))}
                 </div>

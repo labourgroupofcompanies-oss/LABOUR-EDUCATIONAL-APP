@@ -7,6 +7,8 @@ import { showConfirm } from '../Common/ConfirmDialog';
 import { showPromotionDialog } from '../Common/PromotionDialogs';
 import { supabase } from '../../supabaseClient';
 import { db } from '../../db';
+import { getNextLevel, normalizeLevel } from '../../utils/levelUtils';
+import type { StudentMovementType } from '../../utils/levelUtils';
 
 const ClassManagement: React.FC = () => {
     const { user } = useAuth();
@@ -21,6 +23,7 @@ const ClassManagement: React.FC = () => {
     });
 
     const [isPromoting, setIsPromoting] = useState(false);
+    const [movementType, setMovementType] = useState<StudentMovementType>('promotion');
     const [promotionTargetClassId, setPromotionTargetClassId] = useState<number | null>(null);
     const [selectedStudentsForPromotion, setSelectedStudentsForPromotion] = useState<number[]>([]);
 
@@ -493,20 +496,22 @@ const ClassManagement: React.FC = () => {
         if (!confirm.confirmed) return;
 
         try {
-            await dbService.students.bulkUpdate(
-                selectedStudentsForPromotion.map((id) => ({
-                    key: id,
-                    changes: { classId: promotionTargetClassId }
-                }))
+            if (!user?.schoolId) return;
+
+            await dbService.students.moveStudents(
+                user.schoolId,
+                selectedStudentsForPromotion,
+                promotionTargetClassId,
+                movementType
             );
 
             setIsPromoting(false);
             setSelectedStudentsForPromotion([]);
             setPromotionTargetClassId(null);
             showToast('Students moved successfully!', 'success');
-        } catch (e) {
+        } catch (e: any) {
             console.error('Failed to promote', e);
-            showToast('Failed to move students', 'error');
+            showToast(e.message || 'Failed to move students', 'error');
         }
     };
 
@@ -859,20 +864,67 @@ const ClassManagement: React.FC = () => {
                             </p>
                         </div>
 
-                        <div className="p-5 sm:p-8">
-                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-3">
-                                Select Target Class
-                            </label>
-                            <select
-                                className="w-full px-4 py-4 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary font-bold text-gray-700"
-                                onChange={(e) => setPromotionTargetClassId(Number(e.target.value))}
-                                value={promotionTargetClassId || ''}
-                            >
-                                <option value="">Select target...</option>
-                                {classes?.filter((c) => c.id !== selectedClassId).map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
+                        <div className="p-5 sm:p-8 space-y-6">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                                    Action Type
+                                </label>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {(['promotion', 'transfer', 'repeat'] as StudentMovementType[]).map((type) => (
+                                        <button
+                                            key={type}
+                                            onClick={() => {
+                                                setMovementType(type);
+                                                setPromotionTargetClassId(null);
+                                            }}
+                                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all ${
+                                                movementType === type 
+                                                    ? 'bg-purple-50 border-purple-600 text-purple-600 shadow-sm' 
+                                                    : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
+                                            }`}
+                                        >
+                                            {type}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 text-indigo-400">
+                                    {movementType === 'promotion' ? 'Select Next Level Class' : movementType === 'transfer' ? 'Select Same Level Class' : 'Select Target Class'}
+                                </label>
+                                <select
+                                    className="w-full px-4 py-4 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary font-bold text-gray-700 transition-all"
+                                    onChange={(e) => setPromotionTargetClassId(Number(e.target.value))}
+                                    value={promotionTargetClassId || ''}
+                                >
+                                    <option value="">Select target...</option>
+                                    {classes?.filter((c) => {
+                                        if (c.id === selectedClassId) return false;
+                                        const currentClass = classes.find(cc => cc.id === selectedClassId);
+                                        if (!currentClass) return true;
+
+                                        const fromLevel = currentClass.level;
+                                        const toLevel = c.level;
+
+                                        if (movementType === 'promotion') {
+                                            return normalizeLevel(toLevel) === getNextLevel(fromLevel);
+                                        }
+                                        if (movementType === 'transfer') {
+                                            return normalizeLevel(toLevel) === normalizeLevel(fromLevel);
+                                        }
+                                        return true; // repeat allows more freedom
+                                    }).map((c) => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                                {movementType === 'promotion' && !getNextLevel(classes?.find(c => c.id === selectedClassId)?.level || '') && (
+                                    <p className="mt-3 text-xs font-bold text-orange-500 bg-orange-50 p-3 rounded-lg border border-orange-100 italic">
+                                        <i className="fas fa-exclamation-triangle mr-2"></i>
+                                        This is the highest level (No next level exists).
+                                    </p>
+                                )}
+                            </div>
                         </div>
 
                         <div className="p-5 sm:p-8 bg-gray-50/50 border-t border-gray-100 flex gap-3">

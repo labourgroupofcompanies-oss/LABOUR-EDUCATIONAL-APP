@@ -8,23 +8,13 @@ import { exportDatabase, importDatabase } from '../../utils/backupUtils';
 import { showConfirm } from '../Common/ConfirmDialog';
 import { showToast } from '../Common/Toast';
 import { syncService } from '../../services/syncService';
+import { normalizeArray, normalizeObject, safeString, safeNumber, safeBoolean } from '../../utils/dataSafety';
 
 const Settings: React.FC = () => {
     const { user } = useAuth();
     const [activeTab, setActiveTab] = useState<'general' | 'academic' | 'assessment' | 'system' | 'security' | 'report_design'>('general');
     const [isLoading, setIsLoading] = useState(false);
 
-    // Helper to ensure gradingSystem is always an array (heals conversion-to-object corruption)
-    const normalizeGradingSystem = (val: any) => {
-        if (Array.isArray(val)) return val;
-        if (val && typeof val === 'object' && Object.keys(val).length > 0) {
-            console.warn('[Settings] Healed corrupted gradingSystem value');
-            return Object.keys(val)
-                .sort((a, b) => Number(a) - Number(b))
-                .map(k => (val as any)[k]);
-        }
-        return [];
-    };
 
     // School Data
     const schoolData = useLiveQuery(async () => {
@@ -164,28 +154,28 @@ const Settings: React.FC = () => {
     // Initialize Form Data
     useEffect(() => {
         if (schoolData) {
-            setSchoolName(schoolData.schoolName);
+            setSchoolName(safeString(schoolData.schoolName));
             if (schoolData.logo) setSchoolLogo(schoolData.logo);
-            if (schoolData.schoolType) setSchoolType(schoolData.schoolType);
-            if (schoolData.region) setRegion(schoolData.region);
-            if (schoolData.district) setDistrict(schoolData.district);
-            if (schoolData.headteacherName) setHeadteacherName(schoolData.headteacherName);
-            if (schoolData.email) setEmail(schoolData.email || '');
-            if (schoolData.address) setAddress(schoolData.address || '');
-            if (schoolData.motto) setMotto(schoolData.motto || '');
+            setSchoolType(safeString(schoolData.schoolType));
+            setRegion(safeString(schoolData.region));
+            setDistrict(safeString(schoolData.district));
+            setHeadteacherName(safeString(schoolData.headteacherName));
+            setEmail(safeString(schoolData.email));
+            setAddress(safeString(schoolData.address));
+            setMotto(safeString(schoolData.motto));
         }
     }, [schoolData]);
 
     useEffect(() => {
         if (academicSettings) {
-            if (academicSettings.academicYear) setAcademicYear(academicSettings.academicYear);
-            if (academicSettings.currentTerm) setCurrentTerm(academicSettings.currentTerm);
+            if (academicSettings.academicYear) setAcademicYear(safeString(academicSettings.academicYear));
+            if (academicSettings.currentTerm) setCurrentTerm(safeString(academicSettings.currentTerm, 'Term 1'));
             if (academicSettings.gradingSystem) {
-                setGradingSystem(normalizeGradingSystem(academicSettings.gradingSystem));
+                setGradingSystem(normalizeArray(academicSettings.gradingSystem));
             }
-            if (academicSettings.vacationDate) setVacationDate(academicSettings.vacationDate);
-            if (academicSettings.nextTermBegins) setNextTermBegins(academicSettings.nextTermBegins);
-            if (academicSettings.termStartDate) setTermStartDate(academicSettings.termStartDate);
+            if (academicSettings.vacationDate) setVacationDate(safeString(academicSettings.vacationDate));
+            if (academicSettings.nextTermBegins) setNextTermBegins(safeString(academicSettings.nextTermBegins));
+            if (academicSettings.termStartDate) setTermStartDate(safeString(academicSettings.termStartDate));
             
             if (academicSettings.report_config) {
                 const cfg = academicSettings.report_config;
@@ -729,7 +719,7 @@ const Settings: React.FC = () => {
                         <h2 className="text-xl font-bold text-gray-800 border-b pb-4 pt-4">Grading System</h2>
                         {/* Mobile: card rows; Desktop: table */}
                         <div className="space-y-3 md:hidden">
-                            {normalizeGradingSystem(gradingSystem).map((g, idx) => (
+                            {normalizeArray(gradingSystem).map((g, idx) => (
                                 <div key={idx} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2">
@@ -769,7 +759,7 @@ const Settings: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {normalizeGradingSystem(gradingSystem).map((g, idx) => (
+                                    {normalizeArray(gradingSystem).map((g, idx) => (
                                         <tr key={idx} className="border-b border-gray-50">
                                             <td className="p-2"><input type="number" value={g.min} onChange={e => { const n = [...gradingSystem]; n[idx].min = parseInt(e.target.value); setGradingSystem(n); }} className="w-20 p-2 bg-gray-50 rounded-lg font-bold" /></td>
                                             <td className="p-2"><input type="number" value={g.max} onChange={e => { const n = [...gradingSystem]; n[idx].max = parseInt(e.target.value); setGradingSystem(n); }} className="w-20 p-2 bg-gray-50 rounded-lg font-bold" /></td>

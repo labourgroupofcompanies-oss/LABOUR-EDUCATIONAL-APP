@@ -207,15 +207,15 @@ const PayrollDashboard: React.FC = () => {
             </div>
 
             {/* ── Summary bar ── */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                 {[
-                    { label: 'Total Net Pay', val: `GHS ${totalNet.toLocaleString('en-GH', { minimumFractionDigits: 2 })}`, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
-                    { label: 'Staff Paid', val: `${paidCount} / ${rows.length}`, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-                    { label: 'Month', val: `${MONTHS[month - 1]} ${year}`, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' },
-                ].map(s => (
-                    <div key={s.label} className={`px-6 py-5 rounded-[1.5rem] md:rounded-[2rem] border ${s.border} ${s.bg} flex flex-col justify-center col-span-1 last:col-span-2 md:last:col-span-1`}>
-                        <p className={`text-xl md:text-2xl font-black ${s.color} leading-none mb-1.5`}>{s.val}</p>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">{s.label}</p>
+                    { label: 'Net Pay', val: `GHS ${totalNet.toLocaleString()}`, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
+                    { label: 'Staff Paid', val: `${paidCount}/${rows.length}`, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+                    { label: 'Period', val: `${MONTHS[month - 1].slice(0, 3)} ${year}`, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' },
+                ].map((s, idx) => (
+                    <div key={s.label} className={`px-4 py-4 md:px-6 md:py-5 rounded-[1.25rem] md:rounded-[2rem] border ${s.border} ${s.bg} flex flex-col justify-center ${idx === 2 ? 'col-span-2 md:col-span-1' : 'col-span-1'}`}>
+                        <p className={`text-base md:text-2xl font-black ${s.color} leading-none mb-1 md:mb-1.5`}>{s.val}</p>
+                        <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest leading-tight">{s.label}</p>
                     </div>
                 ))}
             </div>

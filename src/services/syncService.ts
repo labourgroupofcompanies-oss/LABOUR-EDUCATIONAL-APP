@@ -3,6 +3,7 @@ import { db } from '../db';
 import { eduDb } from '../eduDb';
 import { dbService } from './dbService';
 import { storageService } from './storageService';
+import { isPlainObject } from '../utils/dataSafety';
 
 type SyncResult = {
     success: boolean;
@@ -1519,21 +1520,17 @@ export const syncService = {
     // ─────────────────────────────────────────────────────────────
     // Pull from Supabase
     // ─────────────────────────────────────────────────────────────
-    isPlainObject(value: any): boolean {
-        return value !== null && typeof value === 'object' && !Array.isArray(value);
-    },
-
     mergeSettingValue(localValue: any, cloudValue: any): any {
         // IMPORTANT: Arrays must NOT be object-spread as it converts them to numeric-key objects.
-        // If both are arrays, the cloud version is authoritative and replaces the local one.
+        // If both are arrays, the cloud version is authoritative.
         if (Array.isArray(localValue) && Array.isArray(cloudValue)) {
             return cloudValue;
         }
         // If both are plain objects, merge them to preserve keys not present in the cloud yet.
-        if (this.isPlainObject(localValue) && this.isPlainObject(cloudValue)) {
+        if (isPlainObject(localValue) && isPlainObject(cloudValue)) {
             return { ...localValue, ...cloudValue };
         }
-        // For strings, numbers, or mismatching types, the cloud version wins.
+        // For primitives or mismatching types, the cloud version wins.
         return cloudValue;
     },
 
@@ -1895,7 +1892,12 @@ export const syncService = {
                 const cloudIds = new Set(data.map((item: any) => item.id));
                 const localRows = await table.where('schoolId').equals(schoolId).toArray();
                 
-                const toDelete = localRows.filter((local: any) => local.idCloud && !cloudIds.has(local.idCloud));
+                const toDelete = localRows.filter((local: any) => 
+                    local.idCloud && 
+                    !cloudIds.has(local.idCloud) &&
+                    local.syncStatus !== 'pending' &&
+                    local.syncStatus !== 'failed'
+                );
                 if (toDelete.length > 0) {
                     console.warn(`[syncService] Cloud-authoritative sweep: Removing ${toDelete.length} local ${supabaseTable} records that were hard-deleted online.`);
                     await table.bulkDelete(toDelete.map((t: any) => t.id));

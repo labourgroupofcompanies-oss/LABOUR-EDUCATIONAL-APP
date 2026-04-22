@@ -213,7 +213,7 @@ const FeeStructure: React.FC = () => {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full min-w-[500px]">
                             <thead>
                                 <tr className="bg-slate-50/50 border-b border-slate-100">
                                     <th className="px-6 md:px-10 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Class</th>

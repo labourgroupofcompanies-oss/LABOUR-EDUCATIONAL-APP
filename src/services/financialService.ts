@@ -25,6 +25,10 @@ export const financialService = {
         let endTime = 0;
         let payrollYear = year;
 
+        // Note: Academic sessions usually span two calendar years (e.g., 2025/2026).
+        // Term 1 (First Term) usually starts in the base year (Sep-Dec).
+        // Term 2 and Term 3 fall into the subsequent calendar year (Jan-Aug).
+
         if (t.includes('1') || t.includes('first')) {
             // Sep 1 - Dec 31
             months = [9, 10, 11, 12];
@@ -34,15 +38,15 @@ export const financialService = {
         } else if (t.includes('2') || t.includes('second')) {
             // Jan 1 - Apr 30
             months = [1, 2, 3, 4];
-            startTime = new Date(year, 0, 1).getTime(); 
-            endTime = new Date(year, 3, 30, 23, 59, 59).getTime(); 
-            payrollYear = year;
+            startTime = new Date(year + 1, 0, 1).getTime(); 
+            endTime = new Date(year + 1, 3, 30, 23, 59, 59).getTime(); 
+            payrollYear = year + 1;
         } else if (t.includes('3') || t.includes('third')) {
             // May 1 - Aug 31
             months = [5, 6, 7, 8];
-            startTime = new Date(year, 4, 1).getTime(); 
-            endTime = new Date(year, 7, 31, 23, 59, 59).getTime(); 
-            payrollYear = year;
+            startTime = new Date(year + 1, 4, 1).getTime(); 
+            endTime = new Date(year + 1, 7, 31, 23, 59, 59).getTime(); 
+            payrollYear = year + 1;
         } else {
             // Broad Fallback: Jan 1 - Dec 31
             months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];

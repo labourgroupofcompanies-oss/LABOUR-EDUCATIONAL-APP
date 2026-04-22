@@ -1,4 +1,5 @@
 import React from 'react';
+import { normalizeArray } from '../../../utils/dataSafety';
 
 export interface ReportConfig {
     themeColor: string;
@@ -93,7 +94,8 @@ const gradeColor = (grade: string) => {
 };
 
 const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) => {
-    const maxTotal = data.subjects.length * 100;
+    const subjects = normalizeArray(data.subjects);
+    const maxTotal = subjects.length * 100;
     const percentage = maxTotal > 0 ? Math.round((data.totalScoreSum / maxTotal) * 100).toString() : '0';
     const MIN_SUBJECT_ROWS = 12; // Ensure table always has at least this many rows for stability
 
@@ -373,7 +375,7 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                             </tr>
                         </thead>
                         <tbody>
-                            {data.subjects.map((row, idx) => (
+                            {subjects.map((row, idx) => (
                                 <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                                     <td style={tdStyle('center')}>{idx + 1}</td>
                                     <td style={{ ...tdStyle('left', true), color: PRIMARY_TEXT }}>{row.subjectName}</td>
@@ -384,8 +386,8 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                                     <td style={{ ...tdStyle('center'), fontStyle: 'italic', fontSize: '7.5pt' }}>{row.remarks}</td>
                                 </tr>
                             ))}
-                            {Array.from({ length: Math.max(0, MIN_SUBJECT_ROWS - data.subjects.length) }).map((_, i) => {
-                                const idx = data.subjects.length + i;
+                            {Array.from({ length: Math.max(0, MIN_SUBJECT_ROWS - subjects.length) }).map((_, i) => {
+                                const idx = subjects.length + i;
                                 return (
                                     <tr key={`blank-${i}`} style={{ borderBottom: '1px solid #f8fafc', opacity: 0.5 }}>
                                         <td style={tdStyle('center')}>{idx + 1}</td>

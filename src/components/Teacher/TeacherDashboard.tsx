@@ -9,6 +9,7 @@ import { useAcademicSession } from '../../hooks/useAcademicSession';
 import { useSubscription } from '../../hooks/useSubscription';
 import { dbService } from '../../services/dbService';
 import { useAssetPreview } from '../../hooks/useAssetPreview';
+import { normalizeArray, safeString, safeNumber } from '../../utils/dataSafety';
 import TeacherClassList from './TeacherClassList';
 import TeacherSubjectList from './TeacherSubjectList';
 import TeacherSettings from './TeacherSettings';
@@ -29,6 +30,7 @@ const TeacherDashboard: React.FC = () => {
     const [view, setView] = useState<'overview' | 'classes' | 'subjects' | 'attendance' | 'promotions' | 'payslip' | 'settings'>('overview');
     const [isSyncing, setIsSyncing] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
+    const [showMoreNav, setShowMoreNav] = useState(false);
     const [attendanceMode, setAttendanceMode] = useState<'register' | 'history'>('register');
 
     useEffect(() => {
@@ -90,19 +92,21 @@ const TeacherDashboard: React.FC = () => {
 
         const teacherId = user.id;
 
-        const [myClasses, myAssignments] = await Promise.all([
+        const [myClassesRaw, myAssignmentsRaw] = await Promise.all([
             dbService.classes.getTeacherClasses(user.schoolId, teacherId),
             dbService.staff.getSubjectAssignments(user.schoolId, teacherId)
         ]);
 
+        const myClasses = normalizeArray(myClassesRaw);
+        const myAssignments = normalizeArray(myAssignmentsRaw);
+
         let studentCount = 0;
         for (const cls of myClasses) {
-            if (cls.id) {
-                const count = await dbService.students.getByClass(user.schoolId, cls.id).then(res => 
-                    res.filter((s, i, arr) => 
-                        arr.findIndex(t => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
-                    ).length
-                );
+            if (cls && cls.id) {
+                const students = await dbService.students.getByClass(user.schoolId, cls.id);
+                const count = normalizeArray(students).filter((s, i, arr) => 
+                    s && s.fullName && arr.findIndex(t => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
+                ).length;
                 studentCount += count;
             }
         }
@@ -110,11 +114,13 @@ const TeacherDashboard: React.FC = () => {
         let upcomingEvents: any[] = [];
         try {
             const startOfToday = new Date().setHours(0, 0, 0, 0);
-            upcomingEvents = await eduDb.schoolEvents
+            const eventsRes = await eduDb.schoolEvents
                 .where('schoolId').equals(user.schoolId)
-                .filter((e: any) => new Date(e.startDate).getTime() >= startOfToday)
                 .toArray();
-            upcomingEvents.sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+            
+            upcomingEvents = normalizeArray(eventsRes)
+                .filter((e: any) => e && e.startDate && new Date(e.startDate).getTime() >= startOfToday)
+                .sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
         } catch (err) {
             console.warn("schoolEvents table not ready in teacher dashboard:", err);
         }
@@ -126,8 +132,8 @@ const TeacherDashboard: React.FC = () => {
         return {
             classes: myClasses.length,
             subjects: myAssignments.length,
-            students: studentCount,
-            className,
+            students: safeNumber(studentCount),
+            className: safeString(className, 'None'),
             upcomingEvents: upcomingEvents.slice(0, 3)
         };
     }, [user?.schoolId, user?.id]);
@@ -179,21 +185,16 @@ const TeacherDashboard: React.FC = () => {
                         </button>
                     </div>
                     {/* Row 2: greeting strip */}
-                    <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <p className="text-indigo-200 text-xs font-medium">👋 Good to see you today!</p>
-                            <button
-                                onClick={handleManualSync}
-                                disabled={isSyncing}
-                                className="w-6 h-6 flex items-center justify-center bg-white/10 rounded-lg text-white/70 hover:bg-white/20 disabled:opacity-50 transition-all"
-                                title="Force Sync"
-                            >
-                                <i className={`fas fa-sync-alt text-[10px] ${isSyncing ? 'animate-spin' : ''}`}></i>
-                            </button>
-                        </div>
-                        <div className="hover:scale-110 transition-transform active:scale-95" title={isSubscribed ? (subscription?.status === 'trial' ? 'Trial Mode' : 'Active') : 'Inactive'}>
-                            <SubscriptionStatusIndicator isSubscribed={isSubscribed} isLoading={isSubLoading} />
-                        </div>
+                    <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2">
+                        <p className="text-indigo-200 text-xs font-medium">👋 Good to see you today!</p>
+                        <button
+                            onClick={handleManualSync}
+                            disabled={isSyncing}
+                            className="w-6 h-6 flex items-center justify-center bg-white/10 rounded-lg text-white/70 hover:bg-white/20 disabled:opacity-50 transition-all"
+                            title="Force Sync"
+                        >
+                            <i className={`fas fa-sync-alt text-[10px] ${isSyncing ? 'animate-spin' : ''}`}></i>
+                        </button>
                     </div>
                 </div>
 
@@ -265,7 +266,7 @@ const TeacherDashboard: React.FC = () => {
                     })}
                 </div>
 
-                <div className="p-4 md:p-8 min-h-[500px]">
+                <div className="p-4 md:p-8 min-h-[500px] overflow-x-auto">
                     {view === 'overview' && (
                         <SubscriptionGate>
                             <div className="space-y-8 md:space-y-12 animate-fadeIn">
@@ -411,31 +412,101 @@ const TeacherDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Mobile Fixed Bottom Navigation Bar — HIDDEN on desktop/tablet */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
-                <div className="flex items-center justify-around">
-                    {(['overview', 'classes', 'subjects', 'attendance', 'payslip', 'settings'] as const).map((tab) => {
-                        if ((tab === 'classes' || tab === 'attendance') && stats?.classes === 0) return null;
+            {/* ── Mobile Fixed Bottom Navigation Bar ── */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.12)]">
+                <div className="flex items-center justify-around px-2">
+                    {(() => {
+                        const primaryTabs = ['overview', 'classes', 'subjects', 'attendance'] as const;
+                        const moreTabs = ['promotions', 'payslip', 'settings'] as const;
+                        const isMoreActive = moreTabs.includes(view as any);
+
+                        const getLabel = (tab: string) => {
+                            switch(tab) {
+                                case 'overview': return 'Home';
+                                case 'classes': return 'Classes';
+                                case 'subjects': return 'Subjects';
+                                case 'attendance': return 'Attend.';
+                                case 'promotions': return 'Promos';
+                                case 'payslip': return 'Payslip';
+                                case 'settings': return 'Settings';
+                                default: return tab;
+                            }
+                        };
+
                         return (
-                            <button
-                                key={tab}
-                                onClick={() => setView(tab)}
-                                className={`relative flex-1 flex flex-col items-center pt-2 pb-3 gap-1 transition-all active:scale-95 ${view === tab
-                                    ? 'text-indigo-600'
-                                    : 'text-gray-400'
-                                    }`}
-                            >
-                                {view === tab && (
-                                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-indigo-600 rounded-full"></span>
+                            <>
+                                {primaryTabs.map((tab) => {
+                                    if ((tab === 'classes' || tab === 'attendance') && stats?.classes === 0) return null;
+                                    return (
+                                        <button
+                                            key={tab}
+                                            onClick={() => { setView(tab); setShowMoreNav(false); }}
+                                            className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${view === tab ? 'text-indigo-600' : 'text-gray-400'}`}
+                                        >
+                                            {view === tab && (
+                                                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.5)] animate-slideDown"></span>
+                                            )}
+                                            <i className={`fas ${tabIcons[tab]} text-xl transition-colors ${view === tab ? 'scale-110' : ''}`}></i>
+                                            <span className="text-[9px] font-black uppercase tracking-tight leading-none">
+                                                {getLabel(tab)}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+
+                                <button
+                                    onClick={() => setShowMoreNav(!showMoreNav)}
+                                    className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${isMoreActive || showMoreNav ? 'text-indigo-600' : 'text-gray-400'}`}
+                                >
+                                    {(isMoreActive || showMoreNav) && (
+                                        <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-indigo-600 rounded-b-full shadow-[0_2px_10px_rgba(79,70,229,0.5)] animate-slideDown"></span>
+                                    )}
+                                    <div className={`w-6 h-6 flex items-center justify-center transition-transform duration-300 ${showMoreNav ? 'rotate-90' : ''}`}>
+                                        <i className={`fas ${showMoreNav ? 'fa-times' : 'fa-th-large'} text-xl`}></i>
+                                    </div>
+                                    <span className="text-[9px] font-black uppercase tracking-tight leading-none">{showMoreNav ? 'Close' : 'Menu'}</span>
+                                </button>
+
+                                {/* More Overlay for Teacher */}
+                                {showMoreNav && (
+                                    <div className="absolute bottom-full left-0 right-0 p-4 animate-in slide-in-from-bottom duration-300">
+                                        <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] border border-white/20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] overflow-hidden max-h-[70vh] flex flex-col">
+                                            <div className="p-6 border-b border-gray-100/50 bg-gray-50/50 flex items-center justify-between">
+                                                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center gap-2">
+                                                    <i className="fas fa-chalkboard-teacher text-indigo-600"></i>
+                                                    Teacher Menu
+                                                </h3>
+                                                <div className="px-3 py-1 bg-indigo-100 rounded-full">
+                                                    <span className="text-[9px] font-black text-indigo-600 uppercase tracking-tighter">Academic Tools</span>
+                                                </div>
+                                            </div>
+                                            <div className="p-4 overflow-y-auto grid grid-cols-3 gap-3">
+                                                {moreTabs.map((tab) => (
+                                                    <button
+                                                        key={tab}
+                                                        onClick={() => { setView(tab); setShowMoreNav(false); }}
+                                                        className={`flex flex-col items-center justify-center p-4 rounded-2xl transition-all active:scale-95 gap-3 border ${view === tab 
+                                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-200' 
+                                                            : 'bg-gray-50/50 text-gray-500 border-gray-100 hover:bg-gray-100'}`}
+                                                    >
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${view === tab ? 'bg-white/20' : 'bg-white shadow-sm text-gray-400'}`}>
+                                                            <i className={`fas ${tabIcons[tab]}`}></i>
+                                                        </div>
+                                                        <span className="text-[9px] font-bold text-center leading-tight uppercase tracking-tight">{getLabel(tab)}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="p-4 bg-gray-50/80 border-t border-gray-100/50">
+                                                <p className="text-[8px] text-center text-gray-400 font-black uppercase tracking-[0.2em]">
+                                                    Labour Edu System • Teacher Terminal
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
                                 )}
-                                <i className={`fas ${tabIcons[tab]} text-xl transition-colors`}></i>
-                                <span className={`text-[8px] font-black uppercase tracking-tight leading-none ${view === tab ? 'text-indigo-600' : 'text-gray-400'
-                                    }`}>
-                                    {tab === 'classes' ? 'Classes' : tab === 'subjects' ? 'Subjects' : tab === 'attendance' ? 'Attend.' : tab === 'payslip' ? 'Payslip' : tab === 'settings' ? 'Settings' : 'Home'}
-                                </span>
-                            </button>
+                            </>
                         );
-                    })}
+                    })()}
                 </div>
             </nav>
 

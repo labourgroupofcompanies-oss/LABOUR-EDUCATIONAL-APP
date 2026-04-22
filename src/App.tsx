@@ -13,6 +13,7 @@ import DeveloperPortal from './components/Developer/DeveloperPortal';
 import AccountantDashboard from './components/Accountant/AccountantDashboard';
 import ReloadPrompt from './components/Common/ReloadPrompt';
 import OfflineIndicator from './components/Common/OfflineIndicator';
+import ErrorBoundary from './components/Common/ErrorBoundary';
 import './App.css';
 
 /**
@@ -100,29 +101,31 @@ function AppRouter() {
   // Authenticated Views (Dashboard Container)
   if (isAuthenticated && user) {
     return (
-      <div className="min-h-screen p-4 md:p-8 relative z-50">
-        {/* Headteacher → full school management dashboard */}
-        {user.role?.toLowerCase() === 'headteacher' && <HeadteacherDashboard />}
+      <div className="min-h-screen md:p-4 lg:p-8 relative z-50">
+        <ErrorBoundary name={`${user.role} Portal`}>
+            {/* Headteacher → full school management dashboard */}
+            {user.role?.toLowerCase() === 'headteacher' && <HeadteacherDashboard />}
 
-        {/* Accountant → Full financial and payroll dashboard */}
-        {user.role?.toLowerCase() === 'accountant' && <AccountantDashboard />}
+            {/* Accountant → Full financial and payroll dashboard */}
+            {user.role?.toLowerCase() === 'accountant' && <AccountantDashboard />}
 
-        {/* Staff (teachers, general staff) → staff dashboard */}
-        {(user.role?.toLowerCase() === 'staff' || user.role?.toLowerCase() === 'teacher') && <TeacherDashboard />}
+            {/* Staff (teachers, general staff) → staff dashboard */}
+            {(user.role?.toLowerCase() === 'staff' || user.role?.toLowerCase() === 'teacher') && <TeacherDashboard />}
 
-        {/* Developer → Developer Portal command center */}
-        {user.role?.toLowerCase() === 'developer' && <DeveloperPortal />}
+            {/* Developer → Developer Portal command center */}
+            {user.role?.toLowerCase() === 'developer' && <DeveloperPortal />}
 
-        {/* Error State for unrecognized roles */}
-        {!['headteacher', 'accountant', 'staff', 'teacher', 'developer'].includes(user.role?.toLowerCase() || '') && (
-          <div className="flex items-center justify-center p-12 text-center bg-red-50 rounded-3xl border border-red-100 m-8">
-            <div>
-              <i className="fas fa-user-shield text-4xl text-red-500 mb-4"></i>
-              <h2 className="text-xl font-bold text-red-600">Unauthorized Role</h2>
-              <p className="text-red-500">Your account role is not recognized. Please contact your headteacher.</p>
-            </div>
-          </div>
-        )}
+            {/* Error State for unrecognized roles */}
+            {!['headteacher', 'accountant', 'staff', 'teacher', 'developer'].includes(user.role?.toLowerCase() || '') && (
+              <div className="flex items-center justify-center p-12 text-center bg-red-50 rounded-3xl border border-red-100 m-8">
+                <div>
+                  <i className="fas fa-user-shield text-4xl text-red-500 mb-4"></i>
+                  <h2 className="text-xl font-bold text-red-600">Unauthorized Role</h2>
+                  <p className="text-red-500">Your account role is not recognized. Please contact your headteacher.</p>
+                </div>
+              </div>
+            )}
+        </ErrorBoundary>
       </div>
     );
   }

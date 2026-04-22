@@ -9,6 +9,7 @@ import { useAcademicSession } from '../../../hooks/useAcademicSession';
 import { assignGrade } from '../../../utils/assessmentCalculator';
 import ReportCardTemplate, { type ReportCardData } from './ReportCardTemplate';
 import { attendanceService } from '../../../services/attendanceService';
+import { normalizeArray, normalizeObject, safeString, safeNumber } from '../../../utils/dataSafety';
 
 /* ─── helpers ─── */
 const blobToDataUrl = (blob: Blob): Promise<string> =>
@@ -61,7 +62,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
         user?.schoolId ? eduDb.classes.where('schoolId').equals(user.schoolId).filter(c => !(c as any).isDeleted).toArray() : []
         , [user?.schoolId]);
 
-    const selectedClass = classes?.find(c => c.id === parseInt(selectedClassId));
+    const selectedClass = normalizeArray(classes)?.find(c => c.id === parseInt(selectedClassId));
 
     const studentsInClass = useLiveQuery(async () => {
         if (!selectedClassId || !user?.schoolId) return [];
@@ -136,9 +137,9 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
             .toArray() : []
     , [user?.schoolId]);
 
-    const termStartDateVal = globalTermDates?.find(d => d.key === 'termStartDate')?.value;
-    const vacationDateVal = globalTermDates?.find(d => d.key === 'vacationDate')?.value;
-    const nextTermBeginsVal = globalTermDates?.find(d => d.key === 'nextTermBegins')?.value;
+    const termStartDateVal = normalizeArray(globalTermDates)?.find(d => d.key === 'termStartDate')?.value;
+    const vacationDateVal = normalizeArray(globalTermDates)?.find(d => d.key === 'vacationDate')?.value;
+    const nextTermBeginsVal = normalizeArray(globalTermDates)?.find(d => d.key === 'nextTermBegins')?.value;
 
     /* ── build report card data ── */
     const buildCards = async () => {
@@ -154,7 +155,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                 .where('[schoolId+key]')
                 .equals([user.schoolId, 'gradingSystem'])
                 .first();
-            const gradingSystem = gradingSetting?.value || [];
+            const gradingSystem = normalizeArray(gradingSetting?.value);
 
             if (gradingSystem.length === 0) {
                 console.warn("No grading system found in settings.");
@@ -165,7 +166,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                 .where('[schoolId+key]')
                 .equals([user.schoolId, 'report_config'])
                 .first();
-            const reportConfig = reportConfigSetting?.value;
+            const reportConfig = normalizeObject(reportConfigSetting?.value);
 
             // Subjects for the class (from classSubjects)
             const classAssignments = selectedClass ? await eduDb.classSubjects

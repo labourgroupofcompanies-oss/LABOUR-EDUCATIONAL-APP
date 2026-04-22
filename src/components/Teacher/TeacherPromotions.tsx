@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useAcademicSession } from '../../hooks/useAcademicSession';
 import { showPromotionDialog } from '../Common/PromotionDialogs';
 import { showToast } from '../Common/Toast';
+import { getNextLevel, normalizeLevel } from '../../utils/levelUtils';
 
 export default function TeacherPromotions() {
     const { user } = useAuth();
@@ -49,6 +50,18 @@ export default function TeacherPromotions() {
             .filter((c: any) => !c.isDeleted)
             .toArray();
     }, [user?.schoolId]);
+
+    // Derived: Valid Promotion Targets (Next Level Only)
+    const promotionTargetClasses = React.useMemo(() => {
+        if (!selectedClassId || !allClasses || !myClasses) return [];
+        const currentClass = myClasses.find(c => c.id === selectedClassId);
+        if (!currentClass) return [];
+
+        const nextLevel = getNextLevel(currentClass.level);
+        if (!nextLevel) return [];
+
+        return allClasses.filter(c => normalizeLevel(c.level) === nextLevel);
+    }, [selectedClassId, allClasses, myClasses]);
 
     // Fetch my existing promotion requests
     const myRequests = useLiveQuery(async () => {
@@ -118,6 +131,24 @@ export default function TeacherPromotions() {
                 confirmText: "I'll fix it"
             });
             return;
+        }
+
+        // Logic Hardening: Verify level progression
+        if (mode === 'promote') {
+            const currentClass = myClasses?.find(c => c.id === selectedClassId);
+            const targetClass = allClasses?.find(c => c.id === effectiveTargetId);
+            if (currentClass && targetClass) {
+                const type = getMovementType(currentClass.level, targetClass.level);
+                if (type !== 'promotion') {
+                    await showPromotionDialog({
+                        title: "Invalid Promotion Path",
+                        message: `Moving from ${currentClass.name} to ${targetClass.name} is a ${type}, not a promotion. Vertical promotions must move students to the next academic level.`,
+                        variant: 'error',
+                        confirmText: "Correct Selection"
+                    });
+                    return;
+                }
+            }
         }
 
         if (selectedStudents.length === 0) {
@@ -247,10 +278,16 @@ export default function TeacherPromotions() {
                                 className="w-full bg-indigo-50 border-0 text-indigo-900 text-sm font-bold rounded-2xl px-4 py-3 focus:ring-2 focus:ring-indigo-500"
                             >
                                 <option value="">-- Select Target Class --</option>
-                                {allClasses?.filter((c: any) => c.id !== selectedClassId).map((c: any) => (
+                                {promotionTargetClasses.map((c: any) => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
                             </select>
+                            {selectedClassId && promotionTargetClasses.length === 0 && (
+                                <p className="text-[10px] font-bold text-orange-600 mt-2 uppercase tracking-wide">
+                                    <i className="fas fa-exclamation-circle mr-1"></i>
+                                    No classes found at the next level.
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -342,7 +379,7 @@ export default function TeacherPromotions() {
                 </h3>
                 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-left border-collapse min-w-[480px]">
                         <thead>
                             <tr className="border-b-2 border-slate-100">
                                 <th className="py-4 px-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</th>

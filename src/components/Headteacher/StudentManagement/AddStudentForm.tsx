@@ -59,6 +59,10 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
     // Camera device enumeration
     const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
     const [activeCameraIndex, setActiveCameraIndex] = useState(0);
+    const [isCameraSupported] = useState(() => 
+        typeof navigator !== 'undefined' && 
+        !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+    );
 
     const startCamera = async (cameraIndex?: number) => {
         // Stop any existing stream before starting a new one
@@ -77,8 +81,8 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
             const targetDevice = videoDevices[targetIndex];
 
             const constraints: MediaStreamConstraints = targetDevice
-                ? { video: { deviceId: { exact: targetDevice.deviceId }, width: { ideal: 640 }, height: { ideal: 640 } } }
-                : { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } };
+                ? { video: { deviceId: { exact: targetDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } }
+                : { video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } };
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             streamRef.current = stream;
@@ -489,17 +493,30 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                 {/* IDLE STATE — choice mode or profile placeholder */}
                                 {photoMode === 'idle' && !photo && (
                                     <div className="relative group">
-                                        <div 
+                                        <button 
+                                            type="button"
                                             onClick={() => startCamera()}
-                                            className="w-48 h-48 rounded-[3rem] bg-gradient-to-br from-gray-50 to-gray-100 border-4 border-dashed border-gray-200 flex flex-col items-center justify-center cursor-pointer transition-all duration-500 hover:border-blue-400 hover:bg-blue-50/30 group-hover:scale-[1.02] shadow-sm relative overflow-hidden"
+                                            disabled={!isCameraSupported}
+                                            className={`w-48 h-48 rounded-[3rem] flex flex-col items-center justify-center transition-all duration-500 shadow-sm relative overflow-hidden border-4 border-dashed ${
+                                                isCameraSupported 
+                                                ? 'bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200 hover:border-blue-400 hover:bg-blue-50/30 group-hover:scale-[1.02] cursor-pointer' 
+                                                : 'bg-gray-50 border-gray-100 opacity-60 cursor-not-allowed'
+                                            }`}
                                         >
-                                            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center text-gray-400 group-hover:text-blue-500 transition-colors mb-3">
-                                                <i className="fas fa-camera text-2xl"></i>
+                                            <div className={`w-16 h-16 rounded-2xl shadow-sm flex items-center justify-center mb-3 transition-colors ${isCameraSupported ? 'bg-white text-gray-400 group-hover:text-blue-500' : 'bg-gray-100 text-gray-300'}`}>
+                                                <i className={`fas ${isCameraSupported ? 'fa-camera' : 'fa-camera-slash'} text-2xl`}></i>
                                             </div>
-                                            <p className="text-xs font-black text-gray-400 group-hover:text-blue-600 uppercase tracking-widest transition-colors text-center px-4">
-                                                Take Photo <br/> <span className="text-[10px] font-medium normal-case">(Click to start)</span>
+                                            <p className={`text-xs font-black uppercase tracking-widest transition-colors text-center px-4 ${isCameraSupported ? 'text-gray-400 group-hover:text-blue-600' : 'text-gray-300'}`}>
+                                                {isCameraSupported ? (
+                                                    <>Take Photo <br/> <span className="text-[10px] font-medium normal-case">(Click to start)</span></>
+                                                ) : (
+                                                    <>Camera <br/> Unavailable</>
+                                                )}
                                             </p>
-                                        </div>
+                                            {!isCameraSupported && (
+                                                <span className="absolute bottom-4 text-[7px] font-bold text-gray-400 px-4 leading-tight">Requires Secure Connection (HTTPS)</span>
+                                            )}
+                                        </button>
                                         
                                         {/* Quick Upload Button */}
                                         <button 

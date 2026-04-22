@@ -9,6 +9,7 @@ import { useAcademicSession } from '../../../hooks/useAcademicSession';
 import { showToast } from '../../Common/Toast';
 import { showConfirm } from '../../Common/ConfirmDialog';
 import { resultService } from '../../../services/resultService';
+import { normalizeArray, normalizeObject, safeString, safeNumber } from '../../../utils/dataSafety';
 
 const ResultsApproval: React.FC = () => {
     const { user } = useAuth();
@@ -36,12 +37,15 @@ const ResultsApproval: React.FC = () => {
 
         if (selectedClassId) {
             const numericClassId = parseInt(selectedClassId);
-            const assignments = await eduDb.classSubjects.where('classId').equals(numericClassId).toArray();
+            const assignmentsRes = await eduDb.classSubjects.where('classId').equals(numericClassId).toArray();
+            const assignments = normalizeArray(assignmentsRes);
             const subjectIds = [...new Set(assignments.map(a => a.subjectId))];
-            return await eduDb.subjects.where('id').anyOf(subjectIds).filter(s => !s.isDeleted).toArray();
+            const subjects = await eduDb.subjects.where('id').anyOf(subjectIds).filter(s => !s.isDeleted).toArray();
+            return normalizeArray(subjects);
         }
 
-        return await eduDb.subjects.where('schoolId').equals(user.schoolId).filter(s => !s.isDeleted).toArray();
+        const allSubjects = await eduDb.subjects.where('schoolId').equals(user.schoolId).filter(s => !s.isDeleted).toArray();
+        return normalizeArray(allSubjects);
     }, [user?.schoolId, selectedClassId]);
 
     const results = useLiveQuery(async () => {
@@ -49,9 +53,10 @@ const ResultsApproval: React.FC = () => {
 
         // 1. Fetch RAW unfiltered results directly from Dexie for this school
         const rawResults = await eduDb.results.where('schoolId').equals(user.schoolId).toArray();
+        const allResultsRaw = normalizeArray(rawResults);
 
         // 2. Pure JavaScript memory filtering (100% reliable)
-        let allResults = rawResults.filter((r: Result) => {
+        let allResults = allResultsRaw.filter((r: Result) => {
             // Drop deleted records
             if (r.isDeleted) return false;
             
