@@ -11,7 +11,7 @@ import { syncService } from '../../services/syncService';
 import { normalizeArray, safeString } from '../../utils/dataSafety';
 
 const Settings: React.FC = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState<'general' | 'academic' | 'assessment' | 'system' | 'security' | 'report_design'>('general');
     const [isLoading, setIsLoading] = useState(false);
 
@@ -86,6 +86,13 @@ const Settings: React.FC = () => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    // Transfer Ownership States
+    const [transferNewName, setTransferNewName] = useState('');
+    const [transferNewEmail, setTransferNewEmail] = useState('');
+    const [transferNewPassword, setTransferNewPassword] = useState('');
+    const [transferConfirmPassword, setTransferConfirmPassword] = useState('');
+    const [transferCurrentPassword, setTransferCurrentPassword] = useState('');
 
     // Report Design States
     const [reportThemeColor, setReportThemeColor] = useState('#2563eb');
@@ -449,6 +456,106 @@ const Settings: React.FC = () => {
             showMessage('error', 'Failed to change password');
         }
         finally { setIsLoading(false); }
+    };
+
+    const handleTransferOwnership = async () => {
+        if (!user?.id || !user?.schoolId) return;
+        if (!transferNewName || !transferNewEmail || !transferNewPassword || !transferConfirmPassword || !transferCurrentPassword) {
+            showMessage('error', 'Fill in all transfer ownership fields');
+            return;
+        }
+        if (transferNewPassword !== transferConfirmPassword) {
+            showMessage('error', 'New master passwords do not match');
+            return;
+        }
+        if (transferNewPassword.length < 6) {
+            showMessage('error', 'New password must be at least 6 characters');
+            return;
+        }
+
+        const confirmed = await showConfirm({
+            title: 'Transfer Account Ownership',
+            message: 'WARNING: This will permanently hand over the master administrative account to the new person. You will immediately lose access unless you log in with the new password. Are you sure?',
+            confirmText: 'Yes, Transfer Ownership',
+            cancelText: 'Cancel',
+            variant: 'danger',
+        });
+        if (!confirmed) return;
+
+        setIsLoading(true);
+        try {
+            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !sessionData.session?.user?.email) {
+                showMessage('error', 'Session expired. Please log in again.');
+                return;
+            }
+
+            // 1. Verify current password via Supabase
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email: sessionData.session.user.email,
+                password: transferCurrentPassword
+            });
+
+            if (signInError) {
+                showMessage('error', 'Current master password is incorrect. Verification failed.');
+                return;
+            }
+
+            // 2. Update Supabase Auth Password
+            const { error: authError } = await supabase.auth.updateUser({
+                password: transferNewPassword
+            });
+
+            if (authError) {
+                console.error('Supabase Password Update Error:', authError.message);
+                showMessage('error', `Cloud password update failed: ${authError.message}`);
+                return;
+            }
+
+            // 3. Update Supabase staff_profiles
+            const { error: profileError } = await supabase.from('staff_profiles')
+                .update({ full_name: transferNewName, email: transferNewEmail })
+                .eq('id', user.id);
+
+            if (profileError) {
+                console.error('Staff Profile Update Error:', profileError.message);
+            }
+
+            // 4. Update Local DB schools
+            if (schoolData?.id) {
+                await db.schools.update(schoolData.id, {
+                    headteacherName: transferNewName,
+                    email: transferNewEmail,
+                    syncStatus: 'pending'
+                });
+            }
+
+            // 5. Update Local DB users
+            const { hashPassword } = await import('../../utils/auth');
+            const hashedNew = await hashPassword(transferNewPassword);
+            const dbUser = await db.users.where('idCloud').equals(user.id).first();
+            if (dbUser) {
+                await db.users.update(dbUser.id!, { 
+                    fullName: transferNewName,
+                    email: transferNewEmail,
+                    password: hashedNew 
+                });
+            }
+
+            // 6. Logout to seal the transfer
+            showMessage('success', 'Ownership Transferred Successfully! Signing out...');
+            syncService.syncAll(user.schoolId).catch(console.error);
+            
+            setTimeout(() => {
+                logout();
+            }, 1500);
+            
+        } catch (err) {
+            console.error('Transfer Ownership Error:', err);
+            showMessage('error', 'Failed to transfer ownership');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1330,6 +1437,91 @@ const Settings: React.FC = () => {
                                 <p className="text-[10px] text-gray-400 font-medium text-center mt-4">
                                     <i className="fas fa-info-circle mr-1"></i>
                                     Changing your password will update your access on all linked devices.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Transfer Ownership Card */}
+                        <div className="bg-red-50 rounded-3xl border-2 border-red-100 p-6 space-y-6 shadow-xl shadow-red-500/5 mt-8">
+                            <div>
+                                <h3 className="font-black text-red-700 text-sm uppercase tracking-widest flex items-center gap-2">
+                                    <i className="fas fa-handshake-angle"></i>
+                                    Transfer Ownership
+                                </h3>
+                                <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest mt-1">
+                                    Hand over master account to a new Headteacher
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-red-400 uppercase tracking-widest mb-1.5 ml-1">New Headteacher Name</label>
+                                        <input
+                                            type="text"
+                                            value={transferNewName}
+                                            onChange={e => setTransferNewName(e.target.value)}
+                                            placeholder="e.g. Mrs. Sarah Mensah"
+                                            className="w-full border-2 border-red-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-red-400 focus:bg-white bg-red-50/50 outline-none transition-all text-red-900 placeholder:text-red-300"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-red-400 uppercase tracking-widest mb-1.5 ml-1">New Contact Email</label>
+                                        <input
+                                            type="email"
+                                            value={transferNewEmail}
+                                            onChange={e => setTransferNewEmail(e.target.value)}
+                                            placeholder="sarah@school.edu"
+                                            className="w-full border-2 border-red-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-red-400 focus:bg-white bg-red-50/50 outline-none transition-all text-red-900 placeholder:text-red-300"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-red-400 uppercase tracking-widest mb-1.5 ml-1">New Master Password</label>
+                                        <input
+                                            type="password"
+                                            value={transferNewPassword}
+                                            onChange={e => setTransferNewPassword(e.target.value)}
+                                            placeholder="••••••••"
+                                            className="w-full border-2 border-red-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-red-400 focus:bg-white bg-red-50/50 outline-none transition-all text-red-900 placeholder:text-red-300"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-red-400 uppercase tracking-widest mb-1.5 ml-1">Confirm New Password</label>
+                                        <input
+                                            type="password"
+                                            value={transferConfirmPassword}
+                                            onChange={e => setTransferConfirmPassword(e.target.value)}
+                                            placeholder="••••••••"
+                                            className="w-full border-2 border-red-100 rounded-2xl px-5 py-4 text-sm font-bold focus:border-red-400 focus:bg-white bg-red-50/50 outline-none transition-all text-red-900 placeholder:text-red-300"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="pt-2">
+                                    <label className="block text-[10px] font-black text-red-500 uppercase tracking-widest mb-1.5 ml-1">Verify: Your Current Password</label>
+                                    <input
+                                        type="password"
+                                        value={transferCurrentPassword}
+                                        onChange={e => setTransferCurrentPassword(e.target.value)}
+                                        placeholder="Enter your current password to authorize..."
+                                        className="w-full border-2 border-red-200 rounded-2xl px-5 py-4 text-sm font-black focus:border-red-500 focus:bg-white bg-red-100/50 outline-none transition-all text-red-900 placeholder:text-red-400"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-2">
+                                <button
+                                    onClick={handleTransferOwnership}
+                                    disabled={isLoading}
+                                    className="w-full bg-red-500 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-red-600 transition-all shadow-xl shadow-red-200 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3"
+                                >
+                                    {isLoading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-right-from-bracket"></i>}
+                                    {isLoading ? 'Transferring Ownership...' : 'Handover Master Account'}
+                                </button>
+                                <p className="text-[10px] text-red-500 font-bold text-center mt-4 uppercase tracking-widest">
+                                    <i className="fas fa-triangle-exclamation mr-1"></i>
+                                    You will be automatically logged out after transfer.
                                 </p>
                             </div>
                         </div>
