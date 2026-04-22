@@ -586,33 +586,33 @@ const HeadteacherDashboard: React.FC = () => {
             </div>
 
             {/* ── Mobile Fixed Bottom Navigation ── */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.08)]">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.12)]">
                 <div className="flex items-center justify-around px-4">
                     {primaryTabs.map(({ key, shortLabel, icon }) => (
                         <button
                             key={key}
                             onClick={() => { setView(key); setShowMoreNav(false); }}
-                            className={`relative flex-1 flex flex-col items-center pt-4 pb-6 gap-1.5 transition-all active:scale-90 ${view === key ? 'text-primary' : 'text-gray-400'}`}
+                            className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${view === key ? 'text-primary' : 'text-gray-400'}`}
                         >
                             {view === key && (
-                                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-b-full shadow-[0_4px_10px_rgba(59,130,246,0.4)]"></span>
+                                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-primary rounded-b-full shadow-[0_2px_10px_rgba(59,130,246,0.5)] animate-slideDown"></span>
                             )}
-                            <i className={`fas ${icon} text-lg transition-transform ${view === key ? 'scale-110' : ''}`}></i>
-                            <span className="text-[8px] font-black uppercase tracking-widest leading-none">{shortLabel}</span>
+                            <i className={`fas ${icon} text-xl transition-colors ${view === key ? 'scale-110' : ''}`}></i>
+                            <span className="text-[9px] font-black uppercase tracking-tight leading-none">{shortLabel}</span>
                         </button>
                     ))}
 
                     <button
                         onClick={() => setShowMoreNav(prev => !prev)}
-                        className={`relative flex-1 flex flex-col items-center pt-4 pb-6 gap-1.5 transition-all active:scale-90 ${moreTabs.some(t => t.key === view) || showMoreNav ? 'text-primary' : 'text-gray-400'}`}
+                        className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${moreTabs.some(t => t.key === view) || showMoreNav ? 'text-primary' : 'text-gray-400'}`}
                     >
                         {(moreTabs.some(t => t.key === view) || showMoreNav) && (
-                            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-b-full shadow-[0_4px_10px_rgba(59,130,246,0.4)]"></span>
+                            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-primary rounded-b-full shadow-[0_2px_10px_rgba(59,130,246,0.5)] animate-slideDown"></span>
                         )}
-                        <div className={`w-6 h-6 flex items-center justify-center transition-transform duration-500 ${showMoreNav ? 'rotate-90' : ''}`}>
-                            <i className={`fas ${showMoreNav ? 'fa-times' : 'fa-grid-2'} text-lg`}></i>
+                        <div className={`w-6 h-6 flex items-center justify-center transition-transform duration-300 ${showMoreNav ? 'rotate-90' : ''}`}>
+                            <i className={`fas ${showMoreNav ? 'fa-times' : 'fa-th-large'} text-xl`}></i>
                         </div>
-                        <span className="text-[8px] font-black uppercase tracking-widest leading-none">{showMoreNav ? 'Close' : 'More'}</span>
+                        <span className="text-[9px] font-black uppercase tracking-tight leading-none">{showMoreNav ? 'Close' : 'Menu'}</span>
                     </button>
                 </div>
 
