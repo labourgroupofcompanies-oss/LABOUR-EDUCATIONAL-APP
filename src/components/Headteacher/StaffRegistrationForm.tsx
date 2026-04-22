@@ -109,7 +109,7 @@ const StaffRegistrationForm: React.FC<Props> = ({ schoolId, onSuccess }) => {
                         <br />
                         <span className="banner__sub">Username: <code>{status.username}</code></span>
                     </div>
-                    <button className="banner__close" onClick={handleDismiss} aria-label="Dismiss">✕</button>
+                    <button className="btn-icon !w-6 !h-6 !rounded-lg !bg-transparent !text-current opacity-60 hover:opacity-100" onClick={handleDismiss} aria-label="Dismiss">✕</button>
                 </div>
             )}
 
@@ -117,7 +117,7 @@ const StaffRegistrationForm: React.FC<Props> = ({ schoolId, onSuccess }) => {
                 <div className="banner banner--error" role="alert">
                     <div className="banner__icon">⚠️</div>
                     <div className="banner__body">{status.message}</div>
-                    <button className="banner__close" onClick={handleDismiss} aria-label="Dismiss">✕</button>
+                    <button className="btn-icon !w-6 !h-6 !rounded-lg !bg-transparent !text-current opacity-60 hover:opacity-100" onClick={handleDismiss} aria-label="Dismiss">✕</button>
                 </div>
             )}
 
@@ -266,7 +266,7 @@ const StaffRegistrationForm: React.FC<Props> = ({ schoolId, onSuccess }) => {
                             />
                             <button
                                 type="button"
-                                className="field__pw-toggle"
+                                className="btn-icon absolute right-2 top-1/2 -translate-y-1/2 !bg-transparent !w-10 !h-10"
                                 onClick={() => setShowPw(v => !v)}
                                 aria-label={showPw ? 'Hide password' : 'Show password'}
                             >
@@ -294,11 +294,11 @@ const StaffRegistrationForm: React.FC<Props> = ({ schoolId, onSuccess }) => {
                 <div className="reg-form__footer">
                     <button
                         type="submit"
-                        className="reg-form__submit"
+                        className="btn-primary w-full py-4 !text-base"
                         disabled={status.type === 'loading'}
                     >
                         {status.type === 'loading' ? (
-                            <><span className="spinner" aria-hidden="true" /> Registering…</>
+                            <><i className="fas fa-circle-notch fa-spin"></i> Registering…</>
                         ) : (
                             <>➕ Register Staff Member</>
                         )}
@@ -432,31 +432,7 @@ const StaffRegistrationForm: React.FC<Props> = ({ schoolId, onSuccess }) => {
           padding: 4px;
         }
 
-        /* Footer / Submit */
-        .reg-form__footer {
-          padding: 0 24px 24px;
-        }
-        .reg-form__submit {
-          width: 100%;
-          padding: 14px;
-          background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
-          color: #fff;
-          border: none;
-          border-radius: 12px;
-          font-size: 15px;
-          font-weight: 800;
-          cursor: pointer;
-          letter-spacing: .03em;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          transition: opacity .2s, transform .1s;
-          box-shadow: 0 4px 14px rgba(59,130,246,.4);
-        }
-        .reg-form__submit:hover:not(:disabled) { opacity: .92; transform: translateY(-1px); }
-        .reg-form__submit:active:not(:disabled) { transform: translateY(0); }
-        .reg-form__submit:disabled { opacity: .65; cursor: not-allowed; }
+        /* Scoped buttons removed in favor of global premium system */
 
         /* Spinner */
         .spinner {

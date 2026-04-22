@@ -119,7 +119,7 @@ const ExpenseList: React.FC = () => {
                 </div>
                 <button
                     onClick={() => setShowForm(s => !s)}
-                    className={`${showForm ? 'bg-slate-200 text-slate-600 hover:bg-slate-300' : 'bg-slate-800 text-white hover:bg-slate-900'} px-6 py-3.5 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-lg ${showForm ? 'shadow-none' : 'shadow-slate-300'} w-full sm:w-auto`}
+                    className={`${showForm ? 'btn-secondary' : 'btn-primary !from-slate-800 !to-slate-900 shadow-slate-300'} w-full sm:w-auto`}
                 >
                     <i className={`fas ${showForm ? 'fa-times' : 'fa-plus text-purple-400'}`}></i>
                     {showForm ? 'Cancel' : 'Record Expense'}
@@ -173,7 +173,7 @@ const ExpenseList: React.FC = () => {
                     </div>
                     <div className="flex justify-end pt-4 border-t border-slate-100">
                         <button onClick={handleAdd} disabled={saving}
-                            className="bg-purple-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-purple-700 active:scale-95 transition-all disabled:opacity-50 shadow-lg shadow-purple-200 flex items-center justify-center gap-2 w-full sm:w-auto">
+                            className="btn-primary !from-purple-600 !to-purple-700 shadow-purple-200 w-full sm:w-auto">
                             {saving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fas fa-check"></i> Save Expense</>}
                         </button>
                     </div>
@@ -203,7 +203,7 @@ const ExpenseList: React.FC = () => {
                     {voidedExpenses.length > 0 && (
                         <button
                             onClick={() => setShowVoided(v => !v)}
-                            className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border flex items-center gap-2 h-[46px] ${showVoided ? 'bg-slate-800 text-white border-slate-800 shadow-lg' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
+                            className={`btn-sm !h-[46px] flex items-center gap-2 ${showVoided ? 'btn-primary !from-slate-800 !to-slate-900 shadow-lg' : 'btn-outline'}`}
                         >
                             <i className={`fas ${showVoided ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                             {showVoided ? 'Hide Void' : `Voided (${voidedExpenses.length})`}
@@ -322,7 +322,7 @@ const ExpenseList: React.FC = () => {
                                     </h3>
                                 </div>
                             </div>
-                            <button onClick={closeModal} className="absolute top-8 right-8 w-10 h-10 flex items-center justify-center rounded-full bg-white border border-slate-100 hover:bg-slate-50 text-slate-400 transition-all active:scale-90 shadow-sm">
+                            <button onClick={closeModal} className="btn-icon absolute top-8 right-8 shadow-sm">
                                 <i className="fas fa-times"></i>
                             </button>
                         </div>
@@ -409,7 +409,7 @@ const ExpenseList: React.FC = () => {
                                     <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">System Authenticated</p>
                                 </div>
                                 <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
-                                    Ref: {selectedExpense.id?.slice(-8).toUpperCase()}
+                                    Ref: {String(selectedExpense.id).slice(-8).toUpperCase()}
                                 </p>
                             </div>
                         </div>
@@ -417,7 +417,7 @@ const ExpenseList: React.FC = () => {
                         {/* Modal footer */}
                         <div className="px-10 pb-10 flex gap-4">
                             {selectedExpense.voided ? (
-                                <button onClick={closeModal} className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-slate-900 transition-all shadow-xl shadow-slate-200">
+                                <button onClick={closeModal} className="btn-primary w-full shadow-slate-200 !from-slate-800 !to-slate-900">
                                     Close Detail
                                 </button>
                             ) : voidMode ? (
@@ -428,7 +428,7 @@ const ExpenseList: React.FC = () => {
                                     <button
                                         onClick={handleVoid}
                                         disabled={voiding || !voidReason.trim()}
-                                        className="flex-[1.5] bg-rose-500 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:bg-rose-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-rose-200"
+                                        className="btn-primary flex-[1.5] !from-rose-500 !to-rose-600 shadow-rose-200"
                                     >
                                         {voiding ? <><i className="fas fa-spinner fa-spin"></i> Voiding...</> : <><i className="fas fa-ban"></i> Confirm Void</>}
                                     </button>
@@ -440,7 +440,7 @@ const ExpenseList: React.FC = () => {
                                     </button>
                                     <button
                                         onClick={() => setVoidMode(true)}
-                                        className="flex-1 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border border-rose-100 group"
+                                        className="btn-outline flex-1 border-rose-100 text-rose-500 hover:!border-rose-500 hover:!text-white hover:bg-rose-500 group"
                                     >
                                         <i className="fas fa-ban group-hover:rotate-90 transition-transform"></i> Void Record
                                     </button>

@@ -94,7 +94,7 @@ const gradeColor = (grade: string) => {
 };
 
 const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) => {
-    const subjects = normalizeArray(data.subjects);
+    const subjects = normalizeArray<ReportSubjectRow>(data.subjects);
     const maxTotal = subjects.length * 100;
     const percentage = maxTotal > 0 ? Math.round((data.totalScoreSum / maxTotal) * 100).toString() : '0';
     const MIN_SUBJECT_ROWS = 12; // Ensure table always has at least this many rows for stability

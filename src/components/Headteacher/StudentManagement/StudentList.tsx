@@ -179,14 +179,14 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
                     {selectedStudentIds.length > 0 && (
                         <button
                             onClick={() => setIsMoveModalOpen(true)}
-                            className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-indigo-200 transition-all flex items-center gap-2"
+                            className="btn-primary !from-indigo-600 !to-indigo-700 px-6 py-3"
                         >
                             <i className="fas fa-exchange-alt"></i> Move ({selectedStudentIds.length})
                         </button>
                     )}
                     <button
                         onClick={onAdd}
-                        className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:shadow-lg hover:shadow-blue-200 transition-all flex items-center gap-2"
+                        className="btn-primary px-6 py-3"
                     >
                         <i className="fas fa-plus"></i> Add Student
                     </button>
@@ -356,16 +356,16 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
                         <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
                             <button
                                 onClick={() => setIsMoveModalOpen(false)}
-                                className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-200 rounded-lg"
+                                className="btn-secondary px-4 py-2"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleMoveStudents}
                                 disabled={!targetClassId || isMoving}
-                                className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50"
+                                className="btn-primary !from-indigo-600 !to-indigo-700 px-6 py-2"
                             >
-                                {isMoving ? <i className="fas fa-spinner animate-spin"></i> : <i className="fas fa-exchange-alt mr-2"></i>}
+                                {isMoving ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-exchange-alt mr-2"></i>}
                                 Confirm Move
                             </button>
                         </div>

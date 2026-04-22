@@ -136,9 +136,10 @@ const TeacherSettings: React.FC = () => {
                     <button
                         type="submit"
                         disabled={isUpdating}
-                        className="w-full py-4 md:py-3 bg-indigo-600 text-white font-black text-xs md:text-sm uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none"
+                        className={`btn-primary !from-indigo-600 !to-indigo-700 w-full py-4 md:py-3 !text-sm ${isUpdating ? '!from-gray-100 !to-gray-100 !text-gray-400 !shadow-none !cursor-not-allowed' : ''}`}
                     >
-                        {isUpdating ? 'Executing Update...' : 'Commit New Password'}
+                        {isUpdating ? <i className="fas fa-circle-notch fa-spin"></i> : <i className="fas fa-key"></i>}
+                        {isUpdating ? ' Executing Update...' : ' Commit New Password'}
                     </button>
                 </form>
 

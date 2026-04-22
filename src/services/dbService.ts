@@ -9,7 +9,7 @@ import {
     type Expense,
     type Budget
 } from '../eduDb';
-import { getMovementType, normalizeLevel } from '../utils/levelUtils';
+import { getMovementType } from '../utils/levelUtils';
 import type { StudentMovementType } from '../utils/levelUtils';
 
 export const dbService = {

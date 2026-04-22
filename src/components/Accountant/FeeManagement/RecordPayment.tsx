@@ -101,7 +101,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                         <h3 className="font-black text-gray-800">Record Payment</h3>
                         <p className="text-[11px] text-gray-400 mt-0.5">{row.student.name} · {row.className}</p>
                     </div>
-                    <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-400 transition-colors">
+                    <button onClick={onClose} className="btn-icon">
                         <i className="fas fa-times"></i>
                     </button>
                 </div>
@@ -128,7 +128,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                             {row.balance > 0 && (
                                 <button
                                     onClick={() => setAmount(row.balance.toString())}
-                                    className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-widest transition-colors flex items-center gap-1"
+                                    className="btn-ghost !px-2 !py-1 !rounded-lg !text-[10px] text-indigo-600"
                                 >
                                     <i className="fas fa-magic"></i> Pay Balance
                                 </button>
@@ -198,23 +198,23 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                                         setIsPrinting(false);
                                     }, 100);
                                 }}
-                                className="w-full bg-emerald-600 text-white py-4 rounded-xl font-black text-sm hover:bg-emerald-700 transition-all shadow-lg flex items-center justify-center gap-2"
+                                className="btn-success w-full py-4 !text-sm shadow-emerald-200"
                             >
                                 <i className="fas fa-file-pdf"></i> Download PDF / Print Receipt ({lastPayment.receiptNo})
                             </button>
-                            <button onClick={onClose} className="w-full text-indigo-600 font-black text-xs uppercase tracking-widest py-2">
+                            <button onClick={onClose} className="btn-ghost w-full !text-xs">
                                 Done, close this window
                             </button>
                         </div>
                     ) : (
                         <div className="flex gap-3">
-                            <button onClick={onClose} className="flex-1 border border-gray-200 text-gray-500 py-3 rounded-xl font-black text-sm hover:bg-gray-50 transition-all">
+                            <button onClick={onClose} className="btn-secondary flex-1 py-3 !text-sm">
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSubmit}
                                 disabled={saving}
-                                className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-black text-sm hover:bg-indigo-700 transition-all disabled:opacity-50"
+                                className="btn-primary flex-1 py-3 !text-sm"
                             >
                                 {saving ? <><i className="fas fa-spinner fa-spin mr-2"></i>Saving...</> : <><i className="fas fa-check mr-2"></i>Record Payment</>}
                             </button>

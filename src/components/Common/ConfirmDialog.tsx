@@ -102,13 +102,13 @@ const DialogModal: React.FC<{ state: ConfirmState; onClose: () => void }> = ({ s
                 <div className="px-8 lg:px-10 pb-8 lg:pb-10 flex flex-col gap-3">
                     <button
                         onClick={() => dismiss(true)}
-                        className={`w-full py-4 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg transition-all active:scale-95 ${v.confirmBg}`}
+                        className={`btn-primary w-full py-4 !text-sm !from-${v.accent.split(' ')[0]} !to-${v.accent.split(' ')[2]}`}
                     >
                         {state.confirmText ?? 'Confirm Action'}
                     </button>
                     <button
                         onClick={() => dismiss(false)}
-                        className="w-full py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                        className="btn-secondary w-full py-4 !text-sm"
                     >
                         {state.cancelText ?? 'Cancel'}
                     </button>

@@ -105,7 +105,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ onClose }) => {
                     
                     <button 
                         onClick={onClose}
-                        className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all"
+                        className="btn-icon absolute top-6 right-6 !bg-white/10 !text-white hover:!bg-white/20"
                     >
                         <i className="fas fa-times"></i>
                     </button>
@@ -192,7 +192,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ onClose }) => {
                             <button 
                                 type="submit"
                                 disabled={submitting}
-                                className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 disabled:opacity-50 flex items-center justify-center gap-3"
+                                className="btn-primary w-full py-5 !text-xs shadow-slate-200"
                             >
                                 {submitting ? <i className="fas fa-spinner fa-spin"></i> : <i className={`fas ${user ? 'fa-paper-plane' : 'fa-bolt'}`}></i>}
                                 {submitting ? 'Transmitting Enquiry...' : (user ? 'Submit Support Request' : 'Send Enquiry')}
@@ -216,7 +216,7 @@ const ContactModal: React.FC<ContactModalProps> = ({ onClose }) => {
                             </div>
                             <button 
                                 onClick={onClose}
-                                className="px-8 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-all"
+                                className="btn-secondary px-8 py-3 !rounded-xl !text-[11px]"
                             >
                                 Dismiss
                             </button>

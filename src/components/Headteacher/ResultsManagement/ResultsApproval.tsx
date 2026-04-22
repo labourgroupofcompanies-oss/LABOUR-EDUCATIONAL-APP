@@ -2,14 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { eduDb } from '../../../eduDb';
-import type { Result } from '../../../eduDb';
 
 import { useAuth } from '../../../hooks/useAuth';
 import { useAcademicSession } from '../../../hooks/useAcademicSession';
 import { showToast } from '../../Common/Toast';
 import { showConfirm } from '../../Common/ConfirmDialog';
-import { resultService } from '../../../services/resultService';
-import { normalizeArray, normalizeObject, safeString, safeNumber } from '../../../utils/dataSafety';
+import { normalizeArray } from '../../../utils/dataSafety';
 
 const ResultsApproval: React.FC = () => {
     const { user } = useAuth();
@@ -28,18 +26,18 @@ const ResultsApproval: React.FC = () => {
         }
     }, [isLoaded, currentTerm, currentYear]);
 
-    const classes = useLiveQuery(() =>
+    const classes = useLiveQuery<any[]>(() =>
         user?.schoolId ? eduDb.classes.where('schoolId').equals(user.schoolId).filter(c => !c.isDeleted).toArray() : []
         , [user?.schoolId]);
 
-    const classSubjects = useLiveQuery(async () => {
+    const classSubjects = useLiveQuery<any[]>(async () => {
         if (!user?.schoolId) return [];
 
         if (selectedClassId) {
             const numericClassId = parseInt(selectedClassId);
             const assignmentsRes = await eduDb.classSubjects.where('classId').equals(numericClassId).toArray();
             const assignments = normalizeArray(assignmentsRes);
-            const subjectIds = [...new Set(assignments.map(a => a.subjectId))];
+            const subjectIds = [...new Set(assignments.map((a: any) => a.subjectId))];
             const subjects = await eduDb.subjects.where('id').anyOf(subjectIds).filter(s => !s.isDeleted).toArray();
             return normalizeArray(subjects);
         }
@@ -48,7 +46,7 @@ const ResultsApproval: React.FC = () => {
         return normalizeArray(allSubjects);
     }, [user?.schoolId, selectedClassId]);
 
-    const results = useLiveQuery(async () => {
+    const results = useLiveQuery<any[]>(async () => {
         if (!user?.schoolId) return [];
 
         // 1. Fetch RAW unfiltered results directly from Dexie for this school
@@ -56,7 +54,7 @@ const ResultsApproval: React.FC = () => {
         const allResultsRaw = normalizeArray(rawResults);
 
         // 2. Pure JavaScript memory filtering (100% reliable)
-        let allResults = allResultsRaw.filter((r: Result) => {
+        let allResults = allResultsRaw.filter((r: any) => {
             // Drop deleted records
             if (r.isDeleted) return false;
             
@@ -70,15 +68,15 @@ const ResultsApproval: React.FC = () => {
         // 3. Optional relational filters
         if (selectedClassId) {
             const cId = parseInt(selectedClassId);
-            allResults = allResults.filter(r => Number(r.classId) === cId);
+            allResults = allResults.filter((r: any) => Number(r.classId) === cId);
         }
 
         if (selectedSubjectId) {
             const sId = parseInt(selectedSubjectId);
-            allResults = allResults.filter(r => Number(r.subjectId) === sId);
+            allResults = allResults.filter((r: any) => Number(r.subjectId) === sId);
         }
 
-        return allResults;
+        return allResults as any[];
     }, [user?.schoolId, selectedClassId, selectedSubjectId, selectedTerm, selectedYear]);
 
     const studentsMap = useLiveQuery(async () => {
@@ -108,15 +106,18 @@ const ResultsApproval: React.FC = () => {
         if (!confirmed) return;
         setLoading(true);
         try {
-            const ids = results.map((r: Result) => r.id!);
-            if (action === 'approve') {
-                await resultService.bulkApproveResults(ids, user?.id || '');
-            } else if (action === 'lock') {
-                await resultService.bulkLockResults(ids);
-            } else {
-                await resultService.bulkUnlockResults(ids);
-            }
-            showToast(`Results ${action === 'approve' ? 'approved' : action === 'lock' ? 'locked' : 'unlocked'} successfully!`, 'success');
+            await eduDb.transaction('rw', eduDb.results, async () => {
+                const now = Date.now();
+                for (const r of results) {
+                    await eduDb.results.update(r.id, {
+                        status: action === 'approve' ? 'approved' : r.status,
+                        isLocked: action === 'lock' ? true : action === 'unlock' ? false : r.isLocked,
+                        updatedAt: now,
+                        syncStatus: 'pending'
+                    });
+                }
+            });
+            showToast(`${title} completed successfully.`, 'success');
         } catch (error) {
             console.error('Error updating results:', error);
             showToast('Failed to update results. Please try again.', 'error');
@@ -197,7 +198,7 @@ const ResultsApproval: React.FC = () => {
                             <i className="fas fa-list-ul mr-2 text-primary opacity-50"></i>
                             {results?.length || 0} Records
                         </span>
-                        {results && results.some(r => r.status === 'locked') && (
+                        {results && results.some(r => r.isLocked) && (
                             <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black rounded-full uppercase tracking-wider">
                                 Contains Locked
                             </span>
@@ -207,7 +208,7 @@ const ResultsApproval: React.FC = () => {
                         <button
                             onClick={() => handleBulkAction('approve')}
                             disabled={loading || !results?.length}
-                            className="flex-1 sm:flex-none px-4 py-2.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all text-sm flex items-center justify-center gap-2 shadow-sm disabled:opacity-40"
+                            className="btn-success flex-1 sm:flex-none px-4 py-2.5 !text-sm"
                         >
                             <i className="fas fa-check-circle"></i>
                             <span>Approve All</span>
@@ -215,12 +216,12 @@ const ResultsApproval: React.FC = () => {
                         <button
                             onClick={() => handleBulkAction('lock')}
                             disabled={loading || !results?.length}
-                            className="flex-1 sm:flex-none px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all text-sm flex items-center justify-center gap-2 shadow-sm disabled:opacity-40"
+                            className="btn-primary !from-red-600 !to-red-700 flex-1 sm:flex-none px-4 py-2.5 !text-sm"
                         >
                             <i className="fas fa-lock"></i>
                             <span>Lock All</span>
                         </button>
-                        {results && results.some(r => r.status === 'locked') && (
+                        {results && results.some(r => r.isLocked) && (
                             <button
                                 onClick={() => handleBulkAction('unlock')}
                                 disabled={loading}
@@ -253,7 +254,7 @@ const ResultsApproval: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                results?.map(result => (
+                                results?.map((result: any) => (
                                     <tr key={result.id} className="hover:bg-blue-50/30 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
@@ -268,11 +269,11 @@ const ResultsApproval: React.FC = () => {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-bold text-gray-600 text-xs bg-gray-100 px-2 py-0.5 rounded">
-                                                    {classes?.find(c => c.id === result.classId)?.name || 'Class'}
+                                                    {(classes?.find((c: any) => c.id === result.classId) as any)?.name || 'Class'}
                                                 </span>
                                                 <span className="text-gray-400 text-xs">/</span>
                                                 <span className="font-bold text-primary text-xs">
-                                                    {classSubjects?.find(s => s.id === result.subjectId)?.name || 'Subject'}
+                                                    {(classSubjects?.find((s: any) => s.id === result.subjectId) as any)?.name || 'Subject'}
                                                 </span>
                                             </div>
                                         </td>
@@ -311,7 +312,7 @@ const ResultsApproval: React.FC = () => {
                             No records found.
                         </div>
                     ) : (
-                        results?.map(result => {
+                        results?.map((result: any) => {
                             const student = studentsMap?.[result.studentId];
                             return (
                                 <div key={result.id} className="p-4 space-y-3">
@@ -328,7 +329,7 @@ const ResultsApproval: React.FC = () => {
                                         <div className="flex flex-col gap-0.5">
                                             <span className="text-gray-400 uppercase font-black tracking-tighter">Class/Sub</span>
                                             <span className="font-bold text-gray-700">
-                                                {classes?.find(c => c.id === result.classId)?.name} / {classSubjects?.find(s => s.id === result.subjectId)?.name}
+                                                {(classes?.find((c: any) => c.id === result.classId) as any)?.name} / {(classSubjects?.find((s: any) => s.id === result.subjectId) as any)?.name}
                                             </span>
                                         </div>
                                         <div className="text-right flex flex-col gap-0.5">

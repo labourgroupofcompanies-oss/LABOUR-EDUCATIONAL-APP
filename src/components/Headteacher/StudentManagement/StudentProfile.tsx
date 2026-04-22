@@ -138,8 +138,8 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ studentId, onBack, onEd
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 border-b border-gray-100 pb-6">
                 <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center hover:bg-gray-100 transition-colors">
-                        <i className="fas fa-arrow-left text-gray-600"></i>
+                    <button onClick={onBack} className="btn-icon !w-10 !h-10 !rounded-xl !bg-gray-50 !text-gray-600 hover:!bg-gray-100 transition-colors">
+                        <i className="fas fa-arrow-left"></i>
                     </button>
                     <h2 className="text-xl md:text-2xl font-bold text-gray-800">Student Profile</h2>
                 </div>
@@ -152,14 +152,14 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ studentId, onBack, onEd
                             });
                             window.dispatchEvent(event);
                         }}
-                        className="flex-1 sm:flex-none px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold hover:bg-indigo-100 transition-colors text-sm"
+                        className="btn-secondary !bg-indigo-50 !text-indigo-600 hover:!bg-indigo-100 flex-1 sm:flex-none px-4 py-2 !text-sm"
                     >
                         <i className="fas fa-file-invoice mr-2"></i> Report Card
                     </button>
-                    <button onClick={onEdit} className="flex-1 sm:flex-none px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-bold hover:bg-blue-100 transition-colors text-sm">
+                    <button onClick={onEdit} className="btn-secondary !bg-blue-50 !text-blue-600 hover:!bg-blue-100 flex-1 sm:flex-none px-4 py-2 !text-sm">
                         <i className="fas fa-edit mr-2"></i> Edit
                     </button>
-                    <button onClick={handleDelete} className="flex-1 sm:flex-none px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors text-sm">
+                    <button onClick={handleDelete} className="btn-secondary !bg-red-50 !text-red-600 hover:!bg-red-100 flex-1 sm:flex-none px-4 py-2 !text-sm">
                         <i className="fas fa-trash-alt mr-2"></i> Delete
                     </button>
                 </div>

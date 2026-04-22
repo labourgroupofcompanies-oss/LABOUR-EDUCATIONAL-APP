@@ -315,13 +315,13 @@ const PayrollDashboard: React.FC = () => {
                                                         <button
                                                             onClick={() => handleSave(row, i)}
                                                             disabled={saving === i}
-                                                            className="bg-white text-indigo-600 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all disabled:opacity-50 shadow-sm"
+                                                            className="btn-outline !px-4 !py-2 !rounded-xl !text-[9px]"
                                                         >
                                                             {saving === i ? <i className="fas fa-spinner fa-spin"></i> : 'Save'}
                                                         </button>
                                                         <button
                                                             onClick={() => handleSignalReady(row)}
-                                                            className="bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm"
+                                                            className="btn-outline !border-amber-100 !text-amber-600 hover:!bg-amber-500 hover:!text-white !px-4 !py-2 !rounded-xl !text-[9px]"
                                                         >
                                                             Signal Ready
                                                         </button>
@@ -330,7 +330,7 @@ const PayrollDashboard: React.FC = () => {
                                                 {row.record?.status === 'Ready' && (
                                                     <button
                                                         onClick={() => setConfirmingCodeFor(row)}
-                                                        className="bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm"
+                                                        className="btn-success !px-4 !py-2 !rounded-xl !text-[9px]"
                                                     >
                                                         Disburse
                                                     </button>
@@ -338,7 +338,7 @@ const PayrollDashboard: React.FC = () => {
                                                 {row.record && (
                                                     <button
                                                         onClick={() => setViewPayslip(row.record!)}
-                                                        className="bg-slate-50 text-slate-500 hover:bg-slate-800 hover:text-white border border-slate-200 hover:border-transparent px-4 py-2 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all shadow-sm"
+                                                        className="btn-secondary !bg-slate-50 !text-slate-500 hover:!bg-slate-800 hover:!text-white !px-4 !py-2 !rounded-xl !text-[9px]"
                                                     >
                                                         <i className="fas fa-file-invoice mr-1.5"></i> Slip
                                                     </button>
@@ -449,13 +449,13 @@ const PayrollDashboard: React.FC = () => {
                                         <button
                                             onClick={() => handleSave(row, i)}
                                             disabled={saving === i}
-                                            className="bg-indigo-600 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+                                            className="btn-primary flex-1 py-3.5 !rounded-xl !text-[10px]"
                                         >
                                             {saving === i ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fas fa-save"></i> Save</>}
                                         </button>
                                         <button
                                             onClick={() => handleSignalReady(row)}
-                                            className="bg-amber-500 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-600 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-200"
+                                            className="btn-primary !from-amber-500 !to-amber-600 flex-1 py-3.5 !rounded-xl !text-[10px] shadow-amber-200"
                                         >
                                             <i className="fas fa-bell"></i> Signal Ready
                                         </button>
@@ -464,7 +464,7 @@ const PayrollDashboard: React.FC = () => {
                                 {row.record?.status === 'Ready' && (
                                     <button
                                         onClick={() => setConfirmingCodeFor(row)}
-                                        className="w-full bg-emerald-500 text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                                        className="btn-success w-full py-3.5 !rounded-xl !text-[10px] shadow-emerald-200"
                                     >
                                         <i className="fas fa-handshake"></i> Disburse Funds
                                     </button>
@@ -472,7 +472,7 @@ const PayrollDashboard: React.FC = () => {
                                 {row.record && (
                                     <button
                                         onClick={() => setViewPayslip(row.record!)}
-                                        className="w-full bg-slate-800 text-white hover:bg-slate-900 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-300"
+                                        className="btn-primary !from-slate-800 !to-slate-900 w-full py-3.5 !rounded-xl !text-[10px] shadow-slate-300"
                                     >
                                         <i className="fas fa-file-invoice"></i> View Payslip
                                     </button>
@@ -508,7 +508,7 @@ const PayrollDashboard: React.FC = () => {
                         <div className="p-6 grid grid-cols-2 gap-3 pt-0 bg-slate-50/50">
                             <button
                                 onClick={() => { setConfirmingCodeFor(null); setCodeEntry(''); }}
-                                className="px-4 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-slate-500 bg-white border border-slate-200 shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
+                                className="btn-secondary px-4 py-3.5 !rounded-xl !text-[10px]"
                             >
                                 Cancel
                             </button>
@@ -525,7 +525,7 @@ const PayrollDashboard: React.FC = () => {
                                      }
                                 }}
                                 disabled={codeEntry.length !== 4}
-                                className="px-4 py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-indigo-600 shadow-lg shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-50"
+                                className="btn-primary px-4 py-3.5 !rounded-xl !text-[10px] shadow-indigo-200"
                             >
                                 Confirm Code
                             </button>

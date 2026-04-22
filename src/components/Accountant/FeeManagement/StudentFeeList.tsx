@@ -7,7 +7,7 @@ import { type Student } from '../../../eduDb';
 import RecordPayment from './RecordPayment';
 import BulkDiscountModal from './BulkDiscountModal';
 import PaymentHistoryModal from './PaymentHistoryModal';
-import { normalizeArray, safeNumber, safeString } from '../../../utils/dataSafety';
+import { normalizeArray } from '../../../utils/dataSafety';
 
 type FilterStatus = 'all' | 'paid' | 'partial' | 'unpaid' | 'overpaid';
 
@@ -49,18 +49,18 @@ const StudentFeeList: React.FC = () => {
             dbService.fees.getPaymentsByTerm(user.schoolId, term, year, false), // Exclude voided
         ]);
         
-        const students = normalizeArray(studentsRaw);
-        const structures = normalizeArray(structuresRaw);
-        const allPayments = normalizeArray(allPaymentsRaw).filter(p => p && !p.isVoided);
+        const students = normalizeArray<any>(studentsRaw);
+        const structures = normalizeArray<any>(structuresRaw);
+        const allPayments = normalizeArray<any>(allPaymentsRaw).filter(p => p && !p.isVoided);
         const classesRaw = await dbService.classes.getAll(user.schoolId);
-        const allClasses = normalizeArray(classesRaw);
+        const allClasses = normalizeArray<any>(classesRaw);
 
         const rows: StudentFeeRow[] = [];
         for (const student of students) {
-            const structure = structures.find(s => s.classId === student.classId);
-            const payments = allPayments.filter(p => p.studentId === student.id);
-            const amountPaid = payments.reduce((sum, p) => sum + p.amountPaid, 0);
-            const termFeeAmount = structure?.termFeeAmount ?? 0;
+            const structure = structures.find((s: any) => s.classId === student.classId);
+            const payments = allPayments.filter((p: any) => p.studentId === student.id);
+            const amountPaid = (payments as any[]).reduce((sum, p) => sum + p.amountPaid, 0);
+            const termFeeAmount = (structure as any)?.termFeeAmount ?? 0;
 
             // Compute residual arrears: subtract payments from PREVIOUS terms so the
             // new-term balance correctly reflects what was actually left unpaid.
@@ -71,7 +71,7 @@ const StudentFeeList: React.FC = () => {
 
             const feeAmount = termFeeAmount + residualArrears; // Total Due this term
             const balance = feeAmount - amountPaid;             // can be negative (overpaid)
-            const cls = allClasses.find(c => c.id === student.classId);
+            const cls = allClasses.find((c: any) => c.id === student.classId);
 
             let status: StudentFeeRow['status'] = 'no-fee';
             if (termFeeAmount > 0 || residualArrears !== 0) {
@@ -81,12 +81,12 @@ const StudentFeeList: React.FC = () => {
                 else status = 'unpaid';
             }
 
-            rows.push({ student, feeAmount, amountPaid, balance, status, className: cls?.name || 'Unknown' });
+            rows.push({ student: student as any, feeAmount: feeAmount as any, amountPaid: amountPaid as any, balance, status, className: (cls as any)?.name || 'Unknown' });
         }
         return rows;
     }, [user?.schoolId, term, year]);
 
-    const filtered = rows?.filter(r => {
+    const filtered = (rows as any[])?.filter((r: any) => {
         if (filter !== 'all' && r.status !== filter) return false;
         if (classFilter !== 'all' && r.student.classId !== classFilter) return false;
         if (search && !r.student.fullName.toLowerCase().includes(search.toLowerCase())) return false;
@@ -135,7 +135,7 @@ const StudentFeeList: React.FC = () => {
                 </div>
                 <button
                     onClick={() => setShowBulkModal(true)}
-                    className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 shadow-lg shadow-slate-300 w-full sm:w-auto justify-center"
+                    className="btn-primary !bg-slate-800 hover:!bg-slate-900 !from-slate-800 !to-slate-900 px-6 py-3.5 !text-[10px] md:!text-xs w-full sm:w-auto"
                 >
                     <i className="fas fa-magic text-amber-400"></i> Bulk Discounts
                 </button>
@@ -246,7 +246,7 @@ const StudentFeeList: React.FC = () => {
                                     <td className="px-8 py-5 text-right flex items-center justify-end gap-2">
                                         <button
                                             onClick={() => setHistoryStudent(row)}
-                                            className="bg-white text-slate-500 hover:bg-slate-100 border border-slate-200 px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm group-hover:shadow-md"
+                                            className="btn-icon !w-10 !h-10 !rounded-xl !bg-white !text-slate-500 border border-slate-200"
                                             title="View Payment History"
                                         >
                                             <i className="fas fa-history"></i>
@@ -254,7 +254,7 @@ const StudentFeeList: React.FC = () => {
                                         {row.status !== 'no-fee' && (
                                             <button
                                                 onClick={() => setPayingStudent(row)}
-                                                className="bg-white text-slate-700 hover:bg-slate-800 hover:text-white border border-slate-200 hover:border-transparent px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm group-hover:shadow-md"
+                                                className="btn-primary px-5 py-2.5 !text-[10px]"
                                             >
                                                 Pay
                                             </button>
@@ -303,14 +303,14 @@ const StudentFeeList: React.FC = () => {
                         <div className="p-6 pt-0 bg-slate-50/50 flex gap-3">
                             <button
                                 onClick={() => setHistoryStudent(row)}
-                                className="px-5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-sm transition-all flex items-center justify-center gap-2"
+                                className="btn-secondary px-5 py-4 !rounded-2xl !text-[11px]"
                             >
                                 <i className="fas fa-history"></i> Log
                             </button>
                             {row.status !== 'no-fee' && (
                                 <button
                                     onClick={() => setPayingStudent(row)}
-                                    className="flex-1 bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-lg shadow-slate-200 transition-all"
+                                    className="btn-primary flex-1 py-4 !rounded-2xl !text-[11px]"
                                 >
                                     Record Payment
                                 </button>

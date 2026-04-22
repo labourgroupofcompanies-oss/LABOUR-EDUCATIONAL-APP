@@ -263,9 +263,9 @@ const MarkAttendance: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                         <button
                             onClick={handleSave}
                             disabled={saving || students.length === 0}
-                            className="w-full md:w-auto px-8 py-4 md:py-3 bg-indigo-600 text-white rounded-2xl md:rounded-xl font-black text-sm uppercase tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:bg-gray-100 disabled:text-gray-400 disabled:shadow-none active:scale-95"
+                            className="btn-primary w-full md:w-auto px-8 py-4 md:py-3"
                         >
-                            {saving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fas fa-save"></i> Save Attendance</>}
+                            {saving ? <><i className="fas fa-circle-notch fa-spin"></i> Saving...</> : <><i className="fas fa-save"></i> Save Attendance</>}
                         </button>
                     </div>
                 </div>

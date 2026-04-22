@@ -8,7 +8,7 @@ import { exportDatabase, importDatabase } from '../../utils/backupUtils';
 import { showConfirm } from '../Common/ConfirmDialog';
 import { showToast } from '../Common/Toast';
 import { syncService } from '../../services/syncService';
-import { normalizeArray, normalizeObject, safeString, safeNumber, safeBoolean } from '../../utils/dataSafety';
+import { normalizeArray, safeString } from '../../utils/dataSafety';
 
 const Settings: React.FC = () => {
     const { user } = useAuth();
@@ -260,7 +260,7 @@ const Settings: React.FC = () => {
             const now = Date.now();
             await eduDb.transaction('rw', eduDb.settings, async () => {
                 const keys = ['academicYear', 'currentTerm', 'gradingSystem'];
-                const values = [academicYear.trim(), currentTerm.trim(), normalizeGradingSystem(gradingSystem)];
+                const values = [academicYear.trim(), currentTerm.trim(), normalizeArray<any>(gradingSystem)];
 
                 for (let i = 0; i < keys.length; i++) {
                     const existing = await eduDb.settings
@@ -719,7 +719,7 @@ const Settings: React.FC = () => {
                         <h2 className="text-xl font-bold text-gray-800 border-b pb-4 pt-4">Grading System</h2>
                         {/* Mobile: card rows; Desktop: table */}
                         <div className="space-y-3 md:hidden">
-                            {normalizeArray(gradingSystem).map((g, idx) => (
+                            {normalizeArray<any>(gradingSystem).map((g, idx) => (
                                 <div key={idx} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2">
@@ -759,7 +759,7 @@ const Settings: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {normalizeArray(gradingSystem).map((g, idx) => (
+                                    {normalizeArray<any>(gradingSystem).map((g, idx) => (
                                         <tr key={idx} className="border-b border-gray-50">
                                             <td className="p-2"><input type="number" value={g.min} onChange={e => { const n = [...gradingSystem]; n[idx].min = parseInt(e.target.value); setGradingSystem(n); }} className="w-20 p-2 bg-gray-50 rounded-lg font-bold" /></td>
                                             <td className="p-2"><input type="number" value={g.max} onChange={e => { const n = [...gradingSystem]; n[idx].max = parseInt(e.target.value); setGradingSystem(n); }} className="w-20 p-2 bg-gray-50 rounded-lg font-bold" /></td>

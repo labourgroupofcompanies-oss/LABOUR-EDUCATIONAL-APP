@@ -66,8 +66,8 @@ const BulkDiscountModal: React.FC<Props> = ({ schoolId, classes, studentsWithArr
                         <h3 className="text-xl font-black text-slate-800 tracking-tight">Bulk Discount / Waiver</h3>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Global Fee Adjustments</p>
                     </div>
-                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
-                        <i className="fas fa-times text-lg"></i>
+                    <button onClick={onClose} className="btn-icon">
+                        <i className="fas fa-times"></i>
                     </button>
                 </div>
 
@@ -137,14 +137,14 @@ const BulkDiscountModal: React.FC<Props> = ({ schoolId, classes, studentsWithArr
                 <div className="px-8 py-6 bg-slate-50 border-t border-slate-100 flex gap-4">
                     <button
                         onClick={onClose}
-                        className="flex-1 bg-white border border-slate-200 text-slate-500 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all"
+                        className="btn-secondary flex-1 py-3.5"
                     >
                         Cancel
                     </button>
                     <button
                         onClick={handleApply}
                         disabled={applying || targetStudents.length === 0}
-                        className="flex-1 bg-slate-800 text-white py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-900 transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-200 disabled:opacity-50"
+                        className="btn-primary flex-1 py-3.5"
                     >
                         {applying ? (
                             <><i className="fas fa-circle-notch fa-spin"></i> Processing...</>

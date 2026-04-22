@@ -441,7 +441,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                         {studentId ? 'Update existing student records securely offline.' : 'Fill in the details to enroll a new student.'}
                     </p>
                 </div>
-                <button onClick={onCancel} className="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 hover:border-red-100 flex items-center justify-center transition-all border border-transparent self-end sm:self-auto">
+                <button onClick={onCancel} className="btn-icon !w-10 !h-10 !rounded-xl !bg-gray-50 !text-gray-400 hover:!text-red-500 hover:!bg-red-50 hover:!border-red-100 transition-all border border-transparent self-end sm:self-auto">
                     <i className="fas fa-times"></i>
                 </button>
             </div>
@@ -522,7 +522,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                         <button 
                                             type="button" 
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="absolute -bottom-2 -right-2 w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:scale-110 active:scale-95 transition-all border-4 border-white"
+                                            className="btn-icon !w-12 !h-12 !bg-indigo-600 !text-white !rounded-2xl absolute -bottom-2 -right-2 shadow-lg shadow-indigo-200 border-4 border-white"
                                             title="Upload from device"
                                         >
                                             <i className="fas fa-upload"></i>
@@ -565,7 +565,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                                 <button
                                                     type="button"
                                                     onClick={stopCamera}
-                                                    className="w-12 h-12 bg-white/10 backdrop-blur-md text-white rounded-full flex items-center justify-center hover:bg-black/40 transition-all border border-white/20"
+                                                    className="btn-icon !w-12 !h-12 !bg-white/10 !text-white !rounded-full backdrop-blur-md hover:!bg-black/40 transition-all border border-white/20"
                                                     title="Close camera"
                                                 >
                                                     <i className="fas fa-times"></i>
@@ -578,7 +578,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                                         triggerFlash();
                                                         setTimeout(captureSnapshot, 150);
                                                     }}
-                                                    className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-2xl shadow-white/20 hover:scale-110 active:scale-95 transition-all"
+                                                    className="btn-icon !w-16 !h-16 !bg-white !text-black !rounded-full shadow-2xl shadow-white/20 hover:scale-110 active:scale-95 transition-all"
                                                     title="Capture photo"
                                                 >
                                                     <div className="w-12 h-12 rounded-full border-2 border-black/5 flex items-center justify-center">
@@ -591,10 +591,10 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                                     type="button"
                                                     onClick={switchCamera}
                                                     title={cameras.length > 1 ? `Switch camera (${activeCameraIndex + 1}/${cameras.length})` : 'Switch camera'}
-                                                    className={`w-12 h-12 backdrop-blur-md text-white rounded-full flex flex-col items-center justify-center transition-all border gap-0.5 ${
+                                                    className={`btn-icon !w-12 !h-12 backdrop-blur-md !text-white !rounded-full transition-all border gap-0.5 ${
                                                         cameras.length > 1
-                                                            ? 'bg-white/20 border-white/30 hover:bg-white/30 hover:scale-110 active:scale-95 cursor-pointer'
-                                                            : 'bg-white/5 border-white/10 opacity-40 cursor-not-allowed'
+                                                            ? '!bg-white/20 !border-white/30 hover:!bg-white/30 hover:scale-110 active:scale-95 cursor-pointer'
+                                                            : '!bg-white/5 !border-white/10 !opacity-40 cursor-not-allowed'
                                                     }`}
                                                 >
                                                     <i className="fas fa-camera-rotate text-base"></i>
@@ -626,7 +626,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                             <button 
                                                 type="button" 
                                                 onClick={() => startCamera()} 
-                                                className="w-10 h-10 bg-white text-blue-600 rounded-xl flex items-center justify-center hover:scale-110 transition-all shadow-lg"
+                                                className="btn-icon !w-10 !h-10 !bg-white !text-blue-600 !rounded-xl shadow-lg"
                                                 title="Retake"
                                             >
                                                 <i className="fas fa-camera"></i>
@@ -634,7 +634,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                             <button 
                                                 type="button" 
                                                 onClick={clearPhoto} 
-                                                className="w-10 h-10 bg-white text-red-500 rounded-xl flex items-center justify-center hover:scale-110 transition-all shadow-lg"
+                                                className="btn-icon !w-10 !h-10 !bg-white !text-red-500 !rounded-xl shadow-lg"
                                                 title="Remove"
                                             >
                                                 <i className="fas fa-trash"></i>
@@ -952,7 +952,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                     <button
                         type="button"
                         onClick={handleBack}
-                        className={`px-5 sm:px-6 py-4 rounded-2xl font-black uppercase tracking-wider text-xs sm:text-sm transition-all focus:outline-none flex items-center gap-2 md:gap-3 ${stepIndex > 0 ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95' : 'bg-transparent text-transparent cursor-default select-none'
+                        className={`btn-secondary px-5 sm:px-6 py-4 !rounded-2xl !text-xs sm:!text-sm ${stepIndex > 0 ? '' : '!bg-transparent !text-transparent !cursor-default !select-none'
                             }`}
                         aria-hidden={stepIndex === 0}
                     >
@@ -963,7 +963,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                         <button
                             type="button"
                             onClick={handleNext}
-                            className="px-8 sm:px-12 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black uppercase tracking-widest text-sm hover:shadow-xl hover:shadow-blue-200 hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-3 focus:outline-none focus:ring-4 focus:ring-blue-500/30"
+                            className="btn-primary px-8 sm:px-12 py-4 !rounded-2xl !text-sm"
                         >
                             <span className="hidden sm:inline">Next Step</span>
                             <span className="sm:hidden">Next</span>
@@ -973,9 +973,9 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-6 sm:px-10 py-4 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-black uppercase tracking-widest text-sm hover:shadow-xl hover:shadow-green-200 hover:-translate-y-0.5 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:shadow-none focus:outline-none focus:ring-4 focus:ring-green-500/30"
+                            className="btn-success px-6 sm:px-10 py-4 !rounded-2xl !text-sm"
                         >
-                            {loading ? <i className="fas fa-spinner fa-spin text-lg"></i> : <i className="fas fa-check-circle text-lg"></i>}
+                            {loading ? <i className="fas fa-circle-notch fa-spin text-lg"></i> : <i className="fas fa-check-circle text-lg"></i>}
                             {studentId ? 'Confirm Update' : 'Finalize Save'}
                         </button>
                     )}

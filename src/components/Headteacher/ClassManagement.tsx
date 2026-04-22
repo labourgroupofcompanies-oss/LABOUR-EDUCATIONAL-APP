@@ -525,7 +525,7 @@ const ClassManagement: React.FC = () => {
                 </h2>
                 <button
                     onClick={() => setIsCreating(!isCreating)}
-                    className="px-4 sm:px-6 py-2 bg-primary text-white rounded-xl font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-100 flex items-center gap-2 text-sm sm:text-base"
+                    className={`btn-primary px-4 sm:px-6 py-2 text-sm sm:text-base ${isCreating ? '!from-slate-400 !to-slate-500 shadow-slate-200' : ''}`}
                 >
                     <i className={`fas ${isCreating ? 'fa-times' : 'fa-plus'}`}></i>
                     {isCreating ? 'Cancel' : 'New Class'}
@@ -593,7 +593,7 @@ const ClassManagement: React.FC = () => {
                     <div className="mt-6 flex justify-end">
                         <button
                             type="submit"
-                            className="px-6 sm:px-8 py-3 bg-primary text-white rounded-xl font-bold hover:bg-blue-600 transition-all shadow-md"
+                            className="btn-primary px-6 sm:px-8 py-3"
                         >
                             <i className="fas fa-save mr-2"></i>Save Class
                         </button>
@@ -606,10 +606,10 @@ const ClassManagement: React.FC = () => {
                     <div key={cls.id} className="premium-card p-5 sm:p-6 relative group">
                         <button
                             onClick={() => handleDeleteClass(cls.id!, cls.name)}
-                            className="absolute top-4 right-14 w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center transition-all hover:bg-red-100 sm:opacity-0 sm:group-hover:opacity-100 opacity-100"
+                            className="btn-icon !w-8 !h-8 !rounded-full !bg-red-50 !text-red-500 absolute top-4 right-14 sm:opacity-0 sm:group-hover:opacity-100 opacity-100"
                             title="Delete Class"
                         >
-                            <i className="fas fa-trash-alt text-sm"></i>
+                            <i className="fas fa-trash-alt text-xs"></i>
                         </button>
 
                         <div className="flex justify-between items-start mb-4">
@@ -652,10 +652,10 @@ const ClassManagement: React.FC = () => {
                                                 setEditingClassNameId(cls.id!);
                                                 setEditingClassNameValue(cls.name);
                                             }}
-                                            className="w-6 h-6 rounded-md hover:bg-gray-100 text-gray-400 hover:text-indigo-600 transition-colors flex items-center justify-center sm:opacity-0 group-hover/name:opacity-100 opacity-100 shrink-0"
+                                            className="btn-icon !w-6 !h-6 !rounded-md !bg-transparent !text-gray-400 hover:!text-indigo-600 sm:opacity-0 group-hover/name:opacity-100 opacity-100 shrink-0"
                                             title="Edit Class Name"
                                         >
-                                            <i className="fas fa-pen text-xs"></i>
+                                            <i className="fas fa-pen text-[10px]"></i>
                                         </button>
                                     </div>
                                 )}
@@ -686,7 +686,7 @@ const ClassManagement: React.FC = () => {
                                 <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
                                     <button
                                         onClick={() => handleOpenSubjects(cls.id!)}
-                                        className="text-xs font-bold text-primary hover:text-blue-600 transition-colors flex items-center gap-1.5"
+                                        className="btn-ghost !text-primary !text-xs !p-0 hover:!bg-transparent"
                                     >
                                         <i className="fas fa-book-open"></i> Manage Subjects
                                     </button>
@@ -705,9 +705,9 @@ const ClassManagement: React.FC = () => {
                                         setIsViewingRoster(true);
                                     }
                                 }}
-                                className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition-all ${selectedClassId === cls.id && isViewingRoster
-                                    ? 'bg-primary text-white shadow-lg shadow-blue-200'
-                                    : 'bg-gray-50 text-gray-400 hover:bg-primary hover:text-white'
+                                className={`btn-icon !w-10 !h-10 shrink-0 !rounded-full ${selectedClassId === cls.id && isViewingRoster
+                                    ? '!bg-primary !text-white shadow-lg shadow-blue-200'
+                                    : '!bg-gray-50 !text-gray-400 hover:!bg-primary hover:!text-white'
                                     }`}
                             >
                                 <i className="fas fa-chevron-right"></i>
@@ -724,7 +724,7 @@ const ClassManagement: React.FC = () => {
                         </p>
                         <button
                             onClick={() => setIsCreating(true)}
-                            className="mt-4 px-6 py-2 bg-white text-primary rounded-xl font-bold shadow-sm border border-gray-100 hover:bg-gray-50 transition-all"
+                            className="btn-outline mt-4 px-6 py-2 !bg-white !text-primary shadow-sm border-gray-100"
                         >
                             Create Class
                         </button>
@@ -748,7 +748,7 @@ const ClassManagement: React.FC = () => {
                                     setIsViewingRoster(false);
                                     setSelectedStudentsForPromotion([]);
                                 }}
-                                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 hover:text-red-500 hover:rotate-90 transition-all border border-gray-100"
+                                className="btn-icon !w-10 !h-10 sm:!w-12 sm:!h-12 !rounded-full !bg-white shadow-sm !text-gray-400 hover:!text-red-500 hover:rotate-90 transition-all border border-gray-100"
                             >
                                 <i className="fas fa-times text-lg sm:text-xl"></i>
                             </button>
@@ -761,7 +761,7 @@ const ClassManagement: React.FC = () => {
                             <button
                                 onClick={() => setIsPromoting(true)}
                                 disabled={!selectedStudentsForPromotion.length}
-                                className="px-4 sm:px-6 py-2.5 sm:py-3 bg-purple-600 text-white rounded-xl text-sm font-bold hover:bg-purple-700 disabled:opacity-50 shadow-lg shadow-purple-100 flex items-center gap-2 transition-all"
+                                className="btn-primary !from-purple-600 !to-indigo-600 hover:shadow-purple-200 px-4 sm:px-6 py-2.5 sm:py-3 text-sm"
                             >
                                 <i className="fas fa-exchange-alt"></i>
                                 <span>
@@ -930,14 +930,14 @@ const ClassManagement: React.FC = () => {
                         <div className="p-5 sm:p-8 bg-gray-50/50 border-t border-gray-100 flex gap-3">
                             <button
                                 onClick={() => setIsPromoting(false)}
-                                className="flex-1 sm:flex-none px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-all"
+                                className="btn-secondary flex-1 sm:flex-none px-6 py-3"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handlePromoteStudents}
                                 disabled={!promotionTargetClassId}
-                                className="flex-1 sm:flex-none px-8 py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg hover:bg-purple-700 transition-all disabled:opacity-50"
+                                className="btn-primary !from-purple-600 !to-indigo-600 flex-1 sm:flex-none px-8 py-3"
                             >
                                 Confirm Move
                             </button>
@@ -964,7 +964,7 @@ const ClassManagement: React.FC = () => {
                                     setEditingSubjectClassId(null);
                                     setClassSubjectsMap({});
                                 }}
-                                className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-gray-400 hover:text-red-500 transition-all border border-gray-100 shrink-0"
+                                className="btn-icon !w-10 !h-10 !rounded-full !bg-white shadow-sm !text-gray-400 hover:!text-red-500 transition-all border border-gray-100 shrink-0"
                             >
                                 <i className="fas fa-times text-lg"></i>
                             </button>
@@ -1026,13 +1026,13 @@ const ClassManagement: React.FC = () => {
                                     setEditingSubjectClassId(null);
                                     setClassSubjectsMap({});
                                 }}
-                                className="px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-all"
+                                className="btn-secondary px-6 py-3"
                             >
                                 Cancel
                             </button>
                             <button
                                 onClick={handleSaveSubjects}
-                                className="px-8 py-3 bg-primary text-white rounded-xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-600 transition-all flex items-center gap-2"
+                                className="btn-primary px-8 py-3"
                             >
                                 <i className="fas fa-check"></i> Save Subjects
                             </button>

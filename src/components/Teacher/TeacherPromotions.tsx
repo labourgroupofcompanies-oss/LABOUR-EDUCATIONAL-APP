@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useAcademicSession } from '../../hooks/useAcademicSession';
 import { showPromotionDialog } from '../Common/PromotionDialogs';
 import { showToast } from '../Common/Toast';
-import { getNextLevel, normalizeLevel } from '../../utils/levelUtils';
+import { getNextLevel, normalizeLevel, getMovementType } from '../../utils/levelUtils';
 
 export default function TeacherPromotions() {
     const { user } = useAuth();

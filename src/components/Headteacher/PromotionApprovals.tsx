@@ -4,7 +4,7 @@ import { eduDb } from '../../eduDb';
 import { useAuth } from '../../hooks/useAuth';
 import { showToast } from '../Common/Toast';
 import { showPromotionDialog } from '../Common/PromotionDialogs';
-import { getMovementType, normalizeLevel } from '../../utils/levelUtils';
+import { getMovementType } from '../../utils/levelUtils';
 
 export default function PromotionApprovals() {
     const { user } = useAuth();

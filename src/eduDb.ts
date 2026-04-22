@@ -81,6 +81,7 @@ export interface Result extends BaseEntity {
     grade?: string;
     remarks?: string;
     status?: 'draft' | 'submitted' | 'approved' | 'locked';
+    isLocked?: boolean;
     enteredBy?: string;
     submittedAt?: number;
     approvedBy?: string;

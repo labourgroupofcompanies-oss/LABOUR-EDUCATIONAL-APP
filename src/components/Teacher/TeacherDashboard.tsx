@@ -97,15 +97,15 @@ const TeacherDashboard: React.FC = () => {
             dbService.staff.getSubjectAssignments(user.schoolId, teacherId)
         ]);
 
-        const myClasses = normalizeArray(myClassesRaw);
-        const myAssignments = normalizeArray(myAssignmentsRaw);
+        const myClasses = normalizeArray<any>(myClassesRaw);
+        const myAssignments = normalizeArray<any>(myAssignmentsRaw);
 
         let studentCount = 0;
         for (const cls of myClasses) {
-            if (cls && cls.id) {
-                const students = await dbService.students.getByClass(user.schoolId, cls.id);
-                const count = normalizeArray(students).filter((s, i, arr) => 
-                    s && s.fullName && arr.findIndex(t => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
+            if (cls && (cls as any).id) {
+                const students = await dbService.students.getByClass(user.schoolId, (cls as any).id);
+                const count = normalizeArray<any>(students).filter((s, i, arr) => 
+                    s && s.fullName && arr.findIndex((t: any) => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
                 ).length;
                 studentCount += count;
             }
@@ -126,7 +126,7 @@ const TeacherDashboard: React.FC = () => {
         }
 
         const className = myClasses.length === 0 ? 'None'
-            : myClasses.length === 1 ? myClasses[0].name
+            : myClasses.length === 1 ? (myClasses[0] as any).name
                 : `${myClasses.length} Classes`;
 
         return {
@@ -178,7 +178,7 @@ const TeacherDashboard: React.FC = () => {
                         <NotificationBell />
                         <button
                             onClick={logout}
-                            className="w-9 h-9 flex items-center justify-center bg-white/10 hover:bg-red-500/70 rounded-xl text-white border border-white/20 transition-all active:scale-90 flex-shrink-0"
+                            className="btn-danger p-0 w-9 h-9 flex-shrink-0"
                             title="Log Out"
                         >
                             <i className="fas fa-sign-out-alt text-sm"></i>
@@ -239,7 +239,7 @@ const TeacherDashboard: React.FC = () => {
                         </div>
                         <button
                             onClick={logout}
-                            className="flex items-center gap-2 bg-white/10 hover:bg-red-500/80 border border-white/20 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95"
+                            className="btn-danger flex items-center gap-2 px-5 py-2.5"
                         >
                             <i className="fas fa-sign-out-alt"></i> Log Out
                         </button>

@@ -324,7 +324,7 @@ const StaffManagement: React.FC = () => {
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <button
                         onClick={shareLoginLink}
-                        className="flex-1 md:flex-none px-6 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                        className="btn-outline flex-1 md:flex-none border-gray-200 text-gray-700 hover:bg-gray-50"
                         title="Copy Login Page Link"
                     >
                         <i className="fas fa-link text-primary"></i>
@@ -335,7 +335,7 @@ const StaffManagement: React.FC = () => {
                             setIsAdding(!isAdding);
                             setLastCreatedStaff(null);
                         }}
-                        className="flex-1 md:flex-none px-6 py-2.5 bg-primary text-white rounded-xl font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2"
+                        className={`btn-primary flex-1 md:flex-none ${isAdding ? '!from-slate-400 !to-slate-500 shadow-slate-200' : ''}`}
                     >
                         <i className={`fas ${isAdding ? 'fa-times' : 'fa-plus'}`}></i>
                         {isAdding ? 'Cancel' : 'Add Staff Member'}
@@ -359,7 +359,7 @@ const StaffManagement: React.FC = () => {
                             const staffObj = staff.find(s => s.username === lastCreatedStaff.username);
                             if (staffObj) shareStaffInvitationInfo(staffObj, lastCreatedStaff.tempPass);
                         }}
-                        className="w-full md:w-auto px-8 py-3 bg-green-600 text-white rounded-xl font-black text-sm hover:bg-green-700 shadow-lg shadow-green-200 transition-all flex items-center justify-center gap-3"
+                        className="btn-success w-full md:w-auto"
                     >
                         <i className="fas fa-share-alt"></i>
                         Copy & Share Credentials
@@ -497,14 +497,14 @@ const StaffManagement: React.FC = () => {
                         <button
                             type="button"
                             onClick={handleCancel}
-                            className="flex-1 py-5 bg-gray-100 text-gray-600 rounded-xl font-black uppercase tracking-widest hover:bg-gray-200 transition-all text-sm"
+                            className="btn-secondary flex-1"
                         >
                             Discard
                         </button>
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="flex-[2] py-5 bg-primary text-white rounded-xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-600 disabled:opacity-70 transition-all flex items-center justify-center gap-3 text-sm"
+                            className="btn-primary flex-[2]"
                         >
                             {isLoading ? <i className="fas fa-circle-notch fa-spin"></i> : <i className={`fas ${editingId ? 'fa-save' : 'fa-plus-circle'}`}></i>}
                             {editingId ? 'Save Changes' : 'Create Staff Member'}
@@ -601,24 +601,24 @@ const StaffManagement: React.FC = () => {
                                             <div className="flex justify-end gap-2">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); shareStaffInvitationInfo(s); }}
-                                                    className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-indigo-100"
+                                                    className="btn-icon !w-8 !h-8 !rounded-full !bg-indigo-50 !text-indigo-500 opacity-0 group-hover:opacity-100"
                                                     title="Share Access Details"
                                                 >
-                                                    <i className="fas fa-share-alt text-xs"></i>
+                                                    <i className="fas fa-share-alt text-[10px]"></i>
                                                 </button>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleEdit(s); }}
-                                                    className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-blue-100"
+                                                    className="btn-icon !w-8 !h-8 !rounded-full !bg-blue-50 !text-blue-500 opacity-0 group-hover:opacity-100"
                                                     title="Edit Staff"
                                                 >
-                                                    <i className="fas fa-edit text-xs"></i>
+                                                    <i className="fas fa-edit text-[10px]"></i>
                                                 </button>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleDeleteStaff(s.id!, s.fullName); }}
-                                                    className="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-red-100"
+                                                    className="btn-icon !w-8 !h-8 !rounded-full !bg-red-50 !text-red-500 opacity-0 group-hover:opacity-100"
                                                     title="Delete Staff"
                                                 >
-                                                    <i className="fas fa-trash-alt text-xs"></i>
+                                                    <i className="fas fa-trash-alt text-[10px]"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -702,24 +702,24 @@ const StaffManagement: React.FC = () => {
                                 <div className="flex flex-col gap-2">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); shareStaffInvitationInfo(s); }}
-                                        className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center hover:bg-indigo-100 transition-all flex-shrink-0"
+                                        className="btn-icon !bg-indigo-50 !text-indigo-500 shadow-sm"
                                         title="Share Access Details"
                                     >
-                                        <i className="fas fa-share-alt text-base"></i>
+                                        <i className="fas fa-share-alt"></i>
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleEdit(s); }}
-                                        className="w-10 h-10 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100 transition-all flex-shrink-0"
+                                        className="btn-icon !bg-blue-50 !text-blue-500 shadow-sm"
                                         title="Edit Staff"
                                     >
-                                        <i className="fas fa-edit text-base"></i>
+                                        <i className="fas fa-edit"></i>
                                     </button>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleDeleteStaff(s.id!, s.fullName); }}
-                                        className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition-all flex-shrink-0"
+                                        className="btn-icon !bg-red-50 !text-red-500 shadow-sm"
                                         title="Delete Staff"
                                     >
-                                        <i className="fas fa-trash-alt text-base"></i>
+                                        <i className="fas fa-trash-alt"></i>
                                     </button>
                                 </div>
                             </div>

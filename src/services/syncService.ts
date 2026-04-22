@@ -1306,7 +1306,10 @@ export const syncService = {
                         }
                         if (!mapped.id) {
                             console.warn('[syncService] Skipping offline staff profile. Staff must be created online first.');
-                            await table.update(item.id, { syncStatus: 'pending', syncError: 'Offline creation not allowed. Canonical ID missing.' });
+                            await table.update(item.id, { 
+                                syncStatus: 'failed', 
+                                syncError: 'Offline creation not allowed. Staff must be added via Online Portal first.' 
+                            });
                             return null;
                         }
                     } else {

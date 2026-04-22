@@ -278,7 +278,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onOnboardingStart, showRegisterLi
                             <button
                                 type="button"
                                 onClick={() => setShowPw(v => !v)}
-                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors p-1"
+                                className="btn-icon absolute right-2 top-1/2 -translate-y-1/2 !bg-transparent !w-12 !h-12"
                                 aria-label={showPw ? 'Hide password' : 'Show password'}
                                 tabIndex={-1}
                             >
@@ -312,7 +312,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onOnboardingStart, showRegisterLi
                     <button
                         type="submit"
                         disabled={isLoading || isLockedOut}
-                        className="w-full py-5 bg-primary text-white rounded-2xl font-black text-lg hover:bg-blue-600 transition-all shadow-xl shadow-blue-100 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                        className="btn-primary w-full py-5 !text-lg"
                     >
                         {isLoading ? (
                             <><i className="fas fa-circle-notch fa-spin" /> Verifying…</>
@@ -331,7 +331,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onOnboardingStart, showRegisterLi
                                 <button
                                     type="button"
                                     onClick={onOnboardingStart}
-                                    className="text-primary hover:underline ml-1"
+                                    className="text-primary hover:underline ml-1 font-black btn-ghost !inline-flex !px-2 !py-1 !rounded-lg !text-[10px]"
                                 >
                                     Register Now
                                 </button>

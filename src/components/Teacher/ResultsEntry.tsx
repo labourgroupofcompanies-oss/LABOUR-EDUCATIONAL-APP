@@ -588,7 +588,7 @@ const ResultsEntry: React.FC<ResultsEntryProps> = ({ classId, className, subject
                                 <div className="flex justify-between items-start mb-4">
                                     <h3 className="font-black text-gray-800 tracking-tight">{student.studentName}</h3>
                                     <div className="flex flex-col items-end">
-                                        <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Final Scorce</span>
+                                        <span className="text-[9px] font-black uppercase text-gray-400 tracking-widest">Final Score</span>
                                         <span className="text-xl font-black text-primary leading-none">{Math.round(student.finalScore)}</span>
                                     </div>
                                 </div>
@@ -647,21 +647,21 @@ const ResultsEntry: React.FC<ResultsEntryProps> = ({ classId, className, subject
                 <button
                     onClick={handleSaveDraft}
                     disabled={isSaving || hasSubmittedResults}
-                    className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-4 md:py-3 rounded-2xl md:rounded-xl font-black text-sm md:text-sm uppercase tracking-widest transition-all ${isSaving || hasSubmittedResults
-                        ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700 shadow-xl shadow-blue-600/40 active:scale-95'
+                    className={`btn-primary flex-1 md:flex-none py-4 md:py-3 px-8 !text-sm ${isSaving || hasSubmittedResults
+                        ? '!from-gray-100 !to-gray-100 !text-gray-400 !shadow-none !cursor-not-allowed'
+                        : ''
                         }`}
                 >
-                    <i className={`fas ${isSaving ? 'fa-spinner fa-spin' : 'fa-save'} text-base`}></i>
+                    <i className={`fas ${isSaving ? 'fa-circle-notch fa-spin' : 'fa-save'} text-base`}></i>
                     <span>{isSaving ? 'Saving...' : 'Save Draft'}</span>
                 </button>
 
                 <button
                     onClick={handleSubmit}
                     disabled={isSaving || hasSubmittedResults || !allDraft}
-                    className={`flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-4 md:py-3 rounded-2xl md:rounded-xl font-black text-sm md:text-sm uppercase tracking-widest transition-all ${isSaving || hasSubmittedResults || !allDraft
-                        ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                        : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xl shadow-indigo-600/40 active:scale-95'
+                    className={`btn-primary !from-indigo-600 !to-indigo-700 flex-1 md:flex-none py-4 md:py-3 px-8 !text-sm ${isSaving || hasSubmittedResults || !allDraft
+                        ? '!from-gray-100 !to-gray-100 !text-gray-400 !shadow-none !cursor-not-allowed'
+                        : ''
                         }`}
                 >
                     <i className={`fas ${hasSubmittedResults ? 'fa-check-circle' : 'fa-paper-plane'} text-base`}></i>

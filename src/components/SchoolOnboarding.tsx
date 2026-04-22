@@ -384,7 +384,7 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                     {onLogin && (
                         <button
                             onClick={onLogin}
-                            className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold hover:bg-gray-800 transition-all shadow-lg"
+                            className="btn-primary w-full py-4 !text-sm"
                         >
                             Return to Login
                         </button>
@@ -425,7 +425,7 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
 
                 <button
                     onClick={() => onComplete(generatedId || '')}
-                    className="w-full py-5 bg-primary text-white rounded-[1.5rem] font-bold text-lg hover:bg-blue-600 transition-all shadow-xl shadow-blue-200 active:scale-95"
+                    className="btn-primary w-full mt-6 py-5 !text-lg !rounded-[1.5rem]"
                 >
                     Enter Dashboard <i className="fas fa-arrow-right ml-2"></i>
                 </button>
@@ -488,10 +488,11 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                                             <div className="relative w-full h-full group/logo">
                                                 <img src={logoPreview} alt="Logo Preview" className="w-full h-full object-cover" />
                                                 <button
+                                                    type="button"
                                                     onClick={removeLogo}
-                                                    className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity"
+                                                    className="btn-icon absolute -top-2 -right-2 shadow-lg"
                                                 >
-                                                    <i className="fas fa-trash-alt text-white text-xl"></i>
+                                                    <i className="fas fa-times text-xs"></i>
                                                 </button>
                                             </div>
                                         ) : (
@@ -839,7 +840,7 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                             <button
                                 type="button"
                                 onClick={prevStep}
-                                className="px-8 py-5 bg-gray-50 text-gray-400 rounded-[1.5rem] font-black text-sm uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center gap-3"
+                                className="btn-secondary px-8 py-5 !rounded-[1.5rem]"
                             >
                                 <i className="fas fa-chevron-left"></i> Back
                             </button>
@@ -849,7 +850,7 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                             <button
                                 type="button"
                                 onClick={nextStep}
-                                className="flex-1 py-5 bg-primary text-white rounded-[1.5rem] font-bold text-lg hover:bg-blue-600 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3"
+                                className="btn-primary flex-1 py-5 !text-lg !rounded-[1.5rem]"
                             >
                                 Continue <i className="fas fa-chevron-right text-sm"></i>
                             </button>
@@ -857,7 +858,7 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                             <button
                                 type="submit"
                                 disabled={isSubmitting}
-                                className="flex-1 py-5 bg-indigo-600 text-white rounded-[1.5rem] font-black text-lg hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 disabled:opacity-70 flex items-center justify-center gap-4"
+                                className="btn-primary !from-indigo-600 !to-indigo-700 flex-1 py-5 !text-lg !rounded-[1.5rem] shadow-indigo-100"
                             >
                                 {isSubmitting ? (
                                     <i className="fas fa-circle-notch fa-spin"></i>
@@ -884,7 +885,7 @@ const SchoolOnboarding: React.FC<SchoolOnboardingProps> = ({ onComplete, onLogin
                         <button
                             type="button"
                             onClick={onLogin}
-                            className="text-primary hover:underline font-black"
+                            className="text-primary hover:underline font-black btn-ghost !px-2 !py-1 !rounded-lg"
                         >
                             Login here
                         </button>

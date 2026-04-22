@@ -15,11 +15,10 @@ import ResultsManagement from './ResultsManagement/ResultsManagement';
 import AttendanceDashboard from './AttendanceManagement/AttendanceDashboard';
 import { eduDb } from '../../eduDb';
 import TeacherPayslip from '../Teacher/TeacherPayslip';
-import SyncStatusBadge from '../Common/SyncStatusBadge';
 import Settings from './Settings';
 import { syncService } from '../../services/syncService';
 import { showToast } from '../Common/Toast';
-import { normalizeArray, safeString, safeNumber } from '../../utils/dataSafety';
+import { normalizeArray, safeNumber } from '../../utils/dataSafety';
 import SubscriptionGate from '../Subscription/SubscriptionGate';
 import SubscriptionPage from '../Subscription/SubscriptionPage';
 import PromotionApprovals from './PromotionApprovals';
@@ -52,7 +51,7 @@ const tabConfig: { key: ViewType; label: string; shortLabel: string; icon: strin
 const HeadteacherDashboard: React.FC = () => {
     const { user, logout } = useAuth();
     const { currentTerm, academicYear } = useAcademicSession();
-    const { isSubscribed, subscription, isLoading: isSubLoading } = useSubscription(user?.schoolId, currentTerm, academicYear);
+    const { isSubscribed, isLoading: isSubLoading } = useSubscription(user?.schoolId, currentTerm, academicYear);
 
     const [view, setView] = useState<ViewType>('overview');
     const [isSyncing, setIsSyncing] = useState(false);
@@ -126,8 +125,8 @@ const HeadteacherDashboard: React.FC = () => {
         try {
             const [students, teachers, classes, subjects, eventsRaw] = await Promise.all([
                 dbService.students.getAll(user.schoolId).then(res => 
-                    normalizeArray(res).filter((s, i, arr) => 
-                        s && s.fullName && arr.findIndex(t => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
+                    normalizeArray<any>(res).filter((s: any, i, arr: any[]) => 
+                        s && s.fullName && arr.findIndex((t: any) => t.fullName?.toLowerCase().trim() === s.fullName?.toLowerCase().trim()) === i
                     ).length
                 ),
                 dbService.staff.getTeachers(user.schoolId).then(res => normalizeArray(res).length),
@@ -179,7 +178,7 @@ const HeadteacherDashboard: React.FC = () => {
 
         for (const table of allTables) {
             const p = await table
-                .where('syncStatus').equals('pending')
+                .where('syncStatus').anyOf('pending', 'failed')
                 .filter((item: any) => item.schoolId === user.schoolId || item.school_id === user.schoolId)
                 .count();
             pendingCount += p;
@@ -247,9 +246,9 @@ const HeadteacherDashboard: React.FC = () => {
                                     <button
                                         onClick={handleManualSync}
                                         disabled={isSyncing}
-                                        className="w-full md:w-auto px-6 py-2.5 bg-white text-amber-600 border border-amber-200 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:bg-amber-600 hover:text-white hover:border-amber-600 active:scale-95 disabled:opacity-50 shadow-sm"
+                                        className="btn-outline w-full md:w-auto border-amber-200 text-amber-600 hover:bg-amber-600 hover:text-white"
                                     >
-                                        {isSyncing ? 'Executing...' : 'Force Sync Now'}
+                                        {isSyncing ? 'Syncing...' : 'Sync Now'}
                                     </button>
                                 </div>
                             )}
@@ -368,7 +367,7 @@ const HeadteacherDashboard: React.FC = () => {
 
                                         <button 
                                             onClick={() => setView('calendar')}
-                                            className="w-full mt-10 py-4 text-[10px] font-black text-white bg-primary rounded-2xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all flex items-center justify-center gap-3 uppercase tracking-[0.2em]"
+                                            className="btn-primary w-full mt-10"
                                         >
                                             <i className="fas fa-plus"></i>
                                             Add New Event
@@ -479,7 +478,7 @@ const HeadteacherDashboard: React.FC = () => {
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setShowHelp(true)}
-                                className="w-10 h-10 flex items-center justify-center bg-white/10 text-white rounded-xl border border-white/10 active:scale-90 transition-all"
+                                className="w-10 h-10 flex items-center justify-center bg-white/10 text-white rounded-xl border border-white/10 active:scale-90 transition-all hover:bg-white/20"
                                 title="Support"
                             >
                                 <i className="fas fa-headset text-sm"></i>
@@ -487,7 +486,7 @@ const HeadteacherDashboard: React.FC = () => {
                             <NotificationBell canCompose={true} />
                             <button
                                 onClick={logout}
-                                className="w-10 h-10 flex items-center justify-center bg-white/10 text-white rounded-xl border border-white/10 active:scale-90 transition-all"
+                                className="btn-danger p-0 w-10 h-10 flex-shrink-0"
                                 title="Log Out"
                             >
                                 <i className="fas fa-power-off text-sm"></i>

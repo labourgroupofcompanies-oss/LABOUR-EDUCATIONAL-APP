@@ -4,7 +4,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useAcademicSession } from '../../../hooks/useAcademicSession';
 import { financialService } from '../../../services/financialService';
 import { eduDb } from '../../../eduDb';
-import { normalizeArray, safeNumber, safeString } from '../../../utils/dataSafety';
+import { normalizeArray, safeNumber } from '../../../utils/dataSafety';
 
 interface Props {
     onNavigate: (view: string) => void;
@@ -14,7 +14,7 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
     const { user } = useAuth();
     const { currentTerm: term, currentYear: year } = useAcademicSession();
 
-    const stats = useLiveQuery(async () => {
+    const stats = useLiveQuery<any>(async () => {
         if (!user?.schoolId) return null;
 
         const kpis = await financialService.getFinancialKPIs(user.schoolId, term, year);
@@ -31,7 +31,7 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
                 .toArray()
         ]);
 
-        const upcomingEvents = normalizeArray(upcomingEventsRaw)
+        const upcomingEvents = normalizeArray<any>(upcomingEventsRaw)
             .filter(e => e && !e.isDeleted && e.startDate >= startOfToday)
             .sort((a, b) => a.startDate - b.startDate);
 
@@ -40,7 +40,7 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
             netCashPosition: safeNumber(kpis?.netCashPosition),
             outstandingArrears: safeNumber(kpis?.outstandingArrears),
             budgetVariance: safeNumber(kpis?.budgetVariance),
-            recentExpenses: normalizeArray(recentExpensesRaw), 
+            recentExpenses: normalizeArray<any>(recentExpensesRaw), 
             upcomingEvents: upcomingEvents.slice(0, 3) 
         };
     }, [user?.schoolId, term, year]);
@@ -204,7 +204,7 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
                             </div>
                         ) : (
                             <div className="divide-y divide-slate-50">
-                                {stats.recentExpenses.map((expense, i) => (
+                                {stats.recentExpenses.map((expense: any, i: number) => (
                                     <div key={i} className="px-5 py-4 md:px-8 md:py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors group cursor-pointer">
                                         <div className="flex items-center gap-4 md:gap-5 min-w-0">
                                             <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-100 rounded-xl md:rounded-2xl flex flex-shrink-0 items-center justify-center text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-all font-black text-sm md:text-base shadow-sm">
@@ -245,7 +245,7 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
                     </h2>
                     <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-xl shadow-indigo-900/5 p-6 md:p-8 space-y-6 md:space-y-8">
                         <div className="space-y-4 md:space-y-6">
-                            {stats?.upcomingEvents && stats.upcomingEvents.length > 0 ? stats.upcomingEvents.map(e => (
+                            {stats?.upcomingEvents && stats.upcomingEvents.length > 0 ? stats.upcomingEvents.map((e: any) => (
                                 <div key={e.id} className="flex items-center gap-4 md:gap-5 group">
                                     <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex flex-col items-center justify-center text-slate-500 font-black group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all border border-slate-100 flex-shrink-0">
                                         <span className="text-[8px] md:text-[10px] uppercase leading-none mb-0.5 md:mb-1">{new Date(e.startDate).toLocaleString('default', { month: 'short' })}</span>

@@ -166,7 +166,7 @@ const FeeStructure: React.FC = () => {
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic 1 - 3</p>
                             <div className="flex gap-2">
                                 <input type="number" min="0" placeholder="0.00" value={groupFees['1-3']} onChange={e => setGroupFees(p => ({...p, '1-3': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-indigo-400 shadow-inner" />
-                                <button onClick={() => handleApplyGroup('1-3')} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex-shrink-0 shadow-sm hover:shadow-indigo-200">Apply</button>
+                                <button onClick={() => handleApplyGroup('1-3')} className="btn-primary !from-indigo-600 !to-indigo-700 px-5 !text-[10px] flex-shrink-0">Apply</button>
                             </div>
                         </div>
                         {/* Group 4-6 */}
@@ -175,7 +175,7 @@ const FeeStructure: React.FC = () => {
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic 4 - 6</p>
                             <div className="flex gap-2">
                                 <input type="number" min="0" placeholder="0.00" value={groupFees['4-6']} onChange={e => setGroupFees(p => ({...p, '4-6': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-teal-400 shadow-inner" />
-                                <button onClick={() => handleApplyGroup('4-6')} className="bg-teal-600 hover:bg-teal-700 text-white px-5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex-shrink-0 shadow-sm hover:shadow-teal-200">Apply</button>
+                                <button onClick={() => handleApplyGroup('4-6')} className="btn-primary !from-teal-600 !to-teal-700 px-5 !text-[10px] flex-shrink-0">Apply</button>
                             </div>
                         </div>
                         {/* Group 7-9 */}
@@ -184,7 +184,7 @@ const FeeStructure: React.FC = () => {
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic 7 - 9 (JHS)</p>
                             <div className="flex gap-2">
                                 <input type="number" min="0" placeholder="0.00" value={groupFees['7-9']} onChange={e => setGroupFees(p => ({...p, '7-9': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-purple-400 shadow-inner" />
-                                <button onClick={() => handleApplyGroup('7-9')} className="bg-purple-600 hover:bg-purple-700 text-white px-5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 flex-shrink-0 shadow-sm hover:shadow-purple-200">Apply</button>
+                                <button onClick={() => handleApplyGroup('7-9')} className="btn-primary !from-purple-600 !to-purple-700 px-5 !text-[10px] flex-shrink-0">Apply</button>
                             </div>
                         </div>
                     </div>
@@ -258,7 +258,7 @@ const FeeStructure: React.FC = () => {
                                             <td className="px-6 md:px-10 py-5 text-right">
                                                 <button
                                                     onClick={() => handleSave(cls.id!, cls.name)}
-                                                    className="bg-emerald-50 hover:bg-emerald-500 text-emerald-600 hover:text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm group-hover:shadow-md"
+                                                    className="btn-success px-5 py-2.5 !text-[10px]"
                                                 >
                                                     <i className="fas fa-save mr-1.5"></i> Save
                                                 </button>

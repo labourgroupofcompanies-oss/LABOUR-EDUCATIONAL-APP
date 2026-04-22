@@ -9,7 +9,7 @@ import { useAcademicSession } from '../../../hooks/useAcademicSession';
 import { assignGrade } from '../../../utils/assessmentCalculator';
 import ReportCardTemplate, { type ReportCardData } from './ReportCardTemplate';
 import { attendanceService } from '../../../services/attendanceService';
-import { normalizeArray, normalizeObject, safeString, safeNumber } from '../../../utils/dataSafety';
+import { normalizeArray, normalizeObject } from '../../../utils/dataSafety';
 
 /* ─── helpers ─── */
 const blobToDataUrl = (blob: Blob): Promise<string> =>
@@ -58,11 +58,11 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
     }, [initialClassId, initialStudentId]);
 
     /* live data */
-    const classes = useLiveQuery(() =>
+    const classes = useLiveQuery<any[]>(() =>
         user?.schoolId ? eduDb.classes.where('schoolId').equals(user.schoolId).filter(c => !(c as any).isDeleted).toArray() : []
         , [user?.schoolId]);
 
-    const selectedClass = normalizeArray(classes)?.find(c => c.id === parseInt(selectedClassId));
+    const selectedClass = normalizeArray<any>(classes)?.find(c => c.id === parseInt(selectedClassId));
 
     const studentsInClass = useLiveQuery(async () => {
         if (!selectedClassId || !user?.schoolId) return [];
@@ -137,9 +137,9 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
             .toArray() : []
     , [user?.schoolId]);
 
-    const termStartDateVal = normalizeArray(globalTermDates)?.find(d => d.key === 'termStartDate')?.value;
-    const vacationDateVal = normalizeArray(globalTermDates)?.find(d => d.key === 'vacationDate')?.value;
-    const nextTermBeginsVal = normalizeArray(globalTermDates)?.find(d => d.key === 'nextTermBegins')?.value;
+    const termStartDateVal = normalizeArray<any>(globalTermDates)?.find(d => d.key === 'termStartDate')?.value;
+    const vacationDateVal = normalizeArray<any>(globalTermDates)?.find(d => d.key === 'vacationDate')?.value;
+    const nextTermBeginsVal = normalizeArray<any>(globalTermDates)?.find(d => d.key === 'nextTermBegins')?.value;
 
     /* ── build report card data ── */
     const buildCards = async () => {
@@ -155,7 +155,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                 .where('[schoolId+key]')
                 .equals([user.schoolId, 'gradingSystem'])
                 .first();
-            const gradingSystem = normalizeArray(gradingSetting?.value);
+            const gradingSystem = normalizeArray<any>(gradingSetting?.value);
 
             if (gradingSystem.length === 0) {
                 console.warn("No grading system found in settings.");
@@ -267,7 +267,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                 const rank = studentTotals.findIndex(t => t.id === student.id) + 1;
                 const avgScore = subjects.length > 0 ? totalScoreSum / subjects.length : 0;
 
-                const overallPerformance = assignGrade(avgScore, gradingSystem);
+                const overallPerformance = assignGrade(avgScore, gradingSystem as any);
                 const overallGrade = overallPerformance.grade;
 
                 // Teacher remark: use saved one if exists, otherwise fall back to auto remark
@@ -336,7 +336,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                     if (promo) {
                         promotionStatus = `Promoted to: ${allClassesMap[promo.toClassId] || 'Next Class'}`;
                     } else {
-                        promotionStatus = `To continue in: ${selectedClass?.name || 'Same Class'}`;
+                        promotionStatus = `To continue in: ${(selectedClass as any)?.name || 'Same Class'}`;
                     }
                 }
 
@@ -351,7 +351,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                     year: selectedYear,
                     studentName: student.fullName,
                     studentId: student.studentIdString || student.idCloud || `STU-${student.id}`,
-                    className: selectedClass?.name ?? '',
+                    className: (selectedClass as any)?.name ?? '',
                     studentPhoto: photoUrl,
                     subjects: subjectRows,
                     totalScoreSum,
@@ -366,7 +366,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                     attendance,
                     feeInfo,
                     promotionStatus,
-                    config: reportConfig,
+                    config: reportConfig as any,
                 });
             }
 
