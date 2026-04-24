@@ -106,12 +106,34 @@ export const syncService = {
     async broadcastSyncNeeded(schoolId: string) {
         try {
             const user = (await supabase.auth.getUser()).data.user;
-            await supabase.channel(`school_sync_${schoolId}`).send({
-                type: 'broadcast',
-                event: 'sync_needed',
-                payload: { sender: user?.id }
-            });
-            console.log('[syncService] Realtime sync broadcast sent.');
+            const channelName = `school_sync_${schoolId}`;
+            
+            // Supabase prefixes topics with 'realtime:' in getChannels()
+            const activeChannel = supabase.getChannels().find(c => c.topic === `realtime:${channelName}`);
+            
+            if (activeChannel) {
+                await activeChannel.send({
+                    type: 'broadcast',
+                    event: 'sync_needed',
+                    payload: { sender: user?.id }
+                });
+                console.log('[syncService] Realtime sync broadcast sent via active channel.');
+            } else {
+                // Fallback if not actively subscribed: create temp, subscribe, send, remove
+                const tempChannel = supabase.channel(channelName);
+                tempChannel.subscribe((status) => {
+                    if (status === 'SUBSCRIBED') {
+                        tempChannel.send({
+                            type: 'broadcast',
+                            event: 'sync_needed',
+                            payload: { sender: user?.id }
+                        }).then(() => {
+                            supabase.removeChannel(tempChannel);
+                            console.log('[syncService] Realtime sync broadcast sent via temp channel.');
+                        });
+                    }
+                });
+            }
         } catch (broadcastErr) {
             console.warn('[syncService] Realtime broadcast failed:', broadcastErr);
         }

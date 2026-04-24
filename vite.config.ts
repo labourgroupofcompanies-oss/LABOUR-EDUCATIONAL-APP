@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: 'autoUpdate',
       includeAssets: ['images/labour_logo.png'],
       manifest: {
         name: 'Labour Edu System',
@@ -38,6 +38,8 @@ export default defineConfig({
         ]
       },
       workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
         // PRECACHING: All build assets are cached during Service Worker installation
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         
