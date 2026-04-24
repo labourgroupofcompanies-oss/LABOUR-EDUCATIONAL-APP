@@ -514,7 +514,7 @@ const Settings: React.FC = () => {
 
             // 3. Update Supabase staff_profiles
             const { error: profileError } = await supabase.from('staff_profiles')
-                .update({ full_name: transferNewName, email: transferNewEmail })
+                .update({ full_name: transferNewName, contact_email: transferNewEmail })
                 .eq('id', user.id);
 
             if (profileError) {
