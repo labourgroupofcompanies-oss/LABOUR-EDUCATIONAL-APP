@@ -2055,6 +2055,10 @@ export const syncService = {
                 newObj[snakeKey] = obj[key] > 0 ? this.toIso(obj[key]) : null;
             } else if (key === 'isDeleted') {
                 newObj['is_deleted'] = !!obj[key];
+            } else if (supabaseTable === 'staff_profiles' && key === 'email') {
+                newObj['contact_email'] = obj[key];
+            } else if (supabaseTable === 'staff_profiles' && key === 'phoneNumber') {
+                newObj['phone'] = obj[key];
             } else if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
                 newObj[snakeKey] = await this.mapToSnakeCase(obj[key], supabaseTable);
             } else {
@@ -2174,6 +2178,10 @@ export const syncService = {
                 // Normalize cloud role (lowercase) to uppercase to match local User type convention
                 // e.g. 'accountant' → 'ACCOUNTANT', 'teacher' → 'TEACHER'
                 newObj['role'] = obj[key] ? String(obj[key]).toUpperCase() : 'STAFF';
+            } else if (supabaseTable === 'staff_profiles' && key === 'contact_email') {
+                newObj['email'] = obj[key];
+            } else if (supabaseTable === 'staff_profiles' && key === 'phone') {
+                newObj['phoneNumber'] = obj[key];
             } else {
                 newObj[camelKey] = obj[key];
             }
