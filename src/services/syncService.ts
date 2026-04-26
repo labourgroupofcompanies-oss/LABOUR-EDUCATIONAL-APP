@@ -2019,9 +2019,6 @@ export const syncService = {
             }
 
             if (key === 'id') {
-                if (supabaseTable === 'staff_profiles') {
-                    newObj['profile_id'] = obj[key];
-                }
                 continue;
             }
 
