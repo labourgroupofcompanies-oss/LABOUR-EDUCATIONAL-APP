@@ -209,39 +209,46 @@ const FAQManager: React.FC = () => {
                     </div>
                 ) : (
                     faqs.map((faq) => (
-                        <div key={faq.id} className="p-6 lg:p-8 rounded-[2rem] lg:rounded-[2.5rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden transition-all hover:border-blue-100">
-                            <div className="flex justify-between items-start gap-4 mb-4">
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-black text-xs">
-                                            {faq.display_order}
-                                        </span>
-                                        <h5 className="text-base lg:text-lg font-black text-slate-800 leading-tight">{faq.question}</h5>
+                        <div key={faq.id} className="p-8 rounded-[3rem] bg-white border border-slate-100 shadow-xl shadow-slate-200/40 space-y-6 relative group transition-all hover:shadow-2xl">
+                            {/* Dialogue Header */}
+                            <div className="flex justify-between items-center pb-4 border-b border-slate-50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-xs shadow-lg">
+                                        #{faq.display_order}
                                     </div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Created: {new Date(faq.created_at).toLocaleDateString()}</p>
+                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em]">Platform Knowledge Base</p>
                                 </div>
-
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button
                                         onClick={() => handleEdit(faq)}
-                                        className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center hover:bg-blue-50 hover:text-blue-500 transition-all"
-                                        title="Edit FAQ"
+                                        className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                                     >
                                         <i className="fas fa-pencil-alt text-xs"></i>
                                     </button>
                                     <button
                                         onClick={() => handleDelete(faq.id)}
-                                        className="w-10 h-10 bg-red-50 text-red-400 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all"
-                                        title="Delete FAQ"
+                                        className="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-sm"
                                     >
                                         <i className="fas fa-trash-alt text-xs"></i>
                                     </button>
                                 </div>
                             </div>
 
-                            <p className="text-slate-600 font-medium text-sm lg:text-base leading-relaxed bg-slate-50/50 p-4 rounded-2xl border border-slate-50 whitespace-pre-wrap">
-                                {faq.answer}
-                            </p>
+                            {/* The Question */}
+                            <div className="flex gap-4 items-start max-w-[90%]">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 font-black text-[10px] shadow-inner">Q</div>
+                                <div className="bg-slate-50 p-5 rounded-3xl rounded-tl-none border border-slate-100">
+                                    <h5 className="text-sm lg:text-base font-black text-slate-800 leading-relaxed">{faq.question}</h5>
+                                </div>
+                            </div>
+
+                            {/* The Answer (Reply) */}
+                            <div className="flex gap-4 items-start justify-end max-w-[90%] ml-auto text-right">
+                                <div className="bg-blue-600 p-5 rounded-3xl rounded-tr-none text-white shadow-xl shadow-blue-600/20">
+                                    <p className="text-sm lg:text-base font-medium leading-relaxed whitespace-pre-wrap">{faq.answer}</p>
+                                </div>
+                                <div className="w-8 h-8 rounded-full bg-slate-900 text-blue-400 flex items-center justify-center shrink-0 font-black text-[10px] shadow-lg">A</div>
+                            </div>
                         </div>
                     ))
                 )}

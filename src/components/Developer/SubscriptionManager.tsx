@@ -90,14 +90,15 @@ export default function SubscriptionManager() {
 
     const handleSavePrices = async () => {
         setSavingPrices(true);
-        // We know we only have one row because of the exact schema we created
-        const { data: existingData } = await supabase.from('subscription_prices').select('id').maybeSingle();
+        // Ensure we target the first available row
+        const { data: existingRows } = await supabase.from('subscription_prices').select('id').limit(1);
+        const existingId = existingRows && existingRows.length > 0 ? existingRows[0].id : null;
 
         let error;
-        if (existingData) {
+        if (existingId) {
             const res = await supabase.from('subscription_prices')
                 .update(prices)
-                .eq('id', existingData.id);
+                .eq('id', existingId);
             error = res.error;
         } else {
             const res = await supabase.from('subscription_prices').insert([prices]);

@@ -17,7 +17,7 @@ const RecoveryTools: React.FC = () => {
         setSearchError('');
         try {
             const { data, error } = await supabase
-                .from('users')
+                .from('staff_profiles')
                 .select('*')
                 .eq('school_id', searchSchoolId.toUpperCase());
 

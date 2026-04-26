@@ -12,13 +12,16 @@ import SchoolInvites from './SchoolInvites';
 import FAQManager from './FAQManager';
 import RatingsManager from './RatingsManager';
 import EnquiryManager from './EnquiryManager';
+import LeadManager from './LeadManager';
 import DeveloperOverview from './DeveloperOverview';
+import SchoolNotificationTool from './SchoolNotificationTool';
 
 const DeveloperPortal: React.FC = () => {
     const { user, logout } = useAuth();
 
-    const [view, setView] = useState<'overview' | 'schools' | 'health' | 'recovery' | 'announcements' | 'subscriptions' | 'security' | 'invites' | 'faqs' | 'ratings' | 'enquiries'>('overview');
+    const [view, setView] = useState<'overview' | 'schools' | 'health' | 'recovery' | 'announcements' | 'dispatch' | 'subscriptions' | 'security' | 'invites' | 'faqs' | 'ratings' | 'enquiries' | 'leads'>('overview');
     const [unreadEnquiries, setUnreadEnquiries] = useState(0);
+    const [unreadLeads, setUnreadLeads] = useState(0);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     // Security states
@@ -28,18 +31,26 @@ const DeveloperPortal: React.FC = () => {
     const [isUpdating, setIsUpdating] = useState(false);
 
     const menuItems = [
-        { id: 'overview', label: 'Overview', icon: 'fa-th-large' },
-        { id: 'schools', label: 'Schools', icon: 'fa-university' },
-        { id: 'invites', label: 'School Invites', icon: 'fa-ticket' },
-        { id: 'health', label: 'System Health', icon: 'fa-heartbeat' },
-        { id: 'announcements', label: 'Announcements', icon: 'fa-bullhorn' },
-        { id: 'faqs', label: 'FAQs', icon: 'fa-question-circle' },
-        { id: 'enquiries', label: 'Customer Enquiries', icon: 'fa-headset' },
-        { id: 'ratings', label: 'User Ratings', icon: 'fa-star' },
-        { id: 'subscriptions', label: 'Subscriptions', icon: 'fa-crown' },
-        { id: 'recovery', label: 'Recovery Tools', icon: 'fa-key' },
-        { id: 'security', label: 'Security', icon: 'fa-shield-halved' },
+        { id: 'overview', label: 'Dashboard', icon: 'fa-th-large', category: 'Main' },
+        
+        { id: 'schools', label: 'School Registry', icon: 'fa-university', category: 'Institutions' },
+        { id: 'invites', label: 'Onboarding Invites', icon: 'fa-ticket', category: 'Institutions' },
+        { id: 'subscriptions', label: 'Subscriptions', icon: 'fa-crown', category: 'Institutions' },
+        
+        { id: 'leads', label: 'Get Started Leads', icon: 'fa-users-gear', category: 'CRM & Marketing' },
+        { id: 'enquiries', label: 'Customer Enquiries', icon: 'fa-headset', category: 'CRM & Marketing' },
+        { id: 'faqs', label: 'Global FAQs', icon: 'fa-question-circle', category: 'CRM & Marketing' },
+        { id: 'ratings', label: 'User Ratings', icon: 'fa-star', category: 'CRM & Marketing' },
+        
+        { id: 'announcements', label: 'System Broadcast', icon: 'fa-bullhorn', category: 'Communications' },
+        { id: 'dispatch', label: 'Direct Dispatch', icon: 'fa-paper-plane', category: 'Communications' },
+        
+        { id: 'health', label: 'System Health', icon: 'fa-heartbeat', category: 'System' },
+        { id: 'recovery', label: 'Recovery Tools', icon: 'fa-key', category: 'System' },
+        { id: 'security', label: 'Admin Security', icon: 'fa-shield-halved', category: 'System' },
     ] as const;
+
+    const categories = ['Main', 'Institutions', 'CRM & Marketing', 'Communications', 'System'];
 
     const fetchUnreadEnquiries = async () => {
         try {
@@ -54,9 +65,26 @@ const DeveloperPortal: React.FC = () => {
         }
     };
 
+    const fetchUnreadLeads = async () => {
+        try {
+            const { count, error } = await supabase
+                .from('get_started_leads')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_read', false);
+            
+            if (!error) setUnreadLeads(count || 0);
+        } catch (err) {
+            console.error('Failed to fetch unread lead count:', err);
+        }
+    };
+
     React.useEffect(() => {
         fetchUnreadEnquiries();
-        const interval = setInterval(fetchUnreadEnquiries, 60000); // Check every minute
+        fetchUnreadLeads();
+        const interval = setInterval(() => {
+            fetchUnreadEnquiries();
+            fetchUnreadLeads();
+        }, 60000); // Check every minute
         return () => clearInterval(interval);
     }, []);
 
@@ -100,7 +128,7 @@ const DeveloperPortal: React.FC = () => {
         <>
             <div className="flex items-center gap-4 mb-10 px-2 group cursor-pointer">
                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-xl shadow-black/20 p-2 overflow-hidden border border-white/20 group-hover:scale-105 transition-transform">
-                    <img src="/labour.png" alt="Labour Logo" className="w-full h-full object-contain" />
+                    <img src="/images/labour_logo.png" alt="Labour Logo" className="w-full h-full object-contain" />
                 </div>
                 <div>
                     <h1 className="text-white font-black tracking-tighter leading-none text-xl">LABOUR <span className="text-blue-500">EDU</span> APP</h1>
@@ -108,26 +136,43 @@ const DeveloperPortal: React.FC = () => {
                 </div>
             </div>
 
-            <nav className="flex-1 space-y-2 overflow-y-auto pr-2 custom-nav-scrollbar">
-                {menuItems.map((item) => (
-                    <button
-                        key={item.id}
-                        onClick={() => {
-                            setView(item.id);
-                            setIsMobileMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all ${view === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'hover:bg-slate-800 text-slate-400'}`}
-                    >
-                        <div className="flex items-center gap-3">
-                            <i className={`fas ${item.icon} w-5 text-center`}></i>
-                            {item.label}
+            <nav className="flex-1 space-y-8 overflow-y-auto pr-2 custom-nav-scrollbar py-4">
+                {categories.map((cat) => (
+                    <div key={cat} className="space-y-1">
+                        <h3 className="px-4 text-[9px] font-black text-slate-600 uppercase tracking-[0.25em] mb-2">{cat}</h3>
+                        <div className="space-y-1">
+                            {menuItems.filter(item => item.category === cat).map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => {
+                                        setView(item.id);
+                                        setIsMobileMenuOpen(false);
+                                    }}
+                                    className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl transition-all group ${view === item.id 
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
+                                        : 'hover:bg-white/5 text-slate-500 hover:text-slate-300'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <i className={`fas ${item.icon} w-5 text-center text-xs ${view === item.id ? 'text-white' : 'text-slate-600 group-hover:text-blue-500'} transition-colors`}></i>
+                                        <span className="text-xs font-bold tracking-tight">{item.label}</span>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-1.5">
+                                        {item.id === 'enquiries' && unreadEnquiries > 0 && (
+                                            <span className="bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-black">
+                                                {unreadEnquiries}
+                                            </span>
+                                        )}
+                                        {item.id === 'leads' && unreadLeads > 0 && (
+                                            <span className="bg-blue-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-black">
+                                                {unreadLeads}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            ))}
                         </div>
-                        {item.id === 'enquiries' && unreadEnquiries > 0 && (
-                            <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">
-                                {unreadEnquiries}
-                            </span>
-                        )}
-                    </button>
+                    </div>
                 ))}
             </nav>
 
@@ -201,6 +246,8 @@ const DeveloperPortal: React.FC = () => {
                             {view === 'faqs' && 'Frequently Asked Questions'}
                             {view === 'ratings' && 'User Ratings & Stories'}
                             {view === 'enquiries' && 'Customer Enquiries'}
+                            {view === 'leads' && 'Get Started Leads'}
+                            {view === 'dispatch' && 'Direct School Dispatch'}
                             {view === 'health' && 'System Health'}
                             {view === 'recovery' && 'Recovery Tools'}
                             {view === 'subscriptions' && 'Subscriptions'}
@@ -213,6 +260,8 @@ const DeveloperPortal: React.FC = () => {
                             {view === 'faqs' && 'Manage system-wide FAQs for the platform and marketing site.'}
                             {view === 'ratings' && 'Monitor user sentiment and curate testimonials for marketing.'}
                             {view === 'enquiries' && 'Manage leads and enquiries from the marketing landing page.'}
+                            {view === 'leads' && 'Review potential customers from the get-started form.'}
+                            {view === 'dispatch' && 'Send private notifications and administrative alerts to specific school staff.'}
                             {view === 'health' && 'Global database performance and sync status overview.'}
                             {view === 'recovery' && 'Administrative overrides and account recovery operations.'}
                             {view === 'subscriptions' && 'Review MoMo payment references and activate school subscriptions.'}
@@ -231,9 +280,11 @@ const DeveloperPortal: React.FC = () => {
                     {view === 'schools' && <SchoolRegistry />}
                     {view === 'invites' && <SchoolInvites />}
                     {view === 'announcements' && <AnnouncementManager />}
+                    {view === 'dispatch' && <SchoolNotificationTool />}
                     {view === 'faqs' && <FAQManager />}
                     {view === 'ratings' && <RatingsManager />}
                     {view === 'enquiries' && <EnquiryManager onRefreshCount={fetchUnreadEnquiries} />}
+                    {view === 'leads' && <LeadManager onRefreshCount={fetchUnreadLeads} />}
                     {view === 'health' && <SystemHealth />}
                     {view === 'recovery' && <RecoveryTools />}
                     {view === 'subscriptions' && <SubscriptionManager />}

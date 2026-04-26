@@ -48,6 +48,29 @@ const EnquiryManager: React.FC<EnquiryManagerProps> = ({ onRefreshCount }) => {
         }
     };
 
+    const handleSelectEnquiry = (enquiry: CustomerEnquiry) => {
+        setSelectedEnquiry(enquiry);
+        if (!enquiry.is_read) {
+            markAsRead(enquiry.id);
+        }
+    };
+
+    const markAsRead = async (id: string) => {
+        try {
+            const { error } = await supabase
+                .from('customer_enquiries')
+                .update({ is_read: true })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            setEnquiries(prev => prev.map(e => e.id === id ? { ...e, is_read: true } : e));
+            if (onRefreshCount) onRefreshCount();
+        } catch (err) {
+            console.error('Failed to mark as read:', err);
+        }
+    };
+
     const toggleRead = async (enquiry: CustomerEnquiry) => {
         try {
             const newReadStatus = !enquiry.is_read;
@@ -168,7 +191,7 @@ const EnquiryManager: React.FC<EnquiryManagerProps> = ({ onRefreshCount }) => {
                         filteredEnquiries.map(enquiry => (
                             <div 
                                 key={enquiry.id}
-                                onClick={() => setSelectedEnquiry(enquiry)}
+                                onClick={() => handleSelectEnquiry(enquiry)}
                                 className={`group p-5 rounded-3xl border transition-all cursor-pointer relative overflow-hidden ${selectedEnquiry?.id === enquiry.id ? 'bg-blue-50 border-blue-200 shadow-lg' : 'bg-white border-slate-100 hover:border-slate-200 shadow-sm'}`}
                             >
                                 {!enquiry.is_read && (
