@@ -2276,7 +2276,39 @@ export const syncService = {
             this._staffSyncLock.add(lockKey);
 
             try {
-                // RE-FETCH: Get latest state from DB to ensure no other process updated it while we were iterating
+                // Deduplication Check: 
+                // If this is a PENDING record, check if we already have a SYNCED record with the same username.
+                // This happens if the user was created offline, synced, and then pulled back, 
+                // but the original pending record wasn't cleaned up yet.
+                if (item.syncStatus === 'pending' && !item.idCloud) {
+                    const existingSynced = await db.users
+                        .where({ schoolId, username: item.username })
+                        .filter(u => u.syncStatus === 'synced')
+                        .first();
+                    
+                    if (existingSynced) {
+                        console.log(`[syncService] Merging pending record into existing synced record for: ${item.username}`);
+                        // If the pending one was deleted, apply that to the synced one
+                        if (item.isDeleted) {
+                            await db.users.update(existingSynced.id!, {
+                                isDeleted: true,
+                                deletedAt: item.deletedAt || Date.now(),
+                                syncStatus: 'pending' // Mark for sync update
+                            });
+                        }
+                        await db.users.delete(item.id!);
+                        continue;
+                    }
+
+                    // If it's deleted and NEVER synced, just remove it
+                    if (item.isDeleted) {
+                        console.log(`[syncService] Removing deleted-before-sync record for: ${item.username}`);
+                        await db.users.delete(item.id!);
+                        continue;
+                    }
+                }
+
+                // RE-FETCH: Get latest state from DB
                 const freshItem = await db.users.get(item.id!);
                 if (!freshItem || freshItem.syncStatus === 'synced') {
                     this._staffSyncLock.delete(lockKey);

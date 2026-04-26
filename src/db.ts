@@ -98,10 +98,10 @@ db.version(12).stores({
   }
 });
 
-db.version(13).stores({
+db.version(14).stores({
   items: '++id, title, category, syncStatus, createdAt',
   schools: '++id, idCloud, schoolId, schoolCode, schoolName, region, district, username, syncStatus',
-  users: '++id, idCloud, schoolId, username, role, isDeleted, [schoolId+role], syncStatus'
+  users: '++id, idCloud, schoolId, username, role, isDeleted, [schoolId+role], [schoolId+username], syncStatus'
 });
 
 export { db };
