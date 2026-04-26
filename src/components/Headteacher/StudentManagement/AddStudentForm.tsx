@@ -58,10 +58,15 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
     // Camera device enumeration
     const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
     const [activeCameraIndex, setActiveCameraIndex] = useState(0);
-    const [isCameraSupported] = useState(() =>
-        typeof navigator !== 'undefined' &&
-        !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
-    );
+    const [isCameraSupported] = useState<boolean | 'insecure'>(() => {
+        if (typeof navigator === 'undefined') return false;
+        
+        // Check if context is secure (HTTPS or localhost)
+        const isSecure = window.isSecureContext;
+        if (!isSecure && window.location.hostname !== 'localhost') return 'insecure';
+
+        return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+    });
 
     const startCamera = async (cameraIndex?: number) => {
         // Stop any existing stream before starting a new one
@@ -73,34 +78,36 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
         try {
             let stream: MediaStream;
 
-            const getStreamWithFallback = async (primaryConstraints: MediaStreamConstraints, fallbackConstraints: MediaStreamConstraints) => {
+            const getStreamWithFallback = async (primary: MediaStreamConstraints, fallback: MediaStreamConstraints) => {
                 try {
-                    return await navigator.mediaDevices.getUserMedia(primaryConstraints);
+                    return await navigator.mediaDevices.getUserMedia(primary);
                 } catch (err: any) {
-                    console.warn('Failed with primary constraints, trying fallback:', err);
-                    return await navigator.mediaDevices.getUserMedia(fallbackConstraints);
+                    console.warn('[Camera] Primary constraints failed, trying fallback...', err);
+                    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                        throw err;
+                    }
+                    return await navigator.mediaDevices.getUserMedia(fallback);
                 }
             };
 
             if (cameraIndex !== undefined && cameras.length > 0) {
-                // We have enumerated devices and a specific one was requested
                 const targetDevice = cameras[cameraIndex];
-                const primaryConstraints: MediaStreamConstraints = targetDevice && targetDevice.deviceId
-                    ? { video: { deviceId: { exact: targetDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } }
-                    : { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } };
-                
-                const fallbackConstraints: MediaStreamConstraints = targetDevice && targetDevice.deviceId
-                    ? { video: { deviceId: { exact: targetDevice.deviceId } } }
-                    : { video: true };
-
-                stream = await getStreamWithFallback(primaryConstraints, fallbackConstraints);
-                setActiveCameraIndex(cameraIndex);
-            } else {
-                // First request a generic stream to trigger permission prompt.
-                // Mobile devices will prioritize the back camera via facingMode: environment.
                 const primaryConstraints: MediaStreamConstraints = { 
                     video: { 
-                        facingMode: { ideal: 'environment' }, 
+                        deviceId: { exact: targetDevice.deviceId }, 
+                        width: { ideal: 1280 }, 
+                        height: { ideal: 720 } 
+                    } 
+                };
+                
+                stream = await getStreamWithFallback(primaryConstraints, { 
+                    video: { deviceId: { exact: targetDevice.deviceId } } 
+                });
+                setActiveCameraIndex(cameraIndex);
+            } else {
+                const primaryConstraints: MediaStreamConstraints = { 
+                    video: { 
+                        facingMode: 'environment',
                         width: { ideal: 1280 }, 
                         height: { ideal: 720 } 
                     } 
@@ -108,25 +115,34 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                 
                 stream = await getStreamWithFallback(primaryConstraints, { video: true });
 
-                // Now that permission is granted, enumerate all devices securely
                 const allDevices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
                 setCameras(videoDevices);
                 
-                // Keep index at 0 or wherever it was, since we just got the default environment camera
-                setActiveCameraIndex(0);
+                const track = stream.getVideoTracks()[0];
+                if (track && track.getSettings) {
+                    const settings = track.getSettings();
+                    const index = videoDevices.findIndex(d => d.deviceId === settings.deviceId);
+                    if (index !== -1) setActiveCameraIndex(index);
+                }
             }
 
             streamRef.current = stream;
             setPhotoMode('camera');
         } catch (error: any) {
-            console.error('Camera access error:', error);
-            if (error.name === 'NotReadableError') {
+            console.error('[Camera] Access error:', error);
+            const name = error.name || '';
+            
+            if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+                showToast('Camera access denied. Please check your browser settings and allow camera access for this site.', 'error');
+            } else if (name === 'NotReadableError') {
                 showToast('Camera is in use by another application or blocked by hardware.', 'error');
-            } else if (error.name === 'OverconstrainedError') {
+            } else if (name === 'OverconstrainedError') {
                 showToast('Camera does not support the requested resolution.', 'error');
+            } else if (name === 'NotFoundError') {
+                showToast('No camera detected on this device.', 'error');
             } else {
-                showToast('Camera access denied or unavailable on this device.', 'error');
+                showToast('Camera access unavailable. Please ensure you are on a secure (HTTPS) connection.', 'error');
             }
         }
     };
@@ -501,15 +517,20 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                                             <div className={`w-16 h-16 rounded-2xl shadow-sm flex items-center justify-center mb-3 transition-colors ${isCameraSupported ? 'bg-white text-gray-400 group-hover:text-blue-500' : 'bg-gray-100 text-gray-300'}`}>
                                                 <i className={`fas ${isCameraSupported ? 'fa-camera' : 'fa-camera-slash'} text-2xl`}></i>
                                             </div>
-                                            <p className={`text-xs font-black uppercase tracking-widest transition-colors text-center px-4 ${isCameraSupported ? 'text-gray-400 group-hover:text-blue-600' : 'text-gray-300'}`}>
-                                                {isCameraSupported ? (
+                                            <p className={`text-xs font-black uppercase tracking-widest transition-colors text-center px-4 ${isCameraSupported === true ? 'text-gray-400 group-hover:text-blue-600' : 'text-gray-300'}`}>
+                                                {isCameraSupported === true ? (
                                                     <>Take Photo <br /> <span className="text-[10px] font-medium normal-case">(Click to start)</span></>
+                                                ) : isCameraSupported === 'insecure' ? (
+                                                    <>Insecure <br /> Connection</>
                                                 ) : (
-                                                    <>Camera <br /> Unavailable</>
+                                                    <>Camera <br /> Unsupported</>
                                                 )}
                                             </p>
-                                            {!isCameraSupported && (
-                                                <span className="absolute bottom-4 text-[7px] font-bold text-gray-400 px-4 leading-tight">Requires Secure Connection (HTTPS)</span>
+                                            {isCameraSupported === 'insecure' && (
+                                                <span className="absolute bottom-4 text-[7px] font-bold text-red-500 px-4 leading-tight">Requires HTTPS for Camera Access</span>
+                                            )}
+                                            {isCameraSupported === false && (
+                                                <span className="absolute bottom-4 text-[7px] font-bold text-gray-400 px-4 leading-tight">Hardware/Browser unsupported</span>
                                             )}
                                         </button>
 
