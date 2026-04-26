@@ -4,6 +4,7 @@ import { eduDb } from '../eduDb';
 import { dbService } from './dbService';
 import { storageService } from './storageService';
 import { isPlainObject } from '../utils/dataSafety';
+import { staffService } from './staffService';
 
 type SyncResult = {
     success: boolean;
@@ -48,7 +49,7 @@ export const syncService = {
             // Results-related sync respects relational order
             // 1. Establish Identities First (Required for UUID resolution)
             totalSynced += await this.syncEntity(schoolId, db.schools, 'schools', 'schoolId');
-            totalSynced += await this.syncEntity(schoolId, db.users, 'staff_profiles', 'id');
+            totalSynced += await this.syncStaffProfiles(schoolId);
 
             // 2. Academic Core
             totalSynced += await this.syncAssessmentConfigs(schoolId);
@@ -2255,6 +2256,115 @@ export const syncService = {
         } catch (err) {
             console.error('[syncService] Healing failed:', err);
         }
+    },
+
+    _staffSyncLock: new Set<string>(),
+
+    async syncStaffProfiles(schoolId: string): Promise<number> {
+        const pendingItems = await db.users
+            .where('syncStatus')
+            .anyOf('pending', 'failed')
+            .filter((item) => item.schoolId === schoolId)
+            .toArray();
+
+        let syncedCount = 0;
+
+        for (const item of pendingItems) {
+            // Prevention: Lock this specific staff member by username during the sync operation
+            const lockKey = `${schoolId}:${item.username}`;
+            if (this._staffSyncLock.has(lockKey)) continue;
+            this._staffSyncLock.add(lockKey);
+
+            try {
+                // RE-FETCH: Get latest state from DB to ensure no other process updated it while we were iterating
+                const freshItem = await db.users.get(item.id!);
+                if (!freshItem || freshItem.syncStatus === 'synced') {
+                    this._staffSyncLock.delete(lockKey);
+                    continue;
+                }
+
+                if (freshItem.idCloud) {
+                    console.log(`[syncService] Updating existing staff profile: ${freshItem.username}`);
+                    // Standard update for existing staff (profile fields only)
+                    const payload = await this.mapToSnakeCase(freshItem, 'staff_profiles');
+                    
+                    // SECURITY: Ensure password is never pushed to the profile table
+                    delete payload.password;
+
+                    const { error } = await supabase
+                        .from('staff_profiles')
+                        .update(payload)
+                        .eq('id', freshItem.idCloud);
+                    
+                    if (error) throw error;
+
+                    await db.users.update(freshItem.id!, {
+                        syncStatus: 'synced',
+                        updatedAt: Date.now()
+                    });
+                    syncedCount++;
+                } else {
+                    // Specialized creation for offline-registered staff (requires Edge Function)
+                    if (!freshItem.password) {
+                        console.warn(`[syncService] Staff ${freshItem.username} missing password for registration sync. Skipping.`);
+                        this._staffSyncLock.delete(lockKey);
+                        continue;
+                    }
+
+                    console.log(`[syncService] Creating new staff account via Edge Function: ${freshItem.username}`);
+                    
+                    const response = await staffService.createStaff({
+                        school_id: freshItem.schoolId,
+                        username: freshItem.username,
+                        password: freshItem.password, // Temporary plain text password
+                        full_name: freshItem.fullName,
+                        role: freshItem.role.toLowerCase() as any,
+                        phone: freshItem.phoneNumber || '',
+                        email: freshItem.email || '',
+                        address: freshItem.address || '',
+                        qualification: freshItem.qualification || '',
+                        specialization: freshItem.specialization || '',
+                        gender: freshItem.gender || 'Other'
+                    });
+
+                    if (response.success) {
+                        // staffService.createStaff already handles initial local saving, 
+                        // but we must explicitly clear the temporary password and set synced status.
+                        
+                        // Find the record by username to ensure we are updating the correct identity (regardless of local ID)
+                        const finalRecord = await db.users.where({ username: freshItem.username, schoolId }).first();
+                        if (finalRecord) {
+                            await db.users.update(finalRecord.id!, {
+                                password: undefined, // PERMANENTLY DELETE plain text password after successful sync
+                                syncStatus: 'synced',
+                                syncError: null,
+                                updatedAt: Date.now()
+                            });
+                            
+                            // Cleanup: If there was a duplicate local record created during sync latency, remove the original pending one
+                            if (finalRecord.id !== freshItem.id) {
+                                await db.users.delete(freshItem.id!);
+                            }
+                        }
+                        
+                        syncedCount++;
+                    } else {
+                        throw new Error(response.message);
+                    }
+                }
+            } catch (error: any) {
+                console.error(`[syncService] Staff sync failed for ${item.username}:`, error);
+                await db.users.update(item.id!, {
+                    syncStatus: 'pending',
+                    syncError: error.message,
+                    updatedAt: Date.now()
+                });
+            } finally {
+                this._staffSyncLock.delete(lockKey);
+            }
+        }
+
+        return syncedCount;
     },
 
     async deduplicateLocalGraduates(schoolId: string) {

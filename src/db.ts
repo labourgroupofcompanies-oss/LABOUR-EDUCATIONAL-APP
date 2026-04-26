@@ -5,7 +5,8 @@ export interface LabourItem {
   title: string;
   description: string;
   category: string;
-  syncStatus: 'pending' | 'synced';
+  syncStatus: 'pending' | 'synced' | 'failed';
+  syncError?: string | null;
   createdAt: number;
 }
 
@@ -27,7 +28,8 @@ export interface School {
   motto?: string | null;
   onboardingTerm?: string;
   onboardingAcademicYear?: string;
-  syncStatus: 'pending' | 'synced';
+  syncStatus: 'pending' | 'synced' | 'failed';
+  syncError?: string | null;
   createdAt: number;
   updatedAt: number;
   created_at?: string; // Supabase metadata
@@ -51,7 +53,8 @@ export interface User {
   address?: string;
   isDeleted?: boolean;
   deletedAt?: number;
-  syncStatus: 'pending' | 'synced';
+  syncStatus: 'pending' | 'synced' | 'failed';
+  syncError?: string | null;
   createdAt: number;
   updatedAt: number;
 }

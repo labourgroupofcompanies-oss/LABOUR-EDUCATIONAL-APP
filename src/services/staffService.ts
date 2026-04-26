@@ -49,8 +49,47 @@ export const staffService = {
         const { dbService } = await import('./dbService');
 
         const isOnline = navigator.onLine;
+        
+        // If offline, save locally and return early. 
+        // We store the password temporarily in plain text so it can be used during sync to create the Auth account.
         if (!isOnline) {
-            throw new Error('Staff creation requires internet connection.');
+            console.info('[staffService] Offline mode: Saving staff locally for later sync.');
+            const now = Date.now();
+            
+            try {
+                await dbService.staff.add({
+                    schoolId: formData.school_id,
+                    username: formData.username.trim().toLowerCase(),
+                    fullName: formData.full_name.trim(),
+                    role: formData.role.toUpperCase() as any,
+                    phoneNumber: formData.phone.trim(),
+                    email: formData.email?.trim()?.toLowerCase() || '',
+                    address: formData.address.trim(),
+                    qualification: formData.qualification.trim(),
+                    specialization: formData.specialization.trim(),
+                    gender: formData.gender as any,
+                    password: formData.password, // Plain text for sync service usage later
+                    syncStatus: 'pending',
+                    createdAt: now,
+                    updatedAt: now,
+                });
+
+                return {
+                    success: true,
+                    message: 'Staff saved locally. Account will be created in the cloud when you are back online.',
+                    staff: {
+                        id: `local_${now}`,
+                        school_id: formData.school_id,
+                        username: formData.username.trim().toLowerCase(),
+                        full_name: formData.full_name.trim(),
+                        role: formData.role.toUpperCase(),
+                        created_at: new Date(now).toISOString()
+                    }
+                };
+            } catch (err: any) {
+                console.error('[staffService] Local save failed:', err);
+                throw new Error(`Offline save failed: ${err.message}`);
+            }
         }
 
         // 1. Identity Verification

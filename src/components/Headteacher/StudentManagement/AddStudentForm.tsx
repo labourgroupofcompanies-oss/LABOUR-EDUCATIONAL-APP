@@ -5,7 +5,6 @@ import { generateStudentId } from '../../../utils/idGenerator';
 import { useAssetPreview } from '../../../hooks/useAssetPreview';
 import { eduDb, type Student } from '../../../eduDb';
 import { showToast } from '../../Common/Toast';
-import { supabase } from '../../../supabaseClient';
 import { dbService } from '../../../services/dbService';
 import { syncService } from '../../../services/syncService';
 
@@ -351,112 +350,55 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
 
             if (studentId) {
                 console.log('[DIAGNOSTIC] [AddStudentForm] Mode: Update', { studentId });
-                const localStudent = await eduDb.students.get(studentId);
-                const cloudId = localStudent?.idCloud;
-
-                if (cloudId) {
-                    console.log('[DIAGNOSTIC] [AddStudentForm] Cloud update starting...', { cloudId });
-                    const localClass = await eduDb.classes.get(parseInt(formData.classId));
-                    const classCloudId = localClass?.idCloud || null;
-
-                    const supabasePayload = {
-                        class_id: classCloudId,
-                        student_id_string: formData.studentIdString || localStudent?.studentIdString,
-                        full_name: formData.fullName,
-                        gender: formData.gender,
-                        date_of_birth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
-                        guardian_name: formData.guardianName || 'Unknown',
-                        guardian_primary_contact: formData.guardianPrimaryContact || null,
-                        guardian_secondary_contact: formData.guardianSecondaryContact || null,
-                        guardian_email: formData.guardianEmail || null,
-                        guardian_occupation: formData.guardianOccupation || null,
-                        religion: formData.religion || null,
-                        residential_address: formData.residentialAddress || null,
-                        is_boarding: formData.isBoarding as boolean,
-                        arrears: safeArrears,
-                        updated_at: new Date().toISOString()
-                    };
-
-                    const { error } = await supabase
-                        .from('students')
-                        .update(supabasePayload)
-                        .eq('id', cloudId);
-
-                    if (error) {
-                        console.error('[DIAGNOSTIC] [AddStudentForm] Supabase Update Error:', error);
-                        throw new Error(`Cloud Update Error: ${error.message}`);
-                    }
-                    console.log('[DIAGNOSTIC] [AddStudentForm] Cloud update success.');
-                }
-
-                console.log('[DIAGNOSTIC] [AddStudentForm] Local update starting...');
+                
+                // Local update first for immediate responsiveness
                 await dbService.students.update(studentId, {
                     ...studentData,
-                    syncStatus: (!cloudId || photo) ? 'pending' : 'synced'
+                    syncStatus: 'pending'
                 });
                 console.log('[DIAGNOSTIC] [AddStudentForm] Local update success.');
 
-                showToast('Student updated successfully!', 'success');
+                // Attempt optimistic cloud sync if online
+                if (navigator.onLine) {
+                    try {
+                        const { syncService } = await import('../../../services/syncService');
+                        await syncService.syncStudents(user.schoolId);
+                        showToast('Student updated and synced successfully!', 'success');
+                    } catch (syncErr) {
+                        console.warn('[DIAGNOSTIC] [AddStudentForm] Background sync failed:', syncErr);
+                        showToast('Updated locally. Sync will retry automatically.', 'warning');
+                    }
+                } else {
+                    showToast('Student updated locally. Will sync when online.', 'warning');
+                }
             } else {
                 console.log('[DIAGNOSTIC] [AddStudentForm] Mode: Add NEW student');
                 const newIdStr = formData.studentIdString || await generateStudentId();
-                console.log('[DIAGNOSTIC] [AddStudentForm] Generated ID:', newIdStr);
-
-                const localClass = await eduDb.classes.get(parseInt(formData.classId));
-                const classCloudId = localClass?.idCloud || null;
-                console.log('[DIAGNOSTIC] [AddStudentForm] Resolved Class Cloud ID:', classCloudId);
-
-                const supabasePayload = {
-                    school_id: user.schoolId,
-                    class_id: classCloudId,
-                    student_id_string: newIdStr,
-                    full_name: formData.fullName,
-                    gender: formData.gender,
-                    date_of_birth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
-                    guardian_name: formData.guardianName || 'Unknown',
-                    guardian_primary_contact: formData.guardianPrimaryContact || null,
-                    guardian_secondary_contact: formData.guardianSecondaryContact || null,
-                    guardian_email: formData.guardianEmail || null,
-                    guardian_occupation: formData.guardianOccupation || null,
-                    religion: formData.religion || null,
-                    residential_address: formData.residentialAddress || null,
-                    is_boarding: formData.isBoarding as boolean,
-                    arrears: safeArrears,
-                    is_deleted: false
-                };
-
-                console.log('[DIAGNOSTIC] [AddStudentForm] Calling Supabase insert...', supabasePayload);
-                const { data, error } = await supabase
-                    .from('students')
-                    .insert(supabasePayload)
-                    .select('id')
-                    .single();
-
-                if (error) {
-                    console.error('[DIAGNOSTIC] [AddStudentForm] Supabase Insert Error:', error);
-                    throw new Error(`Cloud Sync Error: ${error.message}`);
-                }
-
-                if (!data) {
-                    console.error('[DIAGNOSTIC] [AddStudentForm] Supabase returned no data but no error.');
-                    throw new Error('Cloud Sync Error: No data returned from server.');
-                }
-
-                console.log('[DIAGNOSTIC] [AddStudentForm] Cloud insert success. Received ID:', data.id);
-
-                console.log('[DIAGNOSTIC] [AddStudentForm] Local save starting...');
+                
+                // Local save first for immediate persistence
                 await dbService.students.save({
                     ...studentData,
-                    idCloud: data.id,
                     studentIdString: newIdStr,
                     createdAt: Date.now(),
                     isDeleted: false,
                     deletedAt: null,
-                    syncStatus: photo ? 'pending' : 'synced'
+                    syncStatus: 'pending'
                 } as unknown as Student);
                 console.log('[DIAGNOSTIC] [AddStudentForm] Local save success.');
 
-                showToast('Student added successfully!', 'success');
+                // Attempt optimistic cloud sync if online
+                if (navigator.onLine) {
+                    try {
+                        const { syncService } = await import('../../../services/syncService');
+                        await syncService.syncStudents(user.schoolId);
+                        showToast('Student registered and synced successfully!', 'success');
+                    } catch (syncErr) {
+                        console.warn('[DIAGNOSTIC] [AddStudentForm] Background registration sync failed:', syncErr);
+                        showToast('Registered locally. Sync will retry automatically.', 'warning');
+                    }
+                } else {
+                    showToast('Student registered locally. Will sync when online.', 'warning');
+                }
             }
 
             if (user?.schoolId) {

@@ -169,21 +169,15 @@ const StaffManagement: React.FC = () => {
 
                 // 1. Create in Supabase (Cloud) ONLY IF ONLINE
                 try {
-                    if (!navigator.onLine) {
-                        showToast('Staff creation requires internet connection because login accounts are created securely online first.', 'error');
-                        setIsLoading(false);
-                        return;
-                    }
-
-                    // CRITICAL: Double-check with the Auth server directly.
-                    // getUser() forces a network check and is more reliable than getSession() in catching 401s early.
-                    console.log('[StaffManagement] Validating session with auth.getUser()...');
-                    const { data: { user: authUser }, error: authUserError } = await supabase.auth.getUser();
-                    console.log('[StaffManagement] getUser() complete. Error:', authUserError?.message, 'User ID:', authUser?.id);
-
-                    if (authUserError || !authUser) {
-                        showToast('Session stale or invalid. Please Log Out and Log In again once to refresh your identity.', 'error');
-                        return;
+                    if (navigator.onLine) {
+                        // CRITICAL: Double-check with the Auth server directly.
+                        console.log('[StaffManagement] Validating session with auth.getUser()...');
+                        const { data: { user: authUser }, error: authUserError } = await supabase.auth.getUser();
+                        
+                        if (authUserError || !authUser) {
+                            showToast('Session stale or invalid. Please Log Out and Log In again once to refresh your identity.', 'error');
+                            return;
+                        }
                     }
 
                     const formData = {
@@ -200,39 +194,34 @@ const StaffManagement: React.FC = () => {
                         address: newStaff.address,
                     };
 
-                    // Map UI role (TEACHER/ACCOUNTANT/HEADTEACHER) to a valid Edge Function role.
-                    // Headteachers map to 'headteacher'; teachers and accountants pass through.
                     const uiRole = newStaff.role.toLowerCase();
                     const targetRole = uiRole === 'headteacher' ? 'headteacher' : uiRole;
 
-                    console.log('[StaffManagement] Calling staffService.createStaff...', { username: formData.username, targetRole });
-                    // ONLINE-FIRST: Identity created in cloud first, service handles local cache on success.
+                    console.log('[StaffManagement] Calling staffService.createStaff...');
                     await staffService.createStaff({
                         ...formData,
                         role: targetRole as any
                     } as any);
-                    console.log('[StaffManagement] staffService.createStaff Success.');
 
                 } catch (staffErr: any) {
-                    console.warn('[Security] Staff account creation could not be completed.');
+                    console.warn('[Security] Staff account registration handled:', staffErr.message);
                     const errorMsg = staffErr.message || '';
 
                     if (errorMsg === 'MISSING_SESSION' || errorMsg === '401_UNAUTHORIZED') {
                         showToast('Authentication failed. Please re-login.', 'error');
-                    } else if (errorMsg.includes('requires internet connection')) {
-                        showToast(errorMsg, 'error');
                     } else if (errorMsg.includes('already registered') || errorMsg.includes('already exists')) {
                         showToast('Registration Conflict: This username may already be in use.', 'error');
                     } else if (errorMsg === 'UNAUTHORIZED_ROLE' || errorMsg.includes('403')) {
                         showToast('Access Denied: Only headteachers can create staff.', 'error');
-                    } else if (errorMsg.includes('401') || errorMsg.includes('unauthorized') || errorMsg.includes('session stale')) {
-                        showToast('Your session has expired or is stale. Please Log Out and Log In again.', 'error');
                     } else {
-                        showToast(staffErr.message || 'Staff account creation could not be completed online. Check your connection.', 'error');
+                        // If it's a network error or explicitly thrown offline error from staffService
+                        showToast(staffErr.message || 'Staff member saved locally.', 'warning');
                     }
                     
-                    setIsLoading(false);
-                    return; // Early exit to prevent partial UI state corruption
+                    if (!staffErr.message?.includes('locally')) {
+                        setIsLoading(false);
+                        return;
+                    }
                 }
 
                 // SUCCESS
