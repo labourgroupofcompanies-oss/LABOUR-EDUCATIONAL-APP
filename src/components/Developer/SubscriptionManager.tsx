@@ -73,44 +73,67 @@ export default function SubscriptionManager() {
     };
 
     // --- Pricing Manager ---
-    const [prices, setPrices] = useState({ plan_1_term: 300, plan_2_terms: 600, plan_annual: 750 });
+    const [prices, setPrices] = useState<any>({ 
+        plan_1_term: 300, 
+        plan_2_terms: 600, 
+        plan_annual: 750 
+    });
     const [savingPrices, setSavingPrices] = useState(false);
     const [priceMessage, setPriceMessage] = useState({ type: '', text: '' });
 
     const fetchPrices = async () => {
-        const { data, error } = await supabase.from('subscription_prices').select('*').maybeSingle();
-        if (data && !error) {
-            setPrices({
-                plan_1_term: data.plan_1_term,
-                plan_2_terms: data.plan_2_terms,
-                plan_annual: data.plan_annual
-            });
+        try {
+            const { data, error } = await supabase.from('subscription_prices').select('*').maybeSingle();
+            if (error) {
+                console.error('[SubscriptionManager] Error fetching prices:', error);
+                return;
+            }
+            if (data) {
+                setPrices(data);
+            }
+        } catch (err) {
+            console.error('[SubscriptionManager] Unexpected error fetching prices:', err);
         }
     };
 
     const handleSavePrices = async () => {
         setSavingPrices(true);
-        // Ensure we target the first available row
-        const { data: existingRows } = await supabase.from('subscription_prices').select('id').limit(1);
-        const existingId = existingRows && existingRows.length > 0 ? existingRows[0].id : null;
+        setPriceMessage({ type: '', text: '' });
+        
+        try {
+            // Prepare the payload. If it's a new row, we add default metadata.
+            const payload = {
+                ...prices,
+                // Ensure we have the basic metadata columns if they exist in the table
+                name: prices.name || 'Global Pricing',
+                price: prices.price || '0',
+                description: prices.description || 'System-wide pricing configuration',
+                updated_at: new Date().toISOString()
+            };
 
-        let error;
-        if (existingId) {
-            const res = await supabase.from('subscription_prices')
-                .update(prices)
-                .eq('id', existingId);
-            error = res.error;
-        } else {
-            const res = await supabase.from('subscription_prices').insert([prices]);
-            error = res.error;
-        }
+            console.log('[SubscriptionManager] Saving prices:', payload);
 
-        setSavingPrices(false);
-        if (error) {
-            setPriceMessage({ type: 'error', text: 'Failed to save prices' });
-        } else {
+            const { error } = await supabase
+                .from('subscription_prices')
+                .upsert(payload, { onConflict: 'id' });
+
+            if (error) {
+                console.error('[SubscriptionManager] Save error details:', error);
+                throw error;
+            }
+
             setPriceMessage({ type: 'success', text: 'Prices updated successfully!' });
+            // Refresh data to get the latest (including ID if it was just created)
+            await fetchPrices();
             setTimeout(() => setPriceMessage({ type: '', text: '' }), 4000);
+        } catch (err: any) {
+            console.error('[SubscriptionManager] Failed to save prices:', err);
+            setPriceMessage({ 
+                type: 'error', 
+                text: `Failed to save: ${err.message || 'Unknown error'}` 
+            });
+        } finally {
+            setSavingPrices(false);
         }
     };
 

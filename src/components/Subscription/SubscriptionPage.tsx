@@ -68,15 +68,25 @@ export default function SubscriptionPage() {
 
     useEffect(() => {
         const fetchPrices = async () => {
-            const { data, error } = await supabase.from('subscription_prices').select('*').maybeSingle();
-            if (data && !error) {
-                setPrices({
-                    plan_1_term: Number(data.plan_1_term),
-                    plan_2_terms: Number(data.plan_2_terms),
-                    plan_annual: Number(data.plan_annual)
-                });
+            try {
+                const { data, error } = await supabase.from('subscription_prices').select('*').maybeSingle();
+                if (error) {
+                    console.error('[SubscriptionPage] Error fetching prices:', error);
+                    return;
+                }
+                if (data) {
+                    setPrices({
+                        ...data,
+                        plan_1_term: Number(data.plan_1_term),
+                        plan_2_terms: Number(data.plan_2_terms),
+                        plan_annual: Number(data.plan_annual)
+                    });
+                }
+            } catch (err) {
+                console.error('[SubscriptionPage] Unexpected error fetching prices:', err);
+            } finally {
+                setLoadingPrices(false);
             }
-            setLoadingPrices(false);
         };
 
         fetchPrices();
