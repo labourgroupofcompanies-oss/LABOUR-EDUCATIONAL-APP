@@ -13,6 +13,17 @@ interface Subscription {
     activated_at?: string;
 }
 
+interface PricingConfig {
+    id?: string;
+    plan_1_term: number;
+    plan_2_terms: number;
+    plan_annual: number;
+    name?: string;
+    price?: string;
+    description?: string;
+    updated_at?: string;
+}
+
 export default function SubscriptionManager() {
     const [subs, setSubs] = useState<Subscription[]>([]);
     const [loading, setLoading] = useState(true);
@@ -73,7 +84,7 @@ export default function SubscriptionManager() {
     };
 
     // --- Pricing Manager ---
-    const [prices, setPrices] = useState<any>({ 
+    const [prices, setPrices] = useState<PricingConfig>({ 
         plan_1_term: 300, 
         plan_2_terms: 600, 
         plan_annual: 750 
@@ -167,7 +178,7 @@ export default function SubscriptionManager() {
                             <input
                                 type="number"
                                 value={prices.plan_1_term}
-                                onChange={e => setPrices(p => ({ ...p, plan_1_term: Number(e.target.value) }))}
+                                onChange={e => setPrices((p: PricingConfig) => ({ ...p, plan_1_term: Number(e.target.value) }))}
                                 className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             />
                         </div>
@@ -179,7 +190,7 @@ export default function SubscriptionManager() {
                             <input
                                 type="number"
                                 value={prices.plan_2_terms}
-                                onChange={e => setPrices(p => ({ ...p, plan_2_terms: Number(e.target.value) }))}
+                                onChange={e => setPrices((p: PricingConfig) => ({ ...p, plan_2_terms: Number(e.target.value) }))}
                                 className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             />
                         </div>
@@ -191,7 +202,7 @@ export default function SubscriptionManager() {
                             <input
                                 type="number"
                                 value={prices.plan_annual}
-                                onChange={e => setPrices(p => ({ ...p, plan_annual: Number(e.target.value) }))}
+                                onChange={e => setPrices((p: PricingConfig) => ({ ...p, plan_annual: Number(e.target.value) }))}
                                 className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             />
                         </div>
