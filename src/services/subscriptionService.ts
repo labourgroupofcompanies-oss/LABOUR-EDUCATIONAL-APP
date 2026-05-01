@@ -1,4 +1,3 @@
-import { db } from '../db';
 import { eduDb } from '../eduDb';
 import { supabase } from '../supabaseClient';
 
