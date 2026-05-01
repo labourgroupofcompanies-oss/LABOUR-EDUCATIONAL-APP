@@ -6,6 +6,7 @@ interface OverviewStats {
     totalUsers: number;
     totalStudents: number;
     unreadEnquiries: number;
+    unreadInquiries: number;
     unreadLeads: number;
     activeSubscriptions: number;
     recentSchools: any[];
@@ -23,6 +24,7 @@ const DeveloperOverview: React.FC<DeveloperOverviewProps> = ({ onNavigate }) => 
         totalUsers: 0,
         totalStudents: 0,
         unreadEnquiries: 0,
+        unreadInquiries: 0,
         unreadLeads: 0,
         activeSubscriptions: 0,
         recentSchools: [],
@@ -49,6 +51,7 @@ const DeveloperOverview: React.FC<DeveloperOverviewProps> = ({ onNavigate }) => 
                 students, 
                 enquiries, 
                 unreadEnq, 
+                unreadInq,
                 unreadLeads, 
                 subs, 
                 leads
@@ -58,6 +61,7 @@ const DeveloperOverview: React.FC<DeveloperOverviewProps> = ({ onNavigate }) => 
                 supabase.from('students').select('*', { count: 'exact', head: true }),
                 supabase.from('customer_enquiries').select('*').order('created_at', { ascending: false }).limit(3),
                 supabase.from('customer_enquiries').select('*', { count: 'exact', head: true }).eq('is_read', false),
+                supabase.from('customer_inquiries').select('*', { count: 'exact', head: true }).eq('is_read', false),
                 supabase.from('get_started_leads').select('*', { count: 'exact', head: true }).eq('is_read', false),
                 supabase.from('school_subscriptions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
                 supabase.from('get_started_leads').select('*').order('created_at', { ascending: false }).limit(3)
@@ -75,6 +79,7 @@ const DeveloperOverview: React.FC<DeveloperOverviewProps> = ({ onNavigate }) => 
                 totalUsers: users.count || 0,
                 totalStudents: students.count || 0,
                 unreadEnquiries: unreadEnq.count || 0,
+                unreadInquiries: unreadInq.count || 0,
                 unreadLeads: unreadLeads.count || 0,
                 activeSubscriptions: subs.count || 0,
                 recentSchools: schools.data || [],
@@ -181,30 +186,38 @@ const DeveloperOverview: React.FC<DeveloperOverviewProps> = ({ onNavigate }) => 
                 </div>
             </div>
 
-            {/* Growth & Conversion Funnel */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-8">
-                    <h4 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] mb-6 ml-2">Marketing & Subscriptions</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:gap-8">
-                        <MetricCard 
-                            label="Unread Leads" 
-                            value={stats.unreadLeads} 
-                            icon="fa-users-gear" 
-                            color="text-indigo-600" 
-                            bg="bg-indigo-50" 
-                            secondary={stats.unreadLeads > 0 ? "Potential Growth" : "All Caught Up"}
-                            onClick={() => onNavigate('leads')}
-                        />
-                        <MetricCard 
-                            label="Active Subscriptions" 
-                            value={stats.activeSubscriptions} 
-                            icon="fa-crown" 
-                            color="text-amber-600" 
-                            bg="bg-amber-50" 
-                            secondary="Pro-Plan Schools"
-                            onClick={() => onNavigate('subscriptions')}
-                        />
-                    </div>
+                <h4 className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] mb-6 ml-2">Marketing & Subscriptions</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8">
+                            <MetricCard 
+                                label="Unread Leads" 
+                                value={stats.unreadLeads} 
+                                icon="fa-users-gear" 
+                                color="text-indigo-600" 
+                                bg="bg-indigo-50" 
+                                secondary={stats.unreadLeads > 0 ? "Potential Growth" : "All Caught Up"}
+                                onClick={() => onNavigate('leads')}
+                            />
+                            <MetricCard 
+                                label="FAQ Inquiries" 
+                                value={stats.unreadInquiries} 
+                                icon="fa-clipboard-question" 
+                                color="text-amber-600" 
+                                bg="bg-amber-50" 
+                                secondary={stats.unreadInquiries > 0 ? "Action Required" : "All Caught Up"}
+                                onClick={() => onNavigate('inquiries')}
+                            />
+                            <MetricCard 
+                                label="Active Subs" 
+                                value={stats.activeSubscriptions} 
+                                icon="fa-crown" 
+                                color="text-emerald-600" 
+                                bg="bg-emerald-50" 
+                                secondary="Pro-Plan Schools"
+                                onClick={() => onNavigate('subscriptions')}
+                            />
+                        </div>
 
                     {/* Recent Global Registrations */}
                     <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 p-8 lg:p-10">

@@ -12,6 +12,7 @@ import SchoolInvites from './SchoolInvites';
 import FAQManager from './FAQManager';
 import RatingsManager from './RatingsManager';
 import EnquiryManager from './EnquiryManager';
+import InquiryManager from './InquiryManager';
 import LeadManager from './LeadManager';
 import DeveloperOverview from './DeveloperOverview';
 import SchoolNotificationTool from './SchoolNotificationTool';
@@ -19,8 +20,9 @@ import SchoolNotificationTool from './SchoolNotificationTool';
 const DeveloperPortal: React.FC = () => {
     const { user, logout } = useAuth();
 
-    const [view, setView] = useState<'overview' | 'schools' | 'health' | 'recovery' | 'announcements' | 'dispatch' | 'subscriptions' | 'security' | 'invites' | 'faqs' | 'ratings' | 'enquiries' | 'leads'>('overview');
+    const [view, setView] = useState<'overview' | 'schools' | 'health' | 'recovery' | 'announcements' | 'dispatch' | 'subscriptions' | 'security' | 'invites' | 'faqs' | 'ratings' | 'enquiries' | 'leads' | 'inquiries'>('overview');
     const [unreadEnquiries, setUnreadEnquiries] = useState(0);
+    const [unreadInquiries, setUnreadInquiries] = useState(0);
     const [unreadLeads, setUnreadLeads] = useState(0);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -39,6 +41,7 @@ const DeveloperPortal: React.FC = () => {
         
         { id: 'leads', label: 'Get Started Leads', icon: 'fa-users-gear', category: 'CRM & Marketing' },
         { id: 'enquiries', label: 'Customer Enquiries', icon: 'fa-headset', category: 'CRM & Marketing' },
+        { id: 'inquiries', label: 'FAQ Inquiries', icon: 'fa-clipboard-question', category: 'CRM & Marketing' },
         { id: 'faqs', label: 'Global FAQs', icon: 'fa-question-circle', category: 'CRM & Marketing' },
         { id: 'ratings', label: 'User Ratings', icon: 'fa-star', category: 'CRM & Marketing' },
         
@@ -65,6 +68,19 @@ const DeveloperPortal: React.FC = () => {
         }
     };
 
+    const fetchUnreadInquiries = async () => {
+        try {
+            const { count, error } = await supabase
+                .from('customer_inquiries')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_read', false);
+            
+            if (!error) setUnreadInquiries(count || 0);
+        } catch (err) {
+            console.error('Failed to fetch unread inquiry count:', err);
+        }
+    };
+
     const fetchUnreadLeads = async () => {
         try {
             const { count, error } = await supabase
@@ -80,9 +96,11 @@ const DeveloperPortal: React.FC = () => {
 
     React.useEffect(() => {
         fetchUnreadEnquiries();
+        fetchUnreadInquiries();
         fetchUnreadLeads();
         const interval = setInterval(() => {
             fetchUnreadEnquiries();
+            fetchUnreadInquiries();
             fetchUnreadLeads();
         }, 60000); // Check every minute
         return () => clearInterval(interval);
@@ -161,6 +179,11 @@ const DeveloperPortal: React.FC = () => {
                                         {item.id === 'enquiries' && unreadEnquiries > 0 && (
                                             <span className="bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-black">
                                                 {unreadEnquiries}
+                                            </span>
+                                        )}
+                                        {item.id === 'inquiries' && unreadInquiries > 0 && (
+                                            <span className="bg-amber-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-black">
+                                                {unreadInquiries}
                                             </span>
                                         )}
                                         {item.id === 'leads' && unreadLeads > 0 && (
@@ -246,6 +269,7 @@ const DeveloperPortal: React.FC = () => {
                             {view === 'faqs' && 'Frequently Asked Questions'}
                             {view === 'ratings' && 'User Ratings & Stories'}
                             {view === 'enquiries' && 'Customer Enquiries'}
+                            {view === 'inquiries' && 'FAQ Inquiries'}
                             {view === 'leads' && 'Get Started Leads'}
                             {view === 'dispatch' && 'Direct School Dispatch'}
                             {view === 'health' && 'System Health'}
@@ -260,6 +284,7 @@ const DeveloperPortal: React.FC = () => {
                             {view === 'faqs' && 'Manage system-wide FAQs for the platform and marketing site.'}
                             {view === 'ratings' && 'Monitor user sentiment and curate testimonials for marketing.'}
                             {view === 'enquiries' && 'Manage leads and enquiries from the marketing landing page.'}
+                            {view === 'inquiries' && 'Review and respond to questions submitted via the FAQ section.'}
                             {view === 'leads' && 'Review potential customers from the get-started form.'}
                             {view === 'dispatch' && 'Send private notifications and administrative alerts to specific school staff.'}
                             {view === 'health' && 'Global database performance and sync status overview.'}
@@ -284,6 +309,7 @@ const DeveloperPortal: React.FC = () => {
                     {view === 'faqs' && <FAQManager />}
                     {view === 'ratings' && <RatingsManager />}
                     {view === 'enquiries' && <EnquiryManager onRefreshCount={fetchUnreadEnquiries} />}
+                    {view === 'inquiries' && <InquiryManager onRefreshCount={fetchUnreadInquiries} />}
                     {view === 'leads' && <LeadManager onRefreshCount={fetchUnreadLeads} />}
                     {view === 'health' && <SystemHealth />}
                     {view === 'recovery' && <RecoveryTools />}
