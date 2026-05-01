@@ -108,18 +108,50 @@ Deno.serve(async (req) => {
         const currency = tx.currency ?? 'GHS';
         const payloads: object[] = [];
 
-        const nextTerm = (t: string) => t === 'Term 1' ? 'Term 2' : t === 'Term 2' ? 'Term 3' : 'Term 1';
+        const getNextAcademicYear = (currentYear: string) => {
+            const parts = currentYear.split('/');
+            if (parts.length === 2 && !isNaN(Number(parts[0])) && !isNaN(Number(parts[1]))) {
+                return `${Number(parts[0]) + 1}/${Number(parts[1]) + 1}`;
+            }
+            return currentYear; // Fallback
+        };
 
-        if (plan === '1_term') {
-            payloads.push({ school_id: schoolId, term, academic_year: academicYear, status: 'active', provider: 'paystack', payment_reference: reference, amount_paid: total, currency, verified_at: activatedAt, updated_at: activatedAt });
-        } else if (plan === '2_terms') {
-            [term, nextTerm(term)].forEach((t, i) =>
-                payloads.push({ school_id: schoolId, term: t, academic_year: academicYear, status: 'active', provider: 'paystack', payment_reference: `${reference}-T${i + 1}`, amount_paid: total / 2, currency, verified_at: activatedAt, updated_at: activatedAt })
-            );
-        } else if (plan === 'annual') {
-            ['Term 1', 'Term 2', 'Term 3'].forEach((t, i) =>
-                payloads.push({ school_id: schoolId, term: t, academic_year: academicYear, status: 'active', provider: 'paystack', payment_reference: `${reference}-T${i + 1}`, amount_paid: total / 3, currency, verified_at: activatedAt, updated_at: activatedAt })
-            );
+        const generateTerms = (startTerm: string, startYear: string, count: number) => {
+            const result = [];
+            let currentTerm = startTerm;
+            let currentYear = startYear;
+            for (let i = 0; i < count; i++) {
+                result.push({ term: currentTerm, year: currentYear });
+                if (currentTerm === 'Term 3') {
+                    currentTerm = 'Term 1';
+                    currentYear = getNextAcademicYear(currentYear);
+                } else if (currentTerm === 'Term 1') {
+                    currentTerm = 'Term 2';
+                } else if (currentTerm === 'Term 2') {
+                    currentTerm = 'Term 3';
+                }
+            }
+            return result;
+        };
+
+        const count = plan === '1_term' ? 1 : plan === '2_terms' ? 2 : plan === 'annual' ? 3 : 0;
+        
+        if (count > 0) {
+            const termsToAdd = generateTerms(term, academicYear, count);
+            termsToAdd.forEach((t, i) => {
+                payloads.push({
+                    school_id: schoolId,
+                    term: t.term,
+                    academic_year: t.year,
+                    status: 'active',
+                    provider: 'paystack',
+                    payment_reference: `${reference}-T${i + 1}`,
+                    amount_paid: total / count,
+                    currency,
+                    verified_at: activatedAt,
+                    updated_at: activatedAt
+                });
+            });
         } else {
             console.error('[verify-paystack] Invalid plan received:', plan);
             return new Response(JSON.stringify({ error: `Invalid plan: "${plan}". Must be 1_term, 2_terms, or annual.` }), {

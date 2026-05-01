@@ -15,9 +15,18 @@ interface Subscription {
 
 interface PricingConfig {
     id?: string;
+    // Standard pricing (term 3+)
     plan_1_term: number;
     plan_2_terms: number;
     plan_annual: number;
+    // Promotional pricing (terms 1-2)
+    promo_plan_1_term: number;
+    promo_plan_2_terms: number;
+    promo_plan_annual: number;
+    // Standard per-term aliases (stored in same columns)
+    standard_plan_1_term: number;
+    standard_plan_2_terms: number;
+    standard_plan_annual: number;
     name?: string;
     price?: string;
     description?: string;
@@ -59,7 +68,10 @@ export default function SubscriptionManager() {
 
         if (!error) {
             setSubs(prev => prev.map(s => s.id === sub.id ? { ...s, status: 'active' } : s));
-            
+
+            // Increment school term_count
+            await supabase.rpc('increment_school_term_count', { school_uuid: sub.school_id });
+
             // Log administrative action
             const { data: { user } } = await supabase.auth.getUser();
             if (user) {
@@ -84,13 +96,22 @@ export default function SubscriptionManager() {
     };
 
     // --- Pricing Manager ---
-    const [prices, setPrices] = useState<PricingConfig>({ 
-        plan_1_term: 300, 
-        plan_2_terms: 600, 
-        plan_annual: 750 
-    });
+    const defaultPrices: PricingConfig = {
+        plan_1_term: 100,
+        plan_2_terms: 200,
+        plan_annual: 250,
+        promo_plan_1_term: 80,
+        promo_plan_2_terms: 160,
+        promo_plan_annual: 200,
+        standard_plan_1_term: 100,
+        standard_plan_2_terms: 200,
+        standard_plan_annual: 250,
+    };
+
+    const [prices, setPrices] = useState<PricingConfig>(defaultPrices);
     const [savingPrices, setSavingPrices] = useState(false);
     const [priceMessage, setPriceMessage] = useState({ type: '', text: '' });
+    const [pricingTab, setPricingTab] = useState<'promo' | 'standard'>('promo');
 
     const fetchPrices = async () => {
         try {
@@ -100,7 +121,19 @@ export default function SubscriptionManager() {
                 return;
             }
             if (data) {
-                setPrices(data);
+                setPrices({
+                    ...defaultPrices,
+                    ...data,
+                    plan_1_term: Number(data.plan_1_term ?? data.standard_plan_1_term ?? 100),
+                    plan_2_terms: Number(data.plan_2_terms ?? data.standard_plan_2_terms ?? 200),
+                    plan_annual: Number(data.plan_annual ?? data.standard_plan_annual ?? 250),
+                    promo_plan_1_term: Number(data.promo_plan_1_term ?? 80),
+                    promo_plan_2_terms: Number(data.promo_plan_2_terms ?? 160),
+                    promo_plan_annual: Number(data.promo_plan_annual ?? 200),
+                    standard_plan_1_term: Number(data.standard_plan_1_term ?? data.plan_1_term ?? 100),
+                    standard_plan_2_terms: Number(data.standard_plan_2_terms ?? data.plan_2_terms ?? 200),
+                    standard_plan_annual: Number(data.standard_plan_annual ?? data.plan_annual ?? 250),
+                });
             }
         } catch (err) {
             console.error('[SubscriptionManager] Unexpected error fetching prices:', err);
@@ -110,12 +143,14 @@ export default function SubscriptionManager() {
     const handleSavePrices = async () => {
         setSavingPrices(true);
         setPriceMessage({ type: '', text: '' });
-        
+
         try {
-            // Prepare the payload. If it's a new row, we add default metadata.
             const payload = {
                 ...prices,
-                // Ensure we have the basic metadata columns if they exist in the table
+                // Keep legacy columns in sync with standard pricing
+                plan_1_term: prices.standard_plan_1_term,
+                plan_2_terms: prices.standard_plan_2_terms,
+                plan_annual: prices.standard_plan_annual,
                 name: prices.name || 'Global Pricing',
                 price: prices.price || '0',
                 description: prices.description || 'System-wide pricing configuration',
@@ -134,14 +169,13 @@ export default function SubscriptionManager() {
             }
 
             setPriceMessage({ type: 'success', text: 'Prices updated successfully!' });
-            // Refresh data to get the latest (including ID if it was just created)
             await fetchPrices();
             setTimeout(() => setPriceMessage({ type: '', text: '' }), 4000);
         } catch (err: any) {
             console.error('[SubscriptionManager] Failed to save prices:', err);
-            setPriceMessage({ 
-                type: 'error', 
-                text: `Failed to save: ${err.message || 'Unknown error'}` 
+            setPriceMessage({
+                type: 'error',
+                text: `Failed to save: ${err.message || 'Unknown error'}`
             });
         } finally {
             setSavingPrices(false);
@@ -155,61 +189,152 @@ export default function SubscriptionManager() {
 
     const pendingCount = subs.filter(s => s.status === 'pending').length;
 
+    const PriceInput = ({
+        label,
+        value,
+        onChange,
+    }: {
+        label: string;
+        value: number;
+        onChange: (val: number) => void;
+    }) => (
+        <div>
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">{label}</label>
+            <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">GHS</span>
+                <input
+                    type="number"
+                    value={value}
+                    onChange={e => onChange(Number(e.target.value))}
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+            </div>
+        </div>
+    );
+
     return (
         <div className="space-y-6 lg:space-y-8">
 
-            {/* Pricing Manager */}
+            {/* ─── Pricing Manager ─── */}
             <div className="bg-white border border-slate-200 rounded-[2rem] p-6 lg:p-8 shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
+                <div className="flex items-center gap-3 mb-2">
                     <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
                         <i className="fas fa-tags"></i>
                     </div>
                     <div>
-                        <h3 className="text-lg font-black text-slate-800">Global Pricing</h3>
-                        <p className="text-xs text-slate-500 font-medium">Subscription costs (in GHS)</p>
+                        <h3 className="text-lg font-black text-slate-800">Global Subscription Pricing</h3>
+                        <p className="text-xs text-slate-500 font-medium">All prices in GHS — 3-phase term model</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">1 Term Plan</label>
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">GHS</span>
-                            <input
-                                type="number"
-                                value={prices.plan_1_term}
-                                onChange={e => setPrices((p: PricingConfig) => ({ ...p, plan_1_term: Number(e.target.value) }))}
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            />
+                {/* Phase summary */}
+                <div className="mt-4 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-green-50 border border-green-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white text-xs">
+                            <i className="fas fa-gift"></i>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-green-600 uppercase tracking-widest">Phase 1 — Term 1</p>
+                            <p className="text-sm font-black text-green-800">FREE</p>
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">2 Terms Plan</label>
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">GHS</span>
-                            <input
-                                type="number"
-                                value={prices.plan_2_terms}
-                                onChange={e => setPrices((p: PricingConfig) => ({ ...p, plan_2_terms: Number(e.target.value) }))}
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            />
+                    <div className="bg-purple-50 border border-purple-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+                        <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center text-white text-xs">
+                            <i className="fas fa-star"></i>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-purple-600 uppercase tracking-widest">Phase 2 — Terms 2 & 3</p>
+                            <p className="text-sm font-black text-purple-800">Promotional Rate</p>
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">1 Year (3 Terms)</label>
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">GHS</span>
-                            <input
-                                type="number"
-                                value={prices.plan_annual}
-                                onChange={e => setPrices((p: PricingConfig) => ({ ...p, plan_annual: Number(e.target.value) }))}
-                                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            />
+                    <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white text-xs">
+                            <i className="fas fa-gem"></i>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Phase 3 — Term 4+</p>
+                            <p className="text-sm font-black text-blue-800">Standard Rate</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Pricing tabs */}
+                <div className="flex items-center gap-2 mb-6">
+                    <button
+                        onClick={() => setPricingTab('promo')}
+                        className={`px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                            pricingTab === 'promo'
+                                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20'
+                                : 'bg-slate-100 text-slate-500 hover:bg-purple-50'
+                        }`}
+                    >
+                        <i className="fas fa-star mr-2"></i>Promotional Prices
+                    </button>
+                    <button
+                        onClick={() => setPricingTab('standard')}
+                        className={`px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                            pricingTab === 'standard'
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                                : 'bg-slate-100 text-slate-500 hover:bg-blue-50'
+                        }`}
+                    >
+                        <i className="fas fa-gem mr-2"></i>Standard Prices
+                    </button>
+                </div>
+
+                {pricingTab === 'promo' && (
+                    <div>
+                        <p className="text-xs text-slate-500 font-medium mb-4 bg-purple-50 border border-purple-100 rounded-xl px-4 py-2">
+                            <i className="fas fa-info-circle text-purple-400 mr-2"></i>
+                            Promotional pricing applies during <strong className="text-purple-700">Terms 2 & 3</strong> (after the free first term). Set to 0 to make them free too.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                            <PriceInput
+                                label="1 Term (Promo)"
+                                value={prices.promo_plan_1_term}
+                                onChange={val => setPrices(p => ({ ...p, promo_plan_1_term: val }))}
+                            />
+                            <PriceInput
+                                label="2 Terms (Promo)"
+                                value={prices.promo_plan_2_terms}
+                                onChange={val => setPrices(p => ({ ...p, promo_plan_2_terms: val }))}
+                            />
+                            <PriceInput
+                                label="Annual / 3 Terms (Promo)"
+                                value={prices.promo_plan_annual}
+                                onChange={val => setPrices(p => ({ ...p, promo_plan_annual: val }))}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {pricingTab === 'standard' && (
+                    <div>
+                        <p className="text-xs text-slate-500 font-medium mb-4 bg-blue-50 border border-blue-100 rounded-xl px-4 py-2">
+                            <i className="fas fa-info-circle text-blue-400 mr-2"></i>
+                            Standard pricing applies from <strong className="text-blue-700">Term 4 onwards</strong>.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                            <PriceInput
+                                label="1 Term (Standard)"
+                                value={prices.standard_plan_1_term}
+                                onChange={val => setPrices(p => ({ ...p, standard_plan_1_term: val }))}
+                            />
+                            <PriceInput
+                                label="2 Terms (Standard)"
+                                value={prices.standard_plan_2_terms}
+                                onChange={val => setPrices(p => ({ ...p, standard_plan_2_terms: val }))}
+                            />
+                            <PriceInput
+                                label="Annual / 3 Terms (Standard)"
+                                value={prices.standard_plan_annual}
+                                onChange={val => setPrices(p => ({ ...p, standard_plan_annual: val }))}
+                            />
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
                     <div>
                         {priceMessage.text && (
                             <div className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 ${priceMessage.type === 'success' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
@@ -224,12 +349,12 @@ export default function SubscriptionManager() {
                         className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 disabled:opacity-50"
                     >
                         {savingPrices ? <i className="fas fa-spinner animate-spin"></i> : <i className="fas fa-save"></i>}
-                        Save Prices
+                        Save All Prices
                     </button>
                 </div>
             </div>
 
-            {/* Filter tabs */}
+            {/* ─── Filter tabs ─── */}
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
                 {(['pending', 'active', 'all'] as const).map(f => (
                     <button

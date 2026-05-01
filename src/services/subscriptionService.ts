@@ -23,53 +23,45 @@ export const subscriptionService = {
         }
 
         try {
-            // 1. FREE TRIAL LOGIC (Deterministic)
-            // Use resilient query (checking both idCloud and schoolId) matching useAcademicSession pattern
-            const school = await db.schools
-                .where('idCloud').equals(schoolId)
-                .or('schoolId').equals(schoolId)
-                .first();
-
-            const currentTermNorm = (currentTerm || '').trim().toLowerCase();
-            const currentYearNorm = (academicYear || '').toString().trim().toLowerCase();
-
-            // Check if settings have ever been explicitly modified
-            const hasCustomSettings = await eduDb.settings
-                .where('schoolId').equals(schoolId)
-                .and(s => s.key === 'currentTerm' || s.key === 'academicYear')
-                .count();
-
-            if (school) {
-                const schoolTerm = (school.onboardingTerm || 'Term 1').trim().toLowerCase();
-                const schoolYear = (school.onboardingAcademicYear || '').trim().toLowerCase();
-
-                // Trial applies if they haven't explicitly set a new term, OR if it strictly matches their onboarding term
-                const isExplicitTrialTerm = schoolTerm === currentTermNorm && (schoolYear ? schoolYear === currentYearNorm : true);
-                
-                if (isExplicitTrialTerm || hasCustomSettings === 0) {
-                    return { 
-                        isSubscribed: true, 
-                        type: 'trial', 
-                        isLoading: false,
-                        subscription: { status: 'trial', term: currentTerm, academic_year: academicYear }
-                    };
-                }
-            }
-
-            // 1.1 HEAL/FALLBACK: For new schools with missing metadata, default to trial if Term 1 and no history exists
-            if (!school || !school.onboardingTerm) {
-                const localSubs = await eduDb.subscriptions.where('schoolId').equals(schoolId).toArray();
-                if (localSubs.length === 0 && (currentTermNorm === 'term 1' || hasCustomSettings === 0)) {
-                    return {
-                        isSubscribed: true,
-                        type: 'trial',
-                        isLoading: false,
-                        subscription: { status: 'trial', term: currentTerm, academic_year: academicYear }
-                    };
-                }
-            }
-
             const isOnline = window.navigator.onLine;
+            let isFirstTerm = false;
+
+            // 1. FREE TRIAL LOGIC (Deterministic)
+            // If term_count is 0, they have never advanced the term, meaning they are on their free trial.
+            if (isOnline) {
+                const { data: cloudSchool } = await supabase
+                    .from('schools')
+                    .select('term_count')
+                    .eq('id', schoolId)
+                    .maybeSingle();
+                
+                if (cloudSchool && Number(cloudSchool.term_count) === 0) {
+                    isFirstTerm = true;
+                }
+            } else {
+                // Offline fallback: They are on the free trial if they have never had a pending/active subscription locally
+                // AND they haven't made subsequent setting modifications beyond onboarding (hasCustomSettings <= 2).
+                const hasCustomSettings = await eduDb.settings
+                    .where('schoolId').equals(schoolId)
+                    .and(s => s.key === 'currentTerm' || s.key === 'academicYear')
+                    .count();
+                    
+                const subs = await eduDb.subscriptions.where('schoolId').equals(schoolId).toArray();
+                const hasPaidOrPending = subs.some(s => s.status === 'active' || s.status === 'pending');
+                
+                if (!hasPaidOrPending && hasCustomSettings <= 2) {
+                    isFirstTerm = true;
+                }
+            }
+
+            if (isFirstTerm) {
+                return { 
+                    isSubscribed: true, 
+                    type: 'trial', 
+                    isLoading: false,
+                    subscription: { status: 'trial', term: currentTerm, academic_year: academicYear }
+                };
+            }
 
             // 2. CLOUD AUTHORITY (If Online)
             if (isOnline) {

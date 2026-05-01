@@ -263,6 +263,14 @@ const Settings: React.FC = () => {
 
     const handleSaveAcademic = async () => {
         if (!user?.schoolId) return;
+
+        // Capture previous term BEFORE saving so we can detect a change
+        const previousTerm = academicSettings?.currentTerm as string | undefined;
+        const previousYear = academicSettings?.academicYear as string | undefined;
+        const termChanged =
+            currentTerm.trim() !== (previousTerm ?? '').trim() ||
+            academicYear.trim() !== (previousYear ?? '').trim();
+
         try {
             const now = Date.now();
             await eduDb.transaction('rw', eduDb.settings, async () => {
@@ -293,6 +301,65 @@ const Settings: React.FC = () => {
                     }
                 }
             });
+
+            // ── Auto-create subscription for new term ──────────────────────────────
+            // When the headteacher advances to a new term, the free trial ends and
+            // a pending subscription is created at the appropriate price phase.
+            // This is what triggers the access lock until payment is confirmed.
+            if (termChanged) {
+                try {
+                    // 1. Get current term_count (how many paid terms completed so far)
+                    const { data: schoolRow } = await supabase
+                        .from('schools')
+                        .select('term_count')
+                        .eq('id', user.schoolId)
+                        .maybeSingle();
+                    const termCount = Number(schoolRow?.term_count ?? 0);
+
+                    // 2. Fetch global pricing config
+                    const { data: priceRow } = await supabase
+                        .from('subscription_prices')
+                        .select('promo_plan_1_term, standard_plan_1_term, plan_1_term')
+                        .maybeSingle();
+
+                    // 3. Determine price for this term
+                    // term_count 0 or 1 → next term is promo (they've had 0 or 1 paid terms)
+                    // term_count >= 2 → standard
+                    const isPromo = termCount < 2;
+                    const amount = isPromo
+                        ? Number(priceRow?.promo_plan_1_term ?? 80)
+                        : Number(priceRow?.standard_plan_1_term ?? priceRow?.plan_1_term ?? 100);
+
+                    // 4. Upsert a pending subscription row for the new term
+                    await supabase
+                        .from('school_subscriptions')
+                        .upsert([{
+                            school_id: user.schoolId,
+                            term: currentTerm.trim(),
+                            academic_year: academicYear.trim(),
+                            status: 'pending',
+                            amount_paid: amount,
+                        }], { onConflict: 'school_id,term,academic_year' });
+
+                    // 5. Increment schools.term_count
+                    await supabase
+                        .from('schools')
+                        .update({ term_count: termCount + 1 })
+                        .eq('id', user.schoolId);
+
+                    console.log('[Settings] New term subscription created:', {
+                        term: currentTerm.trim(),
+                        amount,
+                        phase: isPromo ? 'promo' : 'standard',
+                        newTermCount: termCount + 1,
+                    });
+                } catch (subErr) {
+                    console.error('[Settings] Failed to create term subscription:', subErr);
+                    // Non-fatal — settings are saved, subscription creation can be retried
+                }
+            }
+            // ───────────────────────────────────────────────────────────────────────
+
             showMessage('success', 'Academic settings saved successfully!');
             syncService.syncAll(user.schoolId).catch(console.error);
         } catch (error) {
