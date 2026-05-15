@@ -72,7 +72,7 @@ export const financialService = {
         const totalCollected = payments.reduce((sum, p) => sum + p.amountPaid, 0);
 
         // 2. Get Centralized Ranges
-        const { months, startTime, endTime, payrollYear } = this.getTermRange(term, year);
+        const { startTime, endTime } = this.getTermRange(term, year);
 
         // 3. Manual Expenses
         const manualExpenses = await eduDb.expenses
@@ -82,10 +82,21 @@ export const financialService = {
             .toArray();
 
         // 4. Payroll Records (Paid Only)
+        // Use the term's startTime/endTime for matching — same approach as manual expenses.
+        // This avoids the strict `p.year === payrollYear` check which breaks when the
+        // academic year setting is misconfigured or the FinancialReports year selector
+        // is set to the current calendar year instead of the academic year start.
         const payrollRecords = await eduDb.payrollRecords
             .where('schoolId')
             .equals(schoolId)
-            .filter(p => !p.isDeleted && p.year === payrollYear && months.includes(p.month) && p.status === 'Paid')
+            .filter(p => {
+                if (p.isDeleted || p.status !== 'Paid') return false;
+                if (!p.month || !p.year) return false;
+                // Convert the record's month/year into a timestamp for range comparison.
+                // We use the 15th to avoid any timezone edge cases at month boundaries.
+                const recordDate = new Date(p.year, p.month - 1, 15).getTime();
+                return recordDate >= startTime && recordDate <= endTime;
+            })
             .toArray();
 
         const totalManualExpenses = manualExpenses.reduce((sum, e) => sum + e.amount, 0);
@@ -94,14 +105,18 @@ export const financialService = {
         const totalExpenses = totalManualExpenses + totalPayroll;
 
         // Add payroll as a synthetic expense category for breakdown
+        // Only include the Staff Payroll entry when there is actual paid payroll
+        // to avoid a misleading GHS 0.00 row in the Categorical Spending panel.
         const expenses = [
             ...manualExpenses,
-            {
-                category: 'Staff Payroll',
-                description: 'Aggregated Staff Salaries',
-                amount: totalPayroll,
-                date: endTime, // End of term
-            }
+            ...(totalPayroll > 0
+                ? [{
+                    category: 'Staff Payroll',
+                    description: 'Aggregated Staff Salaries',
+                    amount: totalPayroll,
+                    date: endTime,
+                }]
+                : []),
         ];
 
         // 3. Outstanding Arrears
@@ -220,7 +235,8 @@ export const financialService = {
                 status: item.status,
                 paidAt: item.paid_at ? new Date(item.paid_at).getTime() : undefined,
                 updatedAt: Date.now(),
-                syncStatus: 'synced'
+                syncStatus: 'synced',
+                isDeleted: false,  // Ensure synced records are never excluded by isDeleted filter
             };
 
             // Idempotent upsert by stable identity

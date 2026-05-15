@@ -43,9 +43,16 @@ async function resolveAuthEmail(schoolCode: string, username: string): Promise<s
             p_username: username.trim().toLowerCase(),
         });
 
-    if (error || !data) {
-        // Log locally for debugging, but don't leak specifics to the throw
-        console.error('[Login] resolve_auth_email failure');
+    if (error) {
+        // Propagate specific errors (like lockout) while masking others
+        if (error.message?.includes('ACCOUNT_LOCKED_UNTIL')) {
+            throw new Error(error.message);
+        }
+        console.error('[Login] resolve_auth_email failure:', error);
+        throw new Error('Access Denied: Invalid credentials or account status.');
+    }
+
+    if (!data) {
         throw new Error('Access Denied: Invalid credentials or account status.');
     }
 
@@ -143,8 +150,15 @@ const LoginPage: React.FC<LoginPageProps> = ({ onOnboardingStart, showRegisterLi
             let authEmail: string;
             try {
                 authEmail = await resolveAuthEmail(schoolCode, username);
-            } catch (lookupErr: unknown) {
-                setError('Access Denied: Invalid credentials or account status.');
+            } catch (lookupErr: any) {
+                // Check for server-side lockout message
+                if (lookupErr.message?.includes('ACCOUNT_LOCKED_UNTIL')) {
+                    const lockTime = lookupErr.message.split('_').pop();
+                    const waitMin = Math.ceil((new Date(lockTime).getTime() - Date.now()) / 60000);
+                    setError(`Account locked due to too many attempts. Please try again in ${waitMin} minutes.`);
+                } else {
+                    setError('Access Denied: Invalid credentials or account status.');
+                }
                 recordFailedAttempt();
                 return;
             }
@@ -156,6 +170,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onOnboardingStart, showRegisterLi
             });
 
             if (signInError || !data.session || !data.user) {
+                // Record failure on server
+                await supabase.rpc('record_failed_login', {
+                    p_school_code: schoolCode.trim().toUpperCase(),
+                    p_username: username.trim().toLowerCase(),
+                });
+
                 recordFailedAttempt();
                 setError('Access Denied: Invalid credentials or account status.');
                 return;
@@ -173,6 +193,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ onOnboardingStart, showRegisterLi
                 setError('System unavailable. Please contact support.');
                 return;
             }
+
+            // ── Step 3.5: Reset failed attempts on server ───────────────────────
+            await supabase.rpc('reset_failed_login');
 
             // ── Step 4: Hand off to auth context → triggers redirect ─────────────
             setFailedAttempts(0);

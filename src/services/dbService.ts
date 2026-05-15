@@ -160,11 +160,21 @@ export const dbService = {
     // Class Operations
     classes: {
         async getAll(schoolId: string) {
-            return await eduDb.classes
+            const classes = await eduDb.classes
                 .where('schoolId')
                 .equals(schoolId)
                 .filter((c) => !c.isDeleted)
                 .toArray();
+            
+            // Sort by: displayOrder (0 first), then level, then name
+            return classes.sort((a, b) => {
+                const orderA = a.displayOrder ?? 0;
+                const orderB = b.displayOrder ?? 0;
+                if (orderA !== orderB) return orderA - orderB;
+                
+                if (a.level !== b.level) return a.level.localeCompare(b.level);
+                return a.name.localeCompare(b.name);
+            });
         },
 
         async add(cls: Class) {
@@ -722,6 +732,7 @@ export const dbService = {
 
             return await eduDb.payrollRecords.add({
                 ...record,
+                isDeleted: false,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 syncStatus: 'pending'

@@ -86,12 +86,12 @@ const StudentFeeList: React.FC = () => {
         return rows;
     }, [user?.schoolId, term, year]);
 
-    const filtered = (rows as any[])?.filter((r: any) => {
+    const filtered = ((rows as any[])?.filter((r: any) => {
         if (filter !== 'all' && r.status !== filter) return false;
         if (classFilter !== 'all' && r.student.classId !== classFilter) return false;
         if (search && !r.student.fullName.toLowerCase().includes(search.toLowerCase())) return false;
         return true;
-    }) || [];
+    }) || []).sort((a: any, b: any) => a.student.fullName.localeCompare(b.student.fullName));
 
     const statusBadge = (status: StudentFeeRow['status']) => {
         const map: Record<string, string> = {

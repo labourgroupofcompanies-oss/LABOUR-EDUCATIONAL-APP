@@ -5,10 +5,11 @@ import { dbService } from '../../services/dbService';
 import { showToast } from '../Common/Toast';
 import { showConfirm } from '../Common/ConfirmDialog';
 import { showPromotionDialog } from '../Common/PromotionDialogs';
-import { supabase } from '../../supabaseClient';
 import { db } from '../../db';
 import { getNextLevel, normalizeLevel } from '../../utils/levelUtils';
 import type { StudentMovementType } from '../../utils/levelUtils';
+import { eduDb } from '../../eduDb';
+
 
 const ClassManagement: React.FC = () => {
     const { user } = useAuth();
@@ -26,6 +27,8 @@ const ClassManagement: React.FC = () => {
     const [movementType, setMovementType] = useState<StudentMovementType>('promotion');
     const [promotionTargetClassId, setPromotionTargetClassId] = useState<number | null>(null);
     const [selectedStudentsForPromotion, setSelectedStudentsForPromotion] = useState<number[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
 
     // Class Name Edit State
     const [editingClassNameId, setEditingClassNameId] = useState<number | null>(null);
@@ -41,6 +44,15 @@ const ClassManagement: React.FC = () => {
         if (user?.schoolId) return await dbService.classes.getAll(user.schoolId);
         return [];
     }, [user?.schoolId]);
+
+    // Enhanced Class Edit State (for Level, Teaching Mode, etc.)
+    const [editingFullClassId, setEditingFullClassId] = useState<number | null>(null);
+    const [editClassData, setEditClassData] = useState({
+        name: '',
+        level: 'Basic 1',
+        teachingMode: 'class_teacher' as 'class_teacher' | 'subject_teacher',
+        displayOrder: 0
+    });
 
     // Auto-cleanup duplicate phantom classes in IndexedDB
     useEffect(() => {
@@ -100,7 +112,8 @@ const ClassManagement: React.FC = () => {
 
     const studentsInClass = useLiveQuery(async () => {
         if (user?.schoolId && selectedClassId) {
-            return await dbService.students.getByClass(user.schoolId, selectedClassId);
+            const list = await dbService.students.getByClass(user.schoolId, selectedClassId);
+            return list.sort((a, b) => a.fullName.localeCompare(b.fullName));
         }
         return [];
     }, [user?.schoolId, selectedClassId]);
@@ -108,37 +121,38 @@ const ClassManagement: React.FC = () => {
     const handleUpdateTeacher = async (classId: number, teacherUuid: string) => {
         if (!user?.schoolId) return;
         try {
-            // Resolve the cloud UUID of the class
-            const localClass = await (await import('../../eduDb')).eduDb.classes.get(classId);
-            const classCloudId = (localClass as any)?.idCloud;
+            const localClass = await eduDb.classes.get(classId);
 
-            if (!classCloudId) {
-                showToast('Class has not synced to the cloud yet. Please sync first.', 'error');
-                return;
-            }
-
-            // ── Online First ──────────────────────────────────────────
-            const { error } = await supabase
-                .from('classes')
-                .update({ class_teacher_id: teacherUuid || null })
-                .eq('id', classCloudId);
-
-            if (error) throw new Error(error.message);
-
-            // ── Mirror to IndexedDB ───────────────────────────────────
+            // 1. Update Locally First (Offline-First)
             await dbService.classes.update(classId, {
                 classTeacherId: teacherUuid || undefined,
-                syncStatus: 'synced'
+                syncStatus: 'pending',
+                updatedAt: Date.now()
             });
 
-            // ── Auto-assign subjects in class_teacher mode ────────────
+            // 2. Auto-assign subjects in class_teacher mode locally
             if (localClass?.teachingMode === 'class_teacher') {
                 await dbService.classSubjects.autoAssignClassTeacher(
                     user.schoolId, classId, teacherUuid || undefined
                 );
             }
 
-            showToast('Class teacher updated!', 'success');
+            // 3. Attempt Background Sync if online
+            if (navigator.onLine) {
+                try {
+                    const { syncService } = await import('../../services/syncService');
+                    await syncService.syncClasses(user.schoolId);
+                    if (localClass?.teachingMode === 'class_teacher') {
+                        await syncService.syncClassSubjects(user.schoolId);
+                    }
+                    showToast('Class teacher updated and synced!', 'success');
+                } catch (syncErr: any) {
+                    console.warn('[ClassManagement] Background sync failed:', syncErr);
+                    showToast('Class teacher updated locally. Sync will retry.', 'warning');
+                }
+            } else {
+                showToast('Class teacher updated locally. Will sync when online.', 'warning');
+            }
         } catch (error: any) {
             console.error('Failed to update teacher', error);
             showToast(error.message || 'Failed to update teacher', 'error');
@@ -173,27 +187,27 @@ const ClassManagement: React.FC = () => {
         }
 
         try {
-            const classCloudId = (currentClass as any)?.idCloud;
-            if (!classCloudId) {
-                showToast('Class has not synced to the cloud yet. Please sync first.', 'error');
-                return;
-            }
-
-            // Online update
-            const { error } = await supabase
-                .from('classes')
-                .update({ name: trimmedName })
-                .eq('id', classCloudId);
-
-            if (error) throw new Error(error.message);
-
-            // Local update
+            // 1. Update Locally First (Offline-First)
             await dbService.classes.update(classId, {
                 name: trimmedName,
-                syncStatus: 'synced'
+                syncStatus: 'pending',
+                updatedAt: Date.now()
             });
 
-            showToast('Class name updated!', 'success');
+            // 2. Attempt Background Sync if online
+            if (navigator.onLine) {
+                try {
+                    const { syncService } = await import('../../services/syncService');
+                    await syncService.syncClasses(user.schoolId);
+                    showToast('Class name updated and synced!', 'success');
+                } catch (syncErr: any) {
+                    console.warn('[ClassManagement] Background sync failed:', syncErr);
+                    showToast('Class name updated locally. Sync will retry.', 'warning');
+                }
+            } else {
+                showToast('Class name updated locally. Will sync when online.', 'warning');
+            }
+
             setEditingClassNameId(null);
         } catch (error: any) {
             console.error('Failed to update class name', error);
@@ -240,134 +254,146 @@ const ClassManagement: React.FC = () => {
         if (!user?.schoolId || !editingSubjectClassId) return;
 
         try {
-            const { eduDb } = await import('../../eduDb');
             const classId = editingSubjectClassId;
 
-            // Resolve the class cloud UUID
-            const localClass = await eduDb.classes.get(classId);
-            const classCloudId = (localClass as any)?.idCloud;
-            if (!classCloudId) {
-                showToast('Class has not synced to the cloud yet.', 'error');
-                return;
-            }
-
-            // Fetch ALL existing assignments including softly-deleted ones for resurrection
+            // Fetch ALL existing assignments
             const existingAssignments = await eduDb.classSubjects.where({ classId }).toArray();
-            const existingMap = new Map(existingAssignments.map(a => [a.subjectId, a]));
+            const existingMap = new Map(existingAssignments.map((a: any) => [a.subjectId, a]));
+
             const currentSubjectIds = Object.keys(classSubjectsMap).map(Number);
 
-            // 1. Process selected subjects (Adds / Updates) ── Upsert-first approach
+            // 1. Update Locally First (Offline-First)
+            // Process selected subjects (Adds / Updates / Resurrects)
             for (const subId of currentSubjectIds) {
-                const newTeacherUuid = classSubjectsMap[subId] || null;
-
-                // Resolve subject cloud UUID
-                const localSubject = await eduDb.subjects.get(subId);
-                const subjectCloudId = (localSubject as any)?.idCloud;
-                if (!subjectCloudId) {
-                    showToast(`Subject "${localSubject?.name}" is not synced yet. Skipping.`, 'error');
-                    continue;
-                }
-
-                // ── Cloud: select ALL rows (incl. soft-deleted) then act ──────────────
-                // Supabase upsert(onConflict) can't target partial indexes (WHERE is_deleted=false),
-                // so we must select first, then UPDATE existing or INSERT new.
-                const { data: foundList } = await supabase
-                    .from('class_subjects')
-                    .select('id, is_deleted')
-                    .eq('class_id', classCloudId)
-                    .eq('subject_id', subjectCloudId)
-                    .limit(1);
-
-                const found = foundList?.[0];
-                let cloudId: string;
-
-                if (found?.id) {
-                    // Row exists (active or soft-deleted) — UPDATE it
-                    const { error: updErr } = await supabase
-                        .from('class_subjects')
-                        .update({ teacher_id: newTeacherUuid, is_deleted: false })
-                        .eq('id', found.id);
-                    if (updErr) throw new Error(updErr.message);
-                    cloudId = found.id;
-                } else {
-                    // Truly new — INSERT
-                    const { data: ins, error: insErr } = await supabase
-                        .from('class_subjects')
-                        .insert({
-                            school_id: user.schoolId,
-                            class_id: classCloudId,
-                            subject_id: subjectCloudId,
-                            teacher_id: newTeacherUuid,
-                            is_deleted: false
-                        })
-                        .select('id')
-                        .single();
-                    if (insErr) throw new Error(insErr.message);
-                    cloudId = ins.id;
-                }
-
-                // ── Mirror to IndexedDB ────────────────────────────────────────────────
+                const newTeacherUuid = classSubjectsMap[subId] || undefined;
                 const existing = existingMap.get(subId);
-                if (existing) {
-                    await eduDb.classSubjects.update(existing.id!, {
-                        idCloud: cloudId,
-                        isDeleted: false,
-                        teacherId: newTeacherUuid ?? undefined,
-                        syncStatus: 'synced'
-                    } as any);
-                } else {
-                    // Check again in case another path added it
-                    const existing2 = await eduDb.classSubjects
-                        .where({ classId, subjectId: subId })
-                        .first();
 
-                    if (existing2) {
-                        await eduDb.classSubjects.update(existing2.id!, {
-                            idCloud: cloudId,
-                            isDeleted: false,
-                            teacherId: newTeacherUuid ?? undefined,
-                            syncStatus: 'synced'
-                        } as any);
-                    } else {
-                        await eduDb.classSubjects.add({
-                            idCloud: cloudId,
-                            schoolId: user.schoolId,
-                            classId,
-                            subjectId: subId,
-                            teacherId: newTeacherUuid ?? undefined,
-                            isDeleted: false,
-                            createdAt: Date.now(),
-                            updatedAt: Date.now(),
-                            syncStatus: 'synced'
-                        } as any);
-                    }
+                if (existing) {
+                    await eduDb.classSubjects.update((existing as any).id!, {
+
+                        isDeleted: false,
+                        teacherId: newTeacherUuid,
+                        syncStatus: 'pending',
+                        updatedAt: Date.now()
+                    });
+                } else {
+                    await eduDb.classSubjects.add({
+                        schoolId: user.schoolId,
+                        classId,
+                        subjectId: subId,
+                        teacherId: newTeacherUuid,
+                        isDeleted: false,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        syncStatus: 'pending'
+                    } as any);
                 }
             }
 
-            // 2. Process unchecked subjects (Soft Delete) ── Online First
+            // Process unchecked subjects (Soft Delete)
             for (const existing of existingAssignments) {
                 if (!currentSubjectIds.includes(existing.subjectId)) {
-                    const existingCloudId = (existing as any).idCloud;
-                    if (existingCloudId) {
-                        const { error } = await supabase
-                            .from('class_subjects')
-                            .update({ is_deleted: true })
-                            .eq('id', existingCloudId);
-                        if (error) throw new Error(error.message);
-                    }
                     await dbService.classSubjects.softDelete(existing.id!);
                 }
             }
 
+            // 2. Attempt Background Sync if online
+            if (navigator.onLine) {
+                try {
+                    const { syncService } = await import('../../services/syncService');
+                    await syncService.syncClassSubjects(user.schoolId);
+                    showToast('Subjects updated and synced!', 'success');
+                } catch (syncErr: any) {
+                    console.warn('[ClassManagement] Background subjects sync failed:', syncErr);
+                    showToast('Subjects updated locally. Sync will retry.', 'warning');
+                }
+            } else {
+                showToast('Subjects updated locally. Will sync when online.', 'warning');
+            }
+
             setIsManagingSubjects(false);
             setEditingSubjectClassId(null);
-            showToast('Subjects updated successfully!', 'success');
         } catch (error: any) {
             console.error('Failed to save subjects', error);
             showToast(error.message || 'Failed to save subjects', 'error');
         }
     };
 
+
+    const handleMoveClass = async (classId: number, direction: 'forward' | 'backward') => {
+        if (!classes || !user?.schoolId) return;
+        
+        const currentIndex = classes.findIndex(c => c.id === classId);
+        if (currentIndex === -1) return;
+
+        const targetIndex = direction === 'forward' ? currentIndex + 1 : currentIndex - 1;
+        if (targetIndex < 0 || targetIndex >= classes.length) return;
+
+        const currentClass = classes[currentIndex];
+        const targetClass = classes[targetIndex];
+
+        try {
+            // Swap display orders
+            const currentOrder = currentClass.displayOrder ?? currentIndex;
+            const targetOrder = targetClass.displayOrder ?? targetIndex;
+
+            // Update both locally
+            await dbService.classes.update(currentClass.id!, { 
+                displayOrder: targetOrder, 
+                syncStatus: 'pending',
+                updatedAt: Date.now() 
+            });
+            await dbService.classes.update(targetClass.id!, { 
+                displayOrder: currentOrder, 
+                syncStatus: 'pending',
+                updatedAt: Date.now() 
+            });
+
+            // Sync in background
+            if (navigator.onLine) {
+                const { syncService } = await import('../../services/syncService');
+                await syncService.syncClasses(user.schoolId);
+            }
+        } catch (err) {
+            console.error('Failed to rearrange classes:', err);
+            showToast('Failed to rearrange classes', 'error');
+        }
+    };
+
+    const handleOpenEditClass = (cls: any) => {
+        setEditingFullClassId(cls.id);
+        setEditClassData({
+            name: cls.name,
+            level: cls.level,
+            teachingMode: cls.teachingMode || 'class_teacher',
+            displayOrder: cls.displayOrder || 0
+        });
+    };
+
+    const handleSaveFullClass = async () => {
+        if (!editingFullClassId || !user?.schoolId) return;
+
+        try {
+            await dbService.classes.update(editingFullClassId, {
+                name: editClassData.name,
+                level: editClassData.level,
+                teachingMode: editClassData.teachingMode,
+                displayOrder: editClassData.displayOrder,
+                syncStatus: 'pending',
+                updatedAt: Date.now()
+            });
+
+            if (navigator.onLine) {
+                const { syncService } = await import('../../services/syncService');
+                await syncService.syncClasses(user.schoolId);
+            }
+
+            showToast('Class details updated!', 'success');
+            setEditingFullClassId(null);
+        } catch (error: any) {
+            showToast(error.message || 'Failed to update class', 'error');
+        }
+    };
 
     const handleDeleteClass = async (classId: number, className: string) => {
         if (!user?.schoolId) return;
@@ -414,69 +440,63 @@ const ClassManagement: React.FC = () => {
         e.preventDefault();
         if (!user?.schoolId) return;
 
+        setIsLoading(true);
+
         try {
             const trimmedName = newClass.name.trim();
 
             if (!trimmedName) {
                 showToast('Class Name is required', 'error');
+                setIsLoading(false);
                 return;
             }
 
-            // Local pre-check to prevent duplicate conflict
-            const isDuplicate = classes?.some(
-                c => c.name.toLowerCase() === trimmedName.toLowerCase() && 
-                     c.level === newClass.level && 
-                     !c.isDeleted
-            );
-            
-            if (isDuplicate) {
-                showToast(`A class named "${trimmedName}" at level "${newClass.level}" already exists.`, 'error');
-                return;
-            }
-
-            const supabasePayload = {
-                school_id: user.schoolId,
-                name: trimmedName,
-                level: newClass.level,
-                class_teacher_id: newClass.teacherId || null,
-                teaching_mode: newClass.teachingMode,
-                is_deleted: false
-            };
-
-            // Online Supabase Insert FIRST
-            const { data, error } = await supabase
-                .from('classes')
-                .insert(supabasePayload)
-                .select('id')
-                .single();
-
-            if (error) {
-                if (error.code === '23505' || error.message?.includes('unique_active_class_name_level')) {
-                    throw new Error(`A class named "${supabasePayload.name}" at level "${supabasePayload.level}" already exists.`);
-                }
-                throw new Error(`Cloud Sync Error: ${error.message}`);
-            }
-
-            // Mirror to IndexedDB cache
-            await dbService.classes.add({
+            const now = Date.now();
+            const classData = {
                 schoolId: user.schoolId,
-                idCloud: data.id, // Canonical Cloud Identity
                 name: trimmedName,
                 level: newClass.level,
                 classTeacherId: newClass.teacherId || undefined,
                 teachingMode: newClass.teachingMode,
-                isDeleted: false,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-                syncStatus: 'synced'
-            });
+                createdAt: now,
+                updatedAt: now,
+                syncStatus: 'pending' as const
+            };
 
-            showToast('Class created successfully!', 'success');
-            setIsCreating(false);
+            // 1. Save Locally First (Offline-First)
+            // dbService.classes.add checks for duplicates locally
+            await dbService.classes.add(classData as any);
+
+
+            // 2. Attempt Background Sync if online
+            if (navigator.onLine) {
+                try {
+                    const { syncService } = await import('../../services/syncService');
+                    await syncService.syncClasses(user.schoolId);
+                    
+                    // If teacher was assigned, sync subjects if in class_teacher mode
+                    if (newClass.teacherId && newClass.teachingMode === 'class_teacher') {
+                        await syncService.syncClassSubjects(user.schoolId);
+                    }
+                    
+                    showToast(`Class "${trimmedName}" created and synced!`, 'success');
+                } catch (syncErr: any) {
+                    console.warn('[ClassManagement] Background sync failed:', syncErr);
+                    showToast(`Class "${trimmedName}" created locally. Sync will retry automatically.`, 'warning');
+                }
+            } else {
+                showToast(`Class "${trimmedName}" created locally. Will sync when online.`, 'warning');
+            }
+
+            // Reset form
             setNewClass({ name: '', level: 'Basic 1', teacherId: '', teachingMode: 'class_teacher' });
+            setIsCreating(false);
+
         } catch (error: any) {
-            console.error('Failed to create class', error);
+            console.error('[ClassManagement] Error creating class:', error);
             showToast(error.message || 'Failed to create class', 'error');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -591,11 +611,8 @@ const ClassManagement: React.FC = () => {
                     </div>
 
                     <div className="mt-6 flex justify-end">
-                        <button
-                            type="submit"
-                            className="btn-primary px-6 sm:px-8 py-3"
-                        >
-                            <i className="fas fa-save mr-2"></i>Save Class
+                        <button type="submit" disabled={isLoading} className="btn-primary px-6 py-3 disabled:opacity-50 min-w-[140px]">
+                            {isLoading ? <><i className="fas fa-spinner fa-spin mr-2"></i>Saving...</> : <><i className="fas fa-save mr-2"></i>Save Class</>}
                         </button>
                     </div>
                 </form>
@@ -683,13 +700,41 @@ const ClassManagement: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-                                    <button
-                                        onClick={() => handleOpenSubjects(cls.id!)}
-                                        className="btn-ghost !text-primary !text-xs !p-0 hover:!bg-transparent"
-                                    >
-                                        <i className="fas fa-book-open"></i> Manage Subjects
-                                    </button>
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => handleMoveClass(cls.id!, 'backward')}
+                                            disabled={classes?.indexOf(cls) === 0}
+                                            className="w-8 h-8 rounded-lg bg-gray-50 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 disabled:hover:bg-gray-50 disabled:hover:text-gray-400 transition-all flex items-center justify-center"
+                                            title="Move Backward"
+                                        >
+                                            <i className="fas fa-arrow-left text-[10px]"></i>
+                                        </button>
+                                        <button
+                                            onClick={() => handleMoveClass(cls.id!, 'forward')}
+                                            disabled={classes && classes.indexOf(cls) === classes.length - 1}
+                                            className="w-8 h-8 rounded-lg bg-gray-50 text-gray-400 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 disabled:hover:bg-gray-50 disabled:hover:text-gray-400 transition-all flex items-center justify-center"
+                                            title="Move Forward"
+                                        >
+                                            <i className="fas fa-arrow-right text-[10px]"></i>
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleOpenEditClass(cls)}
+                                            className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center"
+                                            title="Class Settings"
+                                        >
+                                            <i className="fas fa-cog text-[10px]"></i>
+                                        </button>
+                                        <button
+                                            onClick={() => handleOpenSubjects(cls.id!)}
+                                            className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white transition-all flex items-center justify-center"
+                                            title="Manage Subjects"
+                                        >
+                                            <i className="fas fa-book-open text-[10px]"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1040,8 +1085,76 @@ const ClassManagement: React.FC = () => {
                     </div>
                 </div>
             )}
+            {/* Full Class Edit Modal */}
+            {editingFullClassId && (
+                <div className="fixed inset-0 bg-black/40 z-[var(--z-modal-backdrop)] flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-scaleIn z-[var(--z-modal)]">
+                        <div className="p-8 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-black text-gray-800">Class Settings</h3>
+                                <p className="text-sm text-gray-400 mt-1">Update all class parameters</p>
+                            </div>
+                            <button 
+                                onClick={() => setEditingFullClassId(null)}
+                                className="w-10 h-10 rounded-full bg-white border border-gray-100 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Class Name</label>
+                                <input
+                                    type="text"
+                                    value={editClassData.name}
+                                    onChange={(e) => setEditClassData({ ...editClassData, name: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary font-bold text-gray-700"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Level</label>
+                                <select
+                                    value={editClassData.level}
+                                    onChange={(e) => setEditClassData({ ...editClassData, level: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary font-bold text-gray-700"
+                                >
+                                    {['Crèche', 'Nursery 1', 'Nursery 2', 'KG 1', 'KG 2', 'Basic 1', 'Basic 2', 'Basic 3', 'Basic 4', 'Basic 5', 'Basic 6', 'JHS 1', 'JHS 2', 'JHS 3', 'SHS 1', 'SHS 2', 'SHS 3'].map(l => (
+                                        <option key={l} value={l}>{l}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Teaching Mode</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {(['class_teacher', 'subject_teacher'] as const).map(mode => (
+                                        <button
+                                            key={mode}
+                                            onClick={() => setEditClassData({ ...editClassData, teachingMode: mode })}
+                                            className={`py-3 rounded-xl text-[10px] font-black uppercase tracking-wider border-2 transition-all ${
+                                                editClassData.teachingMode === mode 
+                                                    ? 'bg-indigo-50 border-indigo-600 text-indigo-600 shadow-sm' 
+                                                    : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
+                                            }`}
+                                        >
+                                            {mode === 'class_teacher' ? 'Class Teacher' : 'Subject Teaching'}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="pt-4">
+                                <button
+                                    onClick={handleSaveFullClass}
+                                    className="w-full btn-primary !rounded-2xl py-4"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
-};
+}
 
 export default ClassManagement;

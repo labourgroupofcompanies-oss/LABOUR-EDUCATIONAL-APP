@@ -14,10 +14,15 @@ const FinancialReports: React.FC = () => {
     const [term, setTerm] = useState(currentTerm || 'Term 1');
     const [year, setYear] = useState(currentYear || new Date().getFullYear());
     const [isPrinting, setIsPrinting] = useState(false);
+    // Bumped after syncCloudSalaries completes so the useLiveQuery below
+    // re-runs and picks up any newly-pulled payroll records.
+    const [syncedAt, setSyncedAt] = useState(0);
 
     useEffect(() => {
-        if (currentTerm && term === 'Term 1') setTerm(currentTerm);
-        if (currentYear && year === new Date().getFullYear()) setYear(currentYear);
+        // Always sync term and year from the academic session once it resolves
+        // (it is async, so on first render currentTerm/currentYear may be defaults).
+        if (currentTerm) setTerm(currentTerm);
+        if (currentYear) setYear(currentYear);
     }, [currentTerm, currentYear]);
     const [showBudgetModal, setShowBudgetModal] = useState(false);
     const [verificationStatus, setVerificationStatus] = useState<'idle' | 'checking' | 'verified' | 'failed'>('idle');
@@ -35,6 +40,18 @@ const FinancialReports: React.FC = () => {
 
     const report = useLiveQuery(async () => {
         if (!user?.schoolId) return null;
+
+        // ── Reactive sentinel ──────────────────────────────────────────────────
+        // Dexie's observable zone only tracks IndexedDB reads made directly in
+        // this async callback chain. Because the heavy lifting is delegated to
+        // financialService.getFinancialKPIs (an external function), Dexie may
+        // NOT reliably track the payrollRecords table through that call boundary.
+        // Reading the table here explicitly guarantees a re-run whenever any
+        // payroll record changes locally (e.g., confirmPayout sets status → 'Paid').
+        await eduDb.payrollRecords
+            .where('schoolId').equals(user.schoolId)
+            .count();
+        // ──────────────────────────────────────────────────────────────────────
 
         const kpis = await financialService.getFinancialKPIs(user.schoolId, term, year);
         const budgets = await eduDb.budgets.where('schoolId').equals(user.schoolId).filter(b => b.term === term && b.year === year && !b.isDeleted).toArray();
@@ -58,7 +75,7 @@ const FinancialReports: React.FC = () => {
             expensesByCategory,
             budgetByCategory,
         };
-    }, [user?.schoolId, term, year]);
+    }, [user?.schoolId, term, year, syncedAt]);
 
     useEffect(() => {
         if (user?.schoolId && term && year) {
@@ -68,6 +85,8 @@ const FinancialReports: React.FC = () => {
                     await financialService.syncCloudSalaries(user.schoolId, term, year);
                     setVerificationStatus('verified');
                     setVerifiedAt(Date.now());
+                    // Signal the report live-query to re-run with fresh payroll data
+                    setSyncedAt(Date.now());
                 } catch (err) {
                     console.error('Cloud salary verification failed:', err);
                     setVerificationStatus('failed');

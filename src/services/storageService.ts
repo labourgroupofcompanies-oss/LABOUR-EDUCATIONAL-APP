@@ -14,7 +14,7 @@ export const storageService = {
         type: 'logos' | 'students',
         filename: string,
         blob: Blob
-    ): Promise<{ path: string; publicUrl: string } | null> {
+    ): Promise<{ path: string } | null> {
         if (!schoolId) {
             console.error('[storageService] Missing schoolId');
             return null;
@@ -53,16 +53,12 @@ export const storageService = {
             return null;
         }
 
-        const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path);
-
-        return {
-            path,
-            publicUrl: data.publicUrl,
-        };
+        return { path };
     },
 
     /**
      * Downloads an asset from Supabase Storage and returns it as a Blob.
+     * Note: This works on private buckets if the user is authenticated and RLS permits.
      */
     async downloadAsset(path: string): Promise<Blob | null> {
         if (!path) return null;
@@ -87,9 +83,30 @@ export const storageService = {
     },
 
     /**
-     * Returns a public URL for the given asset path.
+     * Creates a temporary signed URL for a private asset.
+     * @param path The storage path
+     * @param expiresIn Seconds until expiration (default 1 hour)
+     */
+    async getSignedUrl(path: string, expiresIn: number = 3600): Promise<string | null> {
+        if (!path) return null;
+
+        const { data, error } = await supabase.storage
+            .from(BUCKET_NAME)
+            .createSignedUrl(path, expiresIn);
+
+        if (error) {
+            console.error('[storageService] Failed to create signed URL:', error.message);
+            return null;
+        }
+
+        return data.signedUrl;
+    },
+
+    /**
+     * @deprecated getPublicUrl will not work for private buckets. Use getSignedUrl or downloadAsset instead.
      */
     getPublicUrl(path: string): string {
+        console.warn('[storageService] getPublicUrl called on a private bucket. This URL will likely return a 403.');
         if (!path) return '';
 
         const { data } = supabase.storage

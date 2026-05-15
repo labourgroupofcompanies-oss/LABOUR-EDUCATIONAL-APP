@@ -91,4 +91,16 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-dexie': ['dexie', 'dexie-react-hooks'],
+        }
+      }
+    }
+  }
 })

@@ -270,7 +270,7 @@ const TeacherClassList: React.FC = () => {
 
             enriched.push({ ...student, feeStatus, balance });
         }
-        return enriched;
+        return enriched.sort((a, b) => a.fullName.localeCompare(b.fullName));
     }, [selectedClass, user?.schoolId, currentTerm, currentYear]);
 
     const allocatedSubjects = useLiveQuery(async () => {

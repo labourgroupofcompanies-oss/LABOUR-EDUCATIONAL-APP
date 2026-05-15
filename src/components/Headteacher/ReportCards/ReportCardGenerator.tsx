@@ -91,7 +91,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
 
             seen.add(name);
             return true;
-        });
+        }).sort((a, b) => a.fullName.localeCompare(b.fullName));
     }, [selectedClassId, user?.schoolId]);
 
     const schoolData = useLiveQuery(async () => {

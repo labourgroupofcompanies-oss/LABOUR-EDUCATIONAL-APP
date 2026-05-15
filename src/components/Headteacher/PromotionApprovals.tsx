@@ -35,7 +35,7 @@ export default function PromotionApprovals() {
                 toLevel: toClass?.level || '',
                 detectedType: getMovementType(fromClass?.level || '', toClass?.level || '')
             };
-        }));
+        })).then(results => results.sort((a, b) => a.studentName.localeCompare(b.studentName)));
     }, [user?.schoolId]);
 
     const handleApprove = async (req: any) => {

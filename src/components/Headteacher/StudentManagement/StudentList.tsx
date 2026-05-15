@@ -22,6 +22,7 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
     const { user } = useAuth();
     const { currentTerm: term, currentYear: year } = useAcademicSession();
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedLevel, setSelectedLevel] = useState<string>('all');
     const [selectedClass, setSelectedClass] = useState<string>('all');
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [financialFilter, setFinancialFilter] = useState<'all' | 'debtors' | 'paid'>('all');
@@ -79,7 +80,21 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
 
     // Filter Students
     const filteredStudents = students?.filter(student => {
-        const matchesClass = selectedClass === 'all' || student.classId?.toString() === selectedClass;
+        const studentClass = classes?.find(c => c.id === student.classId);
+        
+        // Level Filter
+        const matchesLevel = selectedLevel === 'all' || studentClass?.level === selectedLevel;
+        
+        // Class Filter
+        let matchesClass = true;
+        if (selectedClass === 'all') {
+            matchesClass = true;
+        } else if (selectedClass === 'unassigned') {
+            matchesClass = !student.classId;
+        } else {
+            matchesClass = student.classId?.toString() === selectedClass;
+        }
+
         const matchesSearch = student.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
             student.studentIdString?.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -87,8 +102,8 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
         if (financialFilter === 'debtors') matchesFinancial = (student.balance || 0) > 0;
         if (financialFilter === 'paid') matchesFinancial = (student.balance || 0) <= 0 && student.feeStatus !== 'no-fee';
 
-        return matchesClass && matchesSearch && matchesFinancial;
-    });
+        return matchesLevel && matchesClass && matchesSearch && matchesFinancial;
+    })?.sort((a, b) => a.fullName.localeCompare(b.fullName));
 
     const totalDebt = filteredStudents?.reduce((sum, s) => sum + Math.max(0, s.balance || 0), 0) || 0;
     const paidCount = filteredStudents?.filter(s => s.feeStatus === 'paid' || s.feeStatus === 'overpaid').length || 0;
@@ -194,36 +209,121 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                <div className="relative flex-1">
-                    <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input
-                        type="text"
-                        placeholder="Search by name or ID..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all placeholder:text-gray-400"
-                    />
+            <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                    <div className="relative flex-1 group">
+                        <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors"></i>
+                        <input
+                            type="text"
+                            placeholder="Search by name or ID..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-blue-100 outline-none transition-all placeholder:text-gray-400 font-medium text-sm"
+                        />
+                    </div>
+                    
+                    <div className="flex flex-wrap md:flex-nowrap gap-3">
+                        {/* Level Filter */}
+                        <div className="relative min-w-[140px]">
+                            <select
+                                value={selectedLevel}
+                                onChange={(e) => {
+                                    setSelectedLevel(e.target.value);
+                                    setSelectedClass('all'); // Reset class when level changes
+                                }}
+                                className="w-full pl-10 pr-10 py-3.5 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-blue-100 outline-none transition-all font-bold text-xs uppercase tracking-widest appearance-none text-gray-600"
+                            >
+                                <option value="all">All Levels</option>
+                                {[...new Set(classes?.map(c => c.level))].sort().map(level => (
+                                    <option key={level} value={level}>{level}</option>
+                                ))}
+                            </select>
+                            <i className="fas fa-layer-group absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+                        </div>
+
+                        {/* Class Filter */}
+                        <div className="relative min-w-[160px]">
+                            <select
+                                value={selectedClass}
+                                onChange={(e) => setSelectedClass(e.target.value)}
+                                className="w-full pl-10 pr-10 py-3.5 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-blue-100 outline-none transition-all font-bold text-xs uppercase tracking-widest appearance-none text-gray-600"
+                            >
+                                <option value="all">All Classes</option>
+                                <option value="unassigned">Unassigned</option>
+                                {classes
+                                    ?.filter(cls => selectedLevel === 'all' || cls.level === selectedLevel)
+                                    .map(cls => {
+                                        const count = students?.filter(s => s.classId === cls.id).length || 0;
+                                        return (
+                                            <option key={cls.id} value={cls.id}>
+                                                {cls.name} ({count})
+                                            </option>
+                                        );
+                                    })}
+                            </select>
+                            <i className="fas fa-chalkboard absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+                        </div>
+
+                        {/* Financial Filter */}
+                        <div className="relative min-w-[160px]">
+                            <select
+                                value={financialFilter}
+                                onChange={(e) => setFinancialFilter(e.target.value as any)}
+                                className="w-full pl-10 pr-10 py-3.5 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-blue-100 outline-none transition-all font-bold text-xs uppercase tracking-widest appearance-none text-gray-600"
+                            >
+                                <option value="all">Financial Status</option>
+                                <option value="debtors">Debtors Only</option>
+                                <option value="paid">Fully Paid Only</option>
+                            </select>
+                            <i className="fas fa-hand-holding-dollar absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+                        </div>
+                    </div>
                 </div>
-                <select
-                    value={selectedClass}
-                    onChange={(e) => setSelectedClass(e.target.value)}
-                    className="px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all bg-white min-w-[150px] font-bold text-sm"
-                >
-                    <option value="all">All Classes</option>
-                    {classes?.map(cls => (
-                        <option key={cls.id} value={cls.id}>{cls.name}</option>
-                    ))}
-                </select>
-                <select
-                    value={financialFilter}
-                    onChange={(e) => setFinancialFilter(e.target.value as any)}
-                    className="px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all bg-white min-w-[150px] font-bold text-sm"
-                >
-                    <option value="all">All Statuses</option>
-                    <option value="debtors">Debtors Only</option>
-                    <option value="paid">Fully Paid Only</option>
-                </select>
+
+                {/* Active Filter Badges */}
+                {(selectedLevel !== 'all' || selectedClass !== 'all' || financialFilter !== 'all' || searchQuery) && (
+                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-50">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mr-2">Active Filters:</span>
+                        {selectedLevel !== 'all' && (
+                            <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                {selectedLevel}
+                                <button onClick={() => setSelectedLevel('all')}><i className="fas fa-times"></i></button>
+                            </span>
+                        )}
+                        {selectedClass !== 'all' && (
+                            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                {selectedClass === 'unassigned' ? 'Unassigned' : getClassName(parseInt(selectedClass))}
+                                <button onClick={() => setSelectedClass('all')}><i className="fas fa-times"></i></button>
+                            </span>
+                        )}
+                        {financialFilter !== 'all' && (
+                            <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                {financialFilter === 'debtors' ? 'Debtors' : 'Paid'}
+                                <button onClick={() => setFinancialFilter('all')}><i className="fas fa-times"></i></button>
+                            </span>
+                        )}
+                        {searchQuery && (
+                            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                "{searchQuery}"
+                                <button onClick={() => setSearchQuery('')}><i className="fas fa-times"></i></button>
+                            </span>
+                        )}
+                        <button 
+                            onClick={() => {
+                                setSelectedLevel('all');
+                                setSelectedClass('all');
+                                setFinancialFilter('all');
+                                setSearchQuery('');
+                            }}
+                            className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:underline ml-auto"
+                        >
+                            Clear All
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Financial Summary Banner */}

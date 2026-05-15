@@ -127,7 +127,7 @@ const ResultsEntry: React.FC<ResultsEntryProps> = ({ classId, className, subject
                     if (seenStudents.has(name)) return false;
                     seenStudents.add(name);
                     return true;
-                });
+                }).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
                 const targetClass = await eduDb.classes.get(numericClassId);
                 const targetClassSubject = await eduDb.classSubjects.get(classSubjectId);

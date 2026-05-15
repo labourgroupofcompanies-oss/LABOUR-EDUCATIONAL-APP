@@ -43,7 +43,7 @@ const AttendanceRegister: React.FC = () => {
             if (seen.has(name)) return false;
             seen.add(name);
             return true;
-        });
+        }).sort((a, b) => a.fullName.localeCompare(b.fullName));
     }, [user?.schoolId, selectedClassId]);
 
     useEffect(() => {

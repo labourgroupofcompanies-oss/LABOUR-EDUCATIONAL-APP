@@ -263,13 +263,38 @@ export const syncService = {
                         .eq('id', cloudId);
                     if (error) throw error;
                 } else {
+                    // Try to insert
                     const { data, error } = await supabase
                         .from('subjects')
                         .insert(payload)
                         .select('id')
                         .single();
-                    if (error) throw error;
-                    cloudId = data.id;
+
+                    if (error) {
+                        // ── CONFLICT RESOLUTION (Merge Offline Duplicates) ─────────────
+                        if (error.code === '23505') {
+                            console.info(`[syncService] Subject conflict detected for "${item.name}". Attempting auto-merge...`);
+                            
+                            const { data: existing } = await supabase
+                                .from('subjects')
+                                .select('id')
+                                .eq('school_id', item.schoolId)
+                                .eq('name', item.name)
+                                .eq('is_deleted', false)
+                                .maybeSingle();
+
+                            if (existing?.id) {
+                                console.info(`[syncService] Merging local subject "${item.id}" with cloud identity "${existing.id}"`);
+                                cloudId = existing.id;
+                            } else {
+                                throw error;
+                            }
+                        } else {
+                            throw error;
+                        }
+                    } else {
+                        cloudId = data.id;
+                    }
                 }
 
                 await eduDb.subjects.update(item.id!, {
@@ -314,6 +339,7 @@ export const syncService = {
                     level: item.level,
                     class_teacher_id: teacherCloudId,
                     teaching_mode: item.teachingMode || 'class_teacher',
+                    display_order: item.displayOrder ?? 0,
                     is_deleted: item.isDeleted ?? false,
                     deleted_at: this.toIso(item.deletedAt),
                     created_at: this.toIso(item.createdAt),
@@ -329,13 +355,39 @@ export const syncService = {
                         .eq('id', cloudId);
                     if (error) throw error;
                 } else {
+                    // Try to insert
                     const { data, error } = await supabase
                         .from('classes')
                         .insert(payload)
                         .select('id')
                         .single();
-                    if (error) throw error;
-                    cloudId = data.id;
+
+                    if (error) {
+                        // ── CONFLICT RESOLUTION (Merge Offline Duplicates) ─────────────
+                        if (error.code === '23505' || error.message?.includes('unique_active_class_name_level')) {
+                            console.info(`[syncService] Class conflict detected for "${item.name}". Attempting auto-merge...`);
+                            
+                            const { data: existing } = await supabase
+                                .from('classes')
+                                .select('id')
+                                .eq('school_id', item.schoolId)
+                                .eq('name', item.name)
+                                .eq('level', item.level)
+                                .eq('is_deleted', false)
+                                .maybeSingle();
+
+                            if (existing?.id) {
+                                console.info(`[syncService] Merging local class "${item.id}" with cloud identity "${existing.id}"`);
+                                cloudId = existing.id;
+                            } else {
+                                throw error;
+                            }
+                        } else {
+                            throw error;
+                        }
+                    } else {
+                        cloudId = data.id;
+                    }
                 }
 
                 await eduDb.classes.update(item.id!, {
@@ -401,21 +453,42 @@ export const syncService = {
                     const { error } = await supabase
                         .from('class_subjects')
                         .update(payload)
-                        .eq('id', cloudId)
-                        .select('id')
-                        .single();
+                        .eq('id', cloudId);
 
                     if (error) throw error;
                 } else {
+                    // Try to insert
                     const { data, error } = await supabase
                         .from('class_subjects')
                         .insert(payload)
                         .select('id')
                         .single();
 
-                    if (error) throw error;
+                    if (error) {
+                        // ── CONFLICT RESOLUTION (Merge Offline Duplicates) ─────────────
+                        if (error.code === '23505') {
+                            console.info(`[syncService] Class-Subject conflict detected. Attempting auto-merge...`);
+                            
+                            const { data: existing } = await supabase
+                                .from('class_subjects')
+                                .select('id')
+                                .eq('class_id', classCloudId)
+                                .eq('subject_id', subjectCloudId)
+                                .eq('is_deleted', false)
+                                .maybeSingle();
 
-                    cloudId = data.id;
+                            if (existing?.id) {
+                                console.info(`[syncService] Merging local assignment "${item.id}" with cloud identity "${existing.id}"`);
+                                cloudId = existing.id;
+                            } else {
+                                throw error;
+                            }
+                        } else {
+                            throw error;
+                        }
+                    } else {
+                        cloudId = data.id;
+                    }
                 }
 
                 await eduDb.classSubjects.update(item.id!, {
@@ -1510,8 +1583,8 @@ export const syncService = {
                         console.error(`[syncService] Error syncing ${supabaseTable} (${subBatch.type} batch):`, error);
                         this.lastError = `[Table ${supabaseTable}] ${error.message}`;
                         await Promise.all(batch.map((item: any) => table.update(item.id, { syncStatus: 'pending', syncError: error.message })));
-                    } else if (data) {
-                        // Success: Match returned cloud records back to local records to persist the UUID
+                    } else if (data && data.length > 0) {
+                        // Success with returned rows: match cloud records back to local records to persist UUID
                         for (const cloudItem of data) {
                             const localMatch = batch.find((localItem: any) => {
                                 // Fallback to matching by conflict columns (natural keys) as id_local is not in schema
@@ -1522,18 +1595,15 @@ export const syncService = {
                                     if (col === 'id' && localItem.idCloud) {
                                         localVal = localItem.idCloud;
                                     }
-                                    
                                     const cloudVal = (cloudItem as any)[col] ?? null;
-                                    
                                     // Soft string matching for ID comparisons (UUIDs)
                                     if (localVal === null || cloudVal === null) return localVal === cloudVal;
                                     return String(localVal).toLowerCase() === String(cloudVal).toLowerCase();
                                 });
                             });
-
                             if (localMatch) {
-                                await table.update(localMatch.id, { 
-                                    idCloud: (cloudItem as any).id, 
+                                await table.update(localMatch.id, {
+                                    idCloud: (cloudItem as any).id,
                                     syncStatus: 'synced',
                                     syncError: null,
                                     updatedAt: Date.now()
@@ -1541,6 +1611,20 @@ export const syncService = {
                                 syncedCount++;
                             }
                         }
+                    } else if (!error) {
+                        // Upsert succeeded but Supabase returned no rows (data = [] or null).
+                        // This occurs when pushed values are identical to what's already in the cloud —
+                        // no actual row change, so RETURNING has nothing to emit.
+                        // The data IS confirmed to be in sync, so clear the pending flag.
+                        console.log(`[syncService] ${supabaseTable}: upsert ok, no rows returned — marking ${batch.length} record(s) synced (already up-to-date in cloud).`);
+                        await Promise.all(
+                            batch.map((item: any) => table.update(item.id, {
+                                syncStatus: 'synced',
+                                syncError: null,
+                                updatedAt: Date.now()
+                            }))
+                        );
+                        syncedCount += batch.length;
                     }
                 }
             }
@@ -1647,14 +1731,9 @@ export const syncService = {
                     }).first();
                 }
 
-                if (!match && supabaseTable === 'payroll_records') {
-                    match = await table.where({
-                        schoolId: schoolId,
-                        staffId: mapped.staffId,
-                        month: mapped.month,
-                        year: mapped.year
-                    }).first();
-                }
+                // NOTE: payroll_records matching is handled in the dedicated block below
+                // (after foreign-key resolution). Do NOT attempt a naive staffId match here
+                // because the cloud 'staff_id' is a UUID while locally staffId is an integer.
 
                 if (!match && supabaseTable === 'expenses') {
                     match = await table.where({
@@ -1896,10 +1975,28 @@ export const syncService = {
 
             if (match) {
                 mapped.id = match.id;
-                if (match.syncStatus === 'pending') continue;
+                // Skip overwriting records that are locally pending — EXCEPT for payroll_records
+                // where we must allow the cloud's authoritative status (e.g. 'Paid') to propagate
+                // even if the local record hasn't been pushed yet.
+                if (match.syncStatus === 'pending' && supabaseTable !== 'payroll_records') continue;
             }
 
-            if (mapped.id === null || mapped.id === undefined) delete mapped.id;
+            // For tables with ++id (Dexie auto-increment integer primary key), the cloud UUID
+            // must NOT be stored in `id` — it goes in `idCloud`. mapToCamelCase maps the cloud's
+            // `id` field to `mapped.id` (a UUID string). If we blindly put() this, Dexie stores
+            // the UUID string as the integer PK, creating an unresolvable broken record.
+            // Fix: for non-match cases (new pulls), move cloud UUID → idCloud and clear id.
+            if (this.isUuid(mapped.id)) {
+                // Cloud UUID found in mapped.id — remap to idCloud and let Dexie assign integer id
+                mapped.idCloud = mapped.id;
+                if (match) {
+                    mapped.id = match.id; // Preserve the existing local integer id
+                } else {
+                    delete mapped.id; // Let Dexie auto-increment assign a new integer id
+                }
+            } else if (mapped.id === null || mapped.id === undefined) {
+                delete mapped.id;
+            }
 
             if (supabaseTable === 'schools' && match) {
                 // METADATA PRESERVATION: Prevent cloud pulls from wiping local onboarding facts
