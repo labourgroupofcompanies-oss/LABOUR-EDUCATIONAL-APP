@@ -12,6 +12,20 @@ import { useParentAuth } from '../../hooks/useParentAuth';
 import { showToast } from '../Common/Toast';
 import type { ParentChild } from '../../hooks/ParentAuthContext';
 
+/**
+ * Resolves a student photo to a displayable URL.
+ * - base64 strings (data:image/...) → returned as-is
+ * - full http/https URLs              → returned as-is
+ * - Supabase storage paths            → converted to public URL via getPublicUrl()
+ */
+function resolvePhotoUrl(photoUrl: string | undefined): string | undefined {
+    if (!photoUrl) return undefined;
+    if (photoUrl.startsWith('data:') || photoUrl.startsWith('http')) return photoUrl;
+    // It's a raw storage path like "{schoolId}/students/timestamp_file.png"
+    const { data } = supabase.storage.from('school-assets').getPublicUrl(photoUrl);
+    return data?.publicUrl || undefined;
+}
+
 type ParentTab = 'overview' | 'academics' | 'financials' | 'attendance' | 'announcements';
 
 interface ResultRecord {
@@ -401,9 +415,10 @@ const ParentDashboard: React.FC = () => {
                                 >
                                     {child.photoUrl ? (
                                         <img 
-                                            src={child.photoUrl} 
+                                            src={resolvePhotoUrl(child.photoUrl)} 
                                             alt={child.fullName} 
                                             className="w-8 h-8 rounded-xl object-cover shadow-sm border border-white/20 flex-shrink-0"
+                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                         />
                                     ) : (
                                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-sm flex-shrink-0
@@ -471,9 +486,10 @@ const ParentDashboard: React.FC = () => {
                                             <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
                                                 {activeChild.photoUrl ? (
                                                     <img 
-                                                        src={activeChild.photoUrl} 
+                                                        src={resolvePhotoUrl(activeChild.photoUrl)} 
                                                         alt={activeChild.fullName} 
                                                         className="w-16 h-16 rounded-2xl object-cover border border-slate-100 shadow-sm group-hover:scale-105 transition-transform"
+                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                                     />
                                                 ) : (
                                                     <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-slate-100 flex items-center justify-center text-indigo-600 text-2xl font-black shadow-sm group-hover:scale-105 transition-transform">
@@ -593,9 +609,10 @@ const ParentDashboard: React.FC = () => {
                                                 {activeChild.photoUrl && (
                                                     <div className="w-16 h-16 rounded-full border-2 border-white/20 overflow-hidden mx-auto shadow-md">
                                                         <img 
-                                                            src={activeChild.photoUrl} 
+                                                            src={resolvePhotoUrl(activeChild.photoUrl)} 
                                                             alt={activeChild.fullName} 
                                                             className="w-full h-full object-cover"
+                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                                         />
                                                     </div>
                                                 )}

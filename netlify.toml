@@ -11,4 +11,3 @@
   for = "/*"
   [headers.values]
     Permissions-Policy = "camera=*"
-    Feature-Policy = "camera *"
