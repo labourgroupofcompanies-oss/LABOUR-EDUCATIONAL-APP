@@ -278,6 +278,51 @@ const HeadteacherDashboard: React.FC = () => {
                                 
                                 {/* Quick Operations */}
                                 <div className="lg:col-span-2 space-y-8">
+                                    {/* Parent Portal Sharing Card */}
+                                    <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 rounded-[2.5rem] p-6 text-white shadow-xl shadow-indigo-100 flex flex-col sm:flex-row items-center justify-between gap-6 relative overflow-hidden group">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full translate-x-12 -translate-y-12"></div>
+                                        <div className="relative z-10 space-y-2 flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="px-2.5 py-0.5 bg-white/20 rounded-md text-[8px] font-black uppercase tracking-widest text-blue-100">
+                                                    New Portal
+                                                </span>
+                                                <h3 className="font-black text-sm uppercase tracking-widest">Parent Portal Link</h3>
+                                            </div>
+                                            <p className="text-white/80 text-[10px] md:text-xs font-medium max-w-md leading-relaxed uppercase tracking-tight">
+                                                Share the portal activation link so parents can securely log in to view report cards, fee balances, and attendance.
+                                            </p>
+                                        </div>
+                                        <div className="relative z-10 flex flex-col sm:flex-row items-stretch gap-3 w-full sm:w-auto">
+                                            <button
+                                                onClick={async () => {
+                                                    const portalUrl = `${window.location.origin}/parent/activate`;
+                                                    try {
+                                                        await navigator.clipboard.writeText(portalUrl);
+                                                        showToast('Parent Portal Link copied!', 'success');
+                                                    } catch {
+                                                        showToast('Failed to copy link.', 'error');
+                                                    }
+                                                }}
+                                                className="px-5 py-3.5 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                                            >
+                                                <i className="fas fa-copy"></i>
+                                                Copy Link
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const portalUrl = `${window.location.origin}/parent/activate`;
+                                                    const smsText = `Hello Parent, you can now activate your portal to view your child's report cards and fee balances. Click here to activate: ${portalUrl} and use the primary phone number you registered during admission.`;
+                                                    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(smsText)}`;
+                                                    window.open(whatsappUrl, '_blank');
+                                                }}
+                                                className="px-5 py-3.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 border border-white/20 flex items-center justify-center gap-2"
+                                            >
+                                                <i className="fab fa-whatsapp"></i>
+                                                WhatsApp Invite
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     <div>
                                         <h2 className="text-sm font-black text-slate-800 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
                                             <span className="w-8 h-px bg-slate-200"></span>

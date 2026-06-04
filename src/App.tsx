@@ -14,6 +14,9 @@ import AccountantDashboard from './components/Accountant/AccountantDashboard';
 import ReloadPrompt from './components/Common/ReloadPrompt';
 import OfflineIndicator from './components/Common/OfflineIndicator';
 import ErrorBoundary from './components/Common/ErrorBoundary';
+import ParentLogin from './components/ParentPortal/ParentLogin';
+import ParentDashboard from './components/ParentPortal/ParentDashboard';
+import { ParentAuthProvider, useParentAuth } from './hooks/useParentAuth';
 import './App.css';
 
 /**
@@ -164,8 +167,30 @@ function AppRouter() {
 }
 
 
+function ParentPortalRouter() {
+  const { parent, isAuthenticated, isLoading } = useParentAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-blue-300 font-bold animate-pulse uppercase tracking-widest text-[10px]">Initializing Parent Portal...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated && parent) {
+    return <ParentDashboard />;
+  }
+
+  return <ParentLogin />;
+}
+
 function App() {
   const [hasError, setHasError] = useState(false);
+  const [isParentRoute, setIsParentRoute] = useState(false);
 
   useEffect(() => {
     const handleError = (error: ErrorEvent) => {
@@ -174,6 +199,11 @@ function App() {
     };
     window.addEventListener('error', handleError);
     return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  // Detect route immediately
+  useEffect(() => {
+    setIsParentRoute(window.location.pathname.includes('/parent'));
   }, []);
 
   if (hasError) {
@@ -191,6 +221,19 @@ function App() {
           </button>
         </div>
       </div>
+    );
+  }
+
+  if (isParentRoute) {
+    return (
+      <ParentAuthProvider>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 font-sans text-slate-800">
+          <ParentPortalRouter />
+          <ToastContainer />
+          <ConfirmDialogContainer />
+          <ReloadPrompt />
+        </div>
+      </ParentAuthProvider>
     );
   }
 
