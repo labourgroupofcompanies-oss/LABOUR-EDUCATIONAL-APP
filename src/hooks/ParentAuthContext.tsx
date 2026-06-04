@@ -8,6 +8,7 @@ export interface ParentChild {
     className?: string;
     schoolId: string;
     schoolName?: string;
+    schoolLogoUrl?: string; // School logo (base64 or storage URL)
     arrears: number;
     photoUrl?: string;
 }

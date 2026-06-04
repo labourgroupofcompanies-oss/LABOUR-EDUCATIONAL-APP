@@ -360,9 +360,18 @@ const ParentDashboard: React.FC = () => {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
                 <div className="max-w-4xl mx-auto flex items-center justify-between gap-6 relative z-10">
                     <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white border border-white/20">
-                            <i className="fas fa-user-shield text-xl"></i>
-                        </div>
+                        {/* School logo — shown from active child's school */}
+                        {activeChild?.schoolLogoUrl ? (
+                            <img
+                                src={activeChild.schoolLogoUrl}
+                                alt={activeChild.schoolName ?? 'School'}
+                                className="w-12 h-12 rounded-2xl object-contain border border-white/20 bg-white/10 backdrop-blur-md p-1"
+                            />
+                        ) : (
+                            <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white border border-white/20">
+                                <i className="fas fa-school text-xl"></i>
+                            </div>
+                        )}
                         <div>
                             <p className="text-[7px] font-black text-blue-300 uppercase tracking-[0.25em]">Connected Guardian</p>
                             <h2 className="text-md font-black uppercase tracking-wide leading-none mt-1">{parent?.guardianName}</h2>
@@ -565,7 +574,19 @@ const ParentDashboard: React.FC = () => {
                                                 <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[8px] font-black uppercase tracking-[0.2em] border border-white/10 inline-block">
                                                     Official Report Card
                                                 </span>
-                                                <h2 className="text-xl font-black uppercase tracking-widest leading-none">{activeChild.schoolName ?? 'School'}</h2>
+                                                {/* School Logo on Report Card */}
+                                                {activeChild.schoolLogoUrl ? (
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <img
+                                                            src={activeChild.schoolLogoUrl}
+                                                            alt={activeChild.schoolName ?? 'School'}
+                                                            className="w-16 h-16 rounded-2xl object-contain bg-white/10 border border-white/20 p-1 mx-auto"
+                                                        />
+                                                        <h2 className="text-xl font-black uppercase tracking-widest leading-none">{activeChild.schoolName ?? 'School'}</h2>
+                                                    </div>
+                                                ) : (
+                                                    <h2 className="text-xl font-black uppercase tracking-widest leading-none">{activeChild.schoolName ?? 'School'}</h2>
+                                                )}
                                                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                                                     Continuous Assessment & Term Examination Sheet
                                                 </p>
