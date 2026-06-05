@@ -6,7 +6,7 @@
 // offline-first cached report cards, SVG performance charts, payment receipt ledgers,
 // announcement boards, and attendance calendars.
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../../supabaseClient';
 import { useParentAuth } from '../../hooks/useParentAuth';
 import { showToast } from '../Common/Toast';
@@ -101,6 +101,49 @@ const ParentDashboard: React.FC = () => {
             window.removeEventListener('offline', handleOffline);
         };
     }, [activeChild]);
+
+    // Helper to determine if a tab contains unseen updates (i.e. different from last marked seen)
+    const hasUnseenUpdate = useCallback((tab: ParentTab): boolean => {
+        if (!activeChild?.id) return false;
+        if (tab === 'overview') return false;
+
+        let currentDataStr = '';
+        let hasData = false;
+
+        if (tab === 'academics') {
+            currentDataStr = JSON.stringify(results);
+            hasData = results.length > 0;
+        } else if (tab === 'financials') {
+            currentDataStr = JSON.stringify(feeHistory);
+            hasData = feeHistory.length > 0;
+        } else if (tab === 'attendance') {
+            currentDataStr = JSON.stringify(attendance);
+            hasData = attendance.length > 0;
+        } else if (tab === 'announcements') {
+            currentDataStr = JSON.stringify(announcements);
+            hasData = announcements.length > 0;
+        }
+
+        if (!hasData) return false;
+
+        const seenDataStr = localStorage.getItem(`seen_${tab}_${activeChild.id}`);
+        return seenDataStr !== currentDataStr;
+    }, [activeChild?.id, results, feeHistory, attendance, announcements]);
+
+    // Automatically mark the active tab as seen
+    useEffect(() => {
+        if (!activeChild?.id) return;
+
+        if (activeTab === 'academics' && results.length > 0) {
+            localStorage.setItem(`seen_academics_${activeChild.id}`, JSON.stringify(results));
+        } else if (activeTab === 'financials' && feeHistory.length > 0) {
+            localStorage.setItem(`seen_financials_${activeChild.id}`, JSON.stringify(feeHistory));
+        } else if (activeTab === 'attendance' && attendance.length > 0) {
+            localStorage.setItem(`seen_attendance_${activeChild.id}`, JSON.stringify(attendance));
+        } else if (activeTab === 'announcements' && announcements.length > 0) {
+            localStorage.setItem(`seen_announcements_${activeChild.id}`, JSON.stringify(announcements));
+        }
+    }, [activeTab, activeChild?.id, results, feeHistory, attendance, announcements]);
 
     // Local Storage Caching Keys
     const getCacheKey = (childId: string) => `labour_parent_cache_${childId}`;
@@ -460,13 +503,16 @@ const ParentDashboard: React.FC = () => {
                                 <button
                                     key={t.key}
                                     onClick={() => setActiveTab(t.key)}
-                                    className={`flex-1 min-w-[70px] flex flex-col sm:flex-row items-center justify-center gap-1.5 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all active:scale-95
+                                    className={`relative flex-1 min-w-[70px] flex flex-col sm:flex-row items-center justify-center gap-1.5 py-3 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all active:scale-95
                                         ${activeTab === t.key
                                             ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100'
                                             : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                                 >
                                     <i className={`fas ${t.icon} text-xs`}></i>
                                     <span>{t.label}</span>
+                                    {hasUnseenUpdate(t.key) && (
+                                        <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse border-2 border-white shadow-sm"></span>
+                                    )}
                                 </button>
                             ))}
                         </div>
@@ -531,8 +577,11 @@ const ParentDashboard: React.FC = () => {
                                             {/* Financial metric overview */}
                                             <div 
                                                 onClick={() => setActiveTab('financials')}
-                                                className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4 hover:shadow-md cursor-pointer transition-all active:scale-[0.98]"
+                                                className="relative bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4 hover:shadow-md cursor-pointer transition-all active:scale-[0.98]"
                                             >
+                                                {hasUnseenUpdate('financials') && (
+                                                    <span className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white shadow-sm animate-pulse"></span>
+                                                )}
                                                 <div className="flex items-center justify-between">
                                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Outstanding Arrears</span>
                                                     <div className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center text-xs">
@@ -556,8 +605,11 @@ const ParentDashboard: React.FC = () => {
                                             {/* Urgent Announcement Alert widget */}
                                             <div 
                                                 onClick={() => setActiveTab('announcements')}
-                                                className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4 hover:shadow-md cursor-pointer transition-all active:scale-[0.98] flex flex-col justify-between"
+                                                className="relative bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4 hover:shadow-md cursor-pointer transition-all active:scale-[0.98] flex flex-col justify-between"
                                             >
+                                                {hasUnseenUpdate('announcements') && (
+                                                    <span className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white shadow-sm animate-pulse"></span>
+                                                )}
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between">
                                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Latest Announcement</span>
