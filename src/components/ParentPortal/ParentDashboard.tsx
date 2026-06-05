@@ -63,7 +63,7 @@ interface AttendanceRecord {
 }
 
 const ParentDashboard: React.FC = () => {
-    const { parent, logoutParent } = useParentAuth();
+    const { parent, logoutParent, refreshParentProfile } = useParentAuth();
 
     // Sibling switcher state
     const [selectedChildIndex, setSelectedChildIndex] = useState<number>(0);
@@ -204,6 +204,11 @@ const ParentDashboard: React.FC = () => {
 
         setLoadingData(true);
         try {
+            // Background refresh parent profile to get latest dynamic arrears, school logos, sibling photos, class name updates
+            refreshParentProfile().catch(err => {
+                console.error('[ParentDashboard] Background profile refresh failed:', err);
+            });
+
             // Parallel fetches from Supabase using secure cryptographic database definer RPCs
             const [resultsRes, feePaymentsRes, announcementsRes, attendanceRes] = await Promise.all([
                 // 1. Fetch Academic Results
