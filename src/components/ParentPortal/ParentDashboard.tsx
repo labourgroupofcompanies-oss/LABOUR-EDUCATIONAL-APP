@@ -418,14 +418,19 @@ const ParentDashboard: React.FC = () => {
                                             src={resolvePhotoUrl(child.photoUrl)} 
                                             alt={child.fullName} 
                                             className="w-8 h-8 rounded-xl object-cover shadow-sm border border-white/20 flex-shrink-0"
-                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                            onError={(e) => {
+                                                const img = e.target as HTMLImageElement;
+                                                img.style.display = 'none';
+                                                const fb = img.nextElementSibling as HTMLElement;
+                                                if (fb) fb.style.display = 'flex';
+                                            }}
                                         />
-                                    ) : (
-                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-sm flex-shrink-0
-                                            ${selectedChildIndex === idx ? 'bg-indigo-600 text-white' : 'bg-white/10 text-white'}`}>
-                                            {child.fullName.charAt(0)}
-                                        </div>
-                                    )}
+                                    ) : null}
+                                    <div className={`w-8 h-8 rounded-xl items-center justify-center font-black text-xs shadow-sm flex-shrink-0
+                                        ${selectedChildIndex === idx ? 'bg-indigo-600 text-white' : 'bg-white/10 text-white'}
+                                        ${child.photoUrl ? 'hidden' : 'flex'}`}>
+                                        {child.fullName.charAt(0)}
+                                    </div>
                                     <div>
                                         <h4 className="font-black text-xs uppercase tracking-tight">{child.fullName}</h4>
                                         <p className={`text-[8px] font-bold uppercase mt-0.5 tracking-wider ${selectedChildIndex === idx ? 'text-indigo-600/70' : 'text-white/40'}`}>
@@ -489,13 +494,17 @@ const ParentDashboard: React.FC = () => {
                                                         src={resolvePhotoUrl(activeChild.photoUrl)} 
                                                         alt={activeChild.fullName} 
                                                         className="w-16 h-16 rounded-2xl object-cover border border-slate-100 shadow-sm group-hover:scale-105 transition-transform"
-                                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                        onError={(e) => {
+                                                            const img = e.target as HTMLImageElement;
+                                                            img.style.display = 'none';
+                                                            const fb = img.nextElementSibling as HTMLElement;
+                                                            if (fb) fb.style.display = 'flex';
+                                                        }}
                                                     />
-                                                ) : (
-                                                    <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-slate-100 flex items-center justify-center text-indigo-600 text-2xl font-black shadow-sm group-hover:scale-105 transition-transform">
-                                                        {activeChild.fullName.charAt(0)}
-                                                    </div>
-                                                )}
+                                                ) : null}
+                                                <div className={`w-16 h-16 rounded-2xl bg-indigo-50 border border-slate-100 items-center justify-center text-indigo-600 text-2xl font-black shadow-sm group-hover:scale-105 transition-transform ${activeChild.photoUrl ? 'hidden' : 'flex'}`}>
+                                                    {activeChild.fullName.charAt(0)}
+                                                </div>
                                                 <div className="space-y-1">
                                                     <h3 className="text-lg font-black text-slate-800 leading-none uppercase tracking-tight">{activeChild.fullName}</h3>
                                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -606,16 +615,22 @@ const ParentDashboard: React.FC = () => {
                                                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
                                                     Continuous Assessment & Term Examination Sheet
                                                 </p>
-                                                {activeChild.photoUrl && (
-                                                    <div className="w-16 h-16 rounded-full border-2 border-white/20 overflow-hidden mx-auto shadow-md">
-                                                        <img 
-                                                            src={resolvePhotoUrl(activeChild.photoUrl)} 
-                                                            alt={activeChild.fullName} 
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                                        />
-                                                    </div>
-                                                )}
+                                                {activeChild.photoUrl ? (
+                                                    <img 
+                                                        src={resolvePhotoUrl(activeChild.photoUrl)} 
+                                                        alt={activeChild.fullName} 
+                                                        className="w-16 h-16 rounded-full border-2 border-white/20 object-cover mx-auto shadow-md"
+                                                        onError={(e) => {
+                                                            const img = e.target as HTMLImageElement;
+                                                            img.style.display = 'none';
+                                                            const fb = img.nextElementSibling as HTMLElement;
+                                                            if (fb) fb.style.display = 'flex';
+                                                        }}
+                                                    />
+                                                ) : null}
+                                                <div className={`w-16 h-16 rounded-full border-2 border-white/20 items-center justify-center text-white text-xl font-black mx-auto shadow-md bg-indigo-600 ${activeChild.photoUrl ? 'hidden' : 'flex'}`}>
+                                                    {activeChild.fullName.charAt(0)}
+                                                </div>
                                                 <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto pt-2 text-[8px] font-black uppercase tracking-wider text-slate-300">
                                                     <div className="text-left bg-white/5 p-2 rounded-xl border border-white/5">
                                                         <span className="text-white/40 block text-[6px] mb-0.5">Student Name</span>
