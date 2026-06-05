@@ -59,7 +59,7 @@ BEGIN
                     (SELECT tf.term_fee_amount 
                      FROM public.fee_structures tf
                      WHERE tf.school_id = s.school_id 
-                       AND tf.class_id_local = s.class_id_local 
+                       AND tf.class_id_local = cl.id_local 
                        AND tf.term = COALESCE(
                            (SELECT val.value #>> '{}' FROM public.settings val WHERE val.school_id = s.school_id AND val.key = 'currentTerm'),
                            'Term 1'
