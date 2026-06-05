@@ -21,6 +21,7 @@ const NotificationComposer: React.FC<Props> = ({ onClose, onPosted }) => {
     const [title, setTitle] = useState('');
     const [message, setMessage] = useState('');
     const [priority, setPriority] = useState<'normal' | 'important' | 'urgent'>('normal');
+    const [audience, setAudience] = useState<'staff' | 'parents' | 'all'>('staff');
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -43,11 +44,17 @@ const NotificationComposer: React.FC<Props> = ({ onClose, onPosted }) => {
                 message: message.trim(),
                 priority,
                 posted_by: user.id,
+                audience,
             });
 
             if (error) throw error;
 
-            showToast('Notification sent to all staff!', 'success');
+            let successMsg = 'Notification sent!';
+            if (audience === 'staff') successMsg = 'Notification sent to all staff!';
+            else if (audience === 'parents') successMsg = 'Notification sent to all parents!';
+            else if (audience === 'all') successMsg = 'Notification sent to everyone!';
+
+            showToast(successMsg, 'success');
             setAnimateIn(false);
             setTimeout(onPosted, 300);
         } catch (err: any) {
@@ -84,7 +91,11 @@ const NotificationComposer: React.FC<Props> = ({ onClose, onPosted }) => {
                         </div>
                         <div>
                             <h2 className="text-white font-black text-lg">Post Notification</h2>
-                            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">All staff will see this</p>
+                            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">
+                                {audience === 'staff' && 'All staff will see this'}
+                                {audience === 'parents' && 'All parents will see this'}
+                                {audience === 'all' && 'Everyone will see this'}
+                            </p>
                         </div>
                     </div>
                     <button
@@ -124,6 +135,32 @@ const NotificationComposer: React.FC<Props> = ({ onClose, onPosted }) => {
                         <p className="text-right text-[10px] text-gray-300 font-bold mt-1">
                             {message.length}/500
                         </p>
+                    </div>
+
+                    {/* Target Audience Selector */}
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block">Target Audience</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {[
+                                { key: 'staff' as const, label: 'Staff Only', icon: 'fa-user-tie', color: 'text-indigo-600', bg: 'bg-indigo-50', activeBg: 'bg-indigo-600' },
+                                { key: 'parents' as const, label: 'Parents Only', icon: 'fa-user-friends', color: 'text-emerald-600', bg: 'bg-emerald-50', activeBg: 'bg-emerald-600' },
+                                { key: 'all' as const, label: 'Everyone', icon: 'fa-users', color: 'text-sky-600', bg: 'bg-sky-50', activeBg: 'bg-sky-600' }
+                            ].map(aud => (
+                                <button
+                                    key={aud.key}
+                                    type="button"
+                                    onClick={() => setAudience(aud.key)}
+                                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all active:scale-95
+                                        ${audience === aud.key
+                                            ? `${aud.activeBg} text-white border-transparent shadow-lg`
+                                            : `${aud.bg} ${aud.color} border-transparent hover:border-gray-200`
+                                        }`}
+                                >
+                                    <i className={`fas ${aud.icon} text-lg ${audience === aud.key ? 'text-white' : ''}`}></i>
+                                    <span className="text-[9px] font-black uppercase tracking-widest">{aud.label}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Priority Selector */}
@@ -170,7 +207,10 @@ const NotificationComposer: React.FC<Props> = ({ onClose, onPosted }) => {
                             </span>
                         ) : (
                             <span className="flex items-center justify-center gap-2">
-                                <i className="fas fa-paper-plane"></i> Send to All Staff
+                                <i className="fas fa-paper-plane"></i>{' '}
+                                {audience === 'staff' && 'Send to All Staff'}
+                                {audience === 'parents' && 'Send to Parents'}
+                                {audience === 'all' && 'Send to Everyone'}
                             </span>
                         )}
                     </button>

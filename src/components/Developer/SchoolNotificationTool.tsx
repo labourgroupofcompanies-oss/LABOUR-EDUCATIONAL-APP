@@ -38,7 +38,8 @@ const SchoolNotificationTool: React.FC = () => {
                     title,
                     message,
                     priority,
-                    posted_by: user.id
+                    posted_by: user.id,
+                    audience: 'staff'
                 }]);
 
             if (postError) throw postError;

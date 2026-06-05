@@ -18,6 +18,7 @@ interface Notification {
     message: string;
     priority: 'normal' | 'important' | 'urgent';
     posted_by: string;
+    audience: 'staff' | 'parents' | 'all';
     created_at: string;
     is_read?: boolean;
 }
@@ -68,6 +69,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ canCompose = false 
                 .from('school_notifications')
                 .select('*')
                 .eq('school_id', user.schoolId)
+                .in('audience', ['staff', 'all'])
                 .order('created_at', { ascending: false })
                 .limit(50);
 
