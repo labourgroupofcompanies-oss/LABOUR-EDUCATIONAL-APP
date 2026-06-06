@@ -79,6 +79,38 @@ const ParentDashboard: React.FC = () => {
     const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
     
     const [loadingData, setLoadingData] = useState(false);
+
+    // Selected academic session states for report card filtering
+    const [selectedTermYear, setSelectedTermYear] = useState<{ term: string; year: number } | null>(null);
+
+    // Extract unique terms/years and sort by year desc, then term desc
+    const availableTerms = useMemo(() => {
+        const map = new Map<string, { term: string; year: number }>();
+        results.forEach(r => {
+            const key = `${r.term}-${r.year}`;
+            if (!map.has(key)) {
+                map.set(key, { term: r.term, year: r.year });
+            }
+        });
+        return Array.from(map.values()).sort((a, b) => {
+            if (b.year !== a.year) return b.year - a.year;
+            return b.term.localeCompare(a.term);
+        });
+    }, [results]);
+
+    // Default to the most recent term/year on results load
+    useEffect(() => {
+        if (availableTerms.length > 0) {
+            setSelectedTermYear(availableTerms[0]);
+        } else {
+            setSelectedTermYear(null);
+        }
+    }, [availableTerms]);
+
+    const displayedResults = useMemo(() => {
+        if (!selectedTermYear) return [];
+        return results.filter(r => r.term === selectedTermYear.term && r.year === selectedTermYear.year);
+    }, [results, selectedTermYear]);
     const [isOffline, setIsOffline] = useState(!navigator.onLine);
     const [cacheTimestamp, setCacheTimestamp] = useState<string | null>(null);
 
@@ -711,6 +743,40 @@ const ParentDashboard: React.FC = () => {
                                 {/* TAB 2: ACADEMIC RESULTS & DIGITAL REPORT CARDS */}
                                 {activeTab === 'academics' && (
                                     <div className="space-y-6 animate-fadeIn">
+                                        {/* Term & Year Filter Selection */}
+                                        {availableTerms.length > 1 && (
+                                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm print:hidden">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
+                                                        <i className="fas fa-filter"></i>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Filter Report Card</p>
+                                                        <p className="text-xs font-bold text-slate-700 mt-1">Select academic session report to view</p>
+                                                    </div>
+                                                </div>
+                                                <div className="relative min-w-[200px] w-full sm:w-auto">
+                                                    <select
+                                                        value={selectedTermYear ? `${selectedTermYear.term}-${selectedTermYear.year}` : ''}
+                                                        onChange={(e) => {
+                                                            const [termVal, yearVal] = e.target.value.split('-');
+                                                            setSelectedTermYear({ term: termVal, year: parseInt(yearVal, 10) });
+                                                        }}
+                                                        className="w-full bg-slate-50 border border-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-xs focus:outline-none focus:border-indigo-500 appearance-none cursor-pointer pr-10"
+                                                    >
+                                                        {availableTerms.map((ty, idx) => (
+                                                            <option key={idx} value={`${ty.term}-${ty.year}`}>
+                                                                {ty.term} ({ty.year})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-[10px]">
+                                                        <i className="fas fa-chevron-down"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Pixel-perfect Digital Report Card */}
                                         <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-xl overflow-hidden print:border-none print:shadow-none" id="digital-report-card">
                                             {/* Report Card Header */}
@@ -732,7 +798,7 @@ const ParentDashboard: React.FC = () => {
                                                     <h2 className="text-xl font-black uppercase tracking-widest leading-none">{activeChild.schoolName ?? 'School'}</h2>
                                                 )}
                                                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-                                                    Continuous Assessment & Term Examination Sheet
+                                                    Continuous Assessment & Term Examination Sheet {selectedTermYear ? `— ${selectedTermYear.term} (${selectedTermYear.year})` : ''}
                                                 </p>
                                                 {activeChild.photoUrl ? (
                                                     <img 
@@ -764,7 +830,7 @@ const ParentDashboard: React.FC = () => {
 
                                             {/* Report Card Body Table */}
                                             <div className="p-6 md:p-8">
-                                                {results.length > 0 ? (
+                                                {displayedResults.length > 0 ? (
                                                     <div className="space-y-6">
                                                         <div className="overflow-x-auto rounded-2xl border border-slate-100">
                                                             <table className="w-full text-left border-collapse min-w-[500px]">
@@ -779,7 +845,7 @@ const ParentDashboard: React.FC = () => {
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody className="divide-y divide-slate-100 text-xs font-bold text-slate-600">
-                                                                    {results.map((r, idx) => (
+                                                                    {displayedResults.map((r, idx) => (
                                                                         <tr key={idx} className="hover:bg-slate-50/50">
                                                                             <td className="px-4 py-4.5 text-slate-800 font-black uppercase tracking-tight">{r.subject_name}</td>
                                                                             <td className="px-4 py-4.5 text-center font-bold text-slate-500">{r.ca_total}</td>
@@ -833,7 +899,7 @@ const ParentDashboard: React.FC = () => {
                                         </div>
 
                                         {/* Action buttons (Print Report Card) */}
-                                        {results.length > 0 && (
+                                        {displayedResults.length > 0 && (
                                             <button
                                                 onClick={() => window.print()}
                                                 className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-slate-800 text-white hover:bg-slate-900 shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2"
