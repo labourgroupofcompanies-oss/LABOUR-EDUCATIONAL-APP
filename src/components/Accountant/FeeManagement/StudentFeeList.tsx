@@ -70,7 +70,7 @@ const StudentFeeList: React.FC = () => {
                 : rawArrears;
 
             const feeAmount = termFeeAmount + residualArrears; // Total Due this term
-            const balance = feeAmount - amountPaid;             // can be negative (overpaid)
+            const balance = feeAmount - amountPaid;
             const cls = allClasses.find((c: any) => c.id === student.classId);
 
             let status: StudentFeeRow['status'] = 'no-fee';
@@ -237,10 +237,22 @@ const StudentFeeList: React.FC = () => {
                                     <td className="px-8 py-5 font-black text-slate-600 text-sm">{fmt(row.feeAmount)}</td>
                                     <td className="px-8 py-5 font-black text-emerald-600 text-sm">{fmt(row.amountPaid)}</td>
                                     <td className="px-8 py-5 font-black text-sm">
-                                        {row.status === 'overpaid'
-                                            ? <span className="text-cyan-600">+{fmt(Math.abs(row.balance))} <span className="text-[8px] font-black uppercase ml-1 opacity-50 bg-cyan-100 px-1 py-0.5 rounded">Credit</span></span>
-                                            : <span className="text-rose-600">{fmt(row.balance)}</span>
-                                        }
+                                        {row.status === 'overpaid' ? (
+                                            <span className="text-cyan-600">
+                                                {fmt(Math.abs(row.balance))}
+                                                <span className="text-[8px] font-black uppercase ml-2 px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700">Overpaid</span>
+                                            </span>
+                                        ) : row.balance > 0 ? (
+                                            <span className="text-rose-600">
+                                                {fmt(row.balance)}
+                                                <span className="text-[8px] font-black uppercase ml-2 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700">Owing</span>
+                                            </span>
+                                        ) : (
+                                            <span className="text-emerald-600">
+                                                GHS 0.00
+                                                <span className="text-[8px] font-black uppercase ml-2 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">Not Owing</span>
+                                            </span>
+                                        )}
                                     </td>
                                     <td className="px-8 py-5">{statusBadge(row.status)}</td>
                                     <td className="px-8 py-5 text-right flex items-center justify-end gap-2">
@@ -293,11 +305,20 @@ const StudentFeeList: React.FC = () => {
                             </div>
                             <div className="col-span-2 pt-3 border-t border-slate-100">
                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                    {row.status === 'overpaid' ? 'Credit Amount' : 'Outstanding Balance'}
+                                    Outstanding Balance
                                 </p>
-                                <p className={`text-xl font-black tracking-tight ${row.status === 'overpaid' ? 'text-cyan-600' : 'text-rose-600'}`}>
-                                    {fmt(Math.abs(row.balance))}
-                                </p>
+                                <div className="flex flex-wrap items-center gap-2 mt-1">
+                                    <p className={`text-xl font-black tracking-tight ${row.status === 'overpaid' ? 'text-cyan-600' : (row.balance > 0 ? 'text-rose-600' : 'text-emerald-600')}`}>
+                                        {row.status === 'overpaid' ? fmt(Math.abs(row.balance)) : fmt(row.balance)}
+                                    </p>
+                                    {row.status === 'overpaid' ? (
+                                        <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700">Overpaid</span>
+                                    ) : row.balance > 0 ? (
+                                        <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-50 text-rose-700">Owing</span>
+                                    ) : (
+                                        <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">Not Owing</span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         <div className="p-6 pt-0 bg-slate-50/50 flex gap-3">

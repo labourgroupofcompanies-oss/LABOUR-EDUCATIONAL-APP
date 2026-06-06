@@ -1,5 +1,5 @@
 -- ============================================================================
--- OBSOLETE: Dynamic Parent Arrears
+-- OBSOLETE: Fix Classes id_local
 -- Description: This migration is superseded by 20260605_fix_parent_balance.sql
 -- Please run 20260605_fix_parent_balance.sql instead.
 -- ============================================================================

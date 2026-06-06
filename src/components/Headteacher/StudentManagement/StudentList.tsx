@@ -182,6 +182,65 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
         );
     };
 
+    const exportToSpreadsheet = () => {
+        if (!filteredStudents || filteredStudents.length === 0) {
+            showToast('No students to export.', 'warning');
+            return;
+        }
+
+        const headers = [
+            'Student ID',
+            'Full Name',
+            'Class',
+            'Gender',
+            'Date of Birth',
+            'Type',
+            'Guardian Name',
+            'Guardian Contact',
+            'Secondary Contact',
+            'Outstanding Balance (GHS)',
+            'Status'
+        ];
+
+        const rows = filteredStudents.map(student => [
+            student.studentIdString || '',
+            student.fullName || '',
+            getClassName(student.classId || 0),
+            student.gender || '',
+            student.dateOfBirth || '',
+            student.isBoarding ? 'Boarding' : 'Day',
+            student.guardianName || '',
+            student.guardianPrimaryContact || '',
+            student.guardianSecondaryContact || '',
+            (student.balance ?? 0).toFixed(2),
+            student.feeStatus || 'no-fee'
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => 
+                row.map(val => {
+                    const stringVal = String(val);
+                    if (stringVal.includes(',') || stringVal.includes('"') || stringVal.includes('\n') || stringVal.includes('\r')) {
+                        return `"${stringVal.replace(/"/g, '""')}"`;
+                    }
+                    return stringVal;
+                }).join(',')
+            )
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `students_directory_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('Students list exported successfully.', 'success');
+    };
+
     return (
         <div className="space-y-6">
             {/* Header / Actions */}
@@ -199,6 +258,12 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
                             <i className="fas fa-exchange-alt"></i> Move ({selectedStudentIds.length})
                         </button>
                     )}
+                    <button
+                        onClick={exportToSpreadsheet}
+                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 px-6 py-3 rounded-2xl flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                    >
+                        <i className="fas fa-file-excel text-emerald-600"></i> Export CSV
+                    </button>
                     <button
                         onClick={onAdd}
                         className="btn-primary px-6 py-3"
@@ -403,15 +468,15 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
                                 {statusBadge(student.feeStatus)}
                             </div>
 
-                            {typeof student.balance === 'number' && (
-                                <p className={`text-[10px] font-black mt-2 ${student.balance > 0 ? 'text-red-500' : student.balance < 0 ? 'text-cyan-600' : 'text-green-600'}`}>
-                                    {student.balance > 0 
-                                        ? `DEBT: GHS ${student.balance.toFixed(2)}` 
-                                        : student.balance < 0 
-                                            ? `CREDIT: GHS ${Math.abs(student.balance).toFixed(2)}` 
-                                            : `CLEARED: GHS 0.00`}
-                                </p>
-                            )}
+                             {typeof student.balance === 'number' && (
+                                 <p className={`text-[10px] font-black mt-2 ${student.balance > 0 ? 'text-red-500' : student.balance < 0 ? 'text-cyan-600' : 'text-green-600'}`}>
+                                     {student.balance > 0 
+                                         ? `DEBT: GHS ${student.balance.toFixed(2)}` 
+                                         : student.balance < 0
+                                         ? `CREDIT: GHS ${Math.abs(student.balance).toFixed(2)}`
+                                         : `CLEARED: GHS 0.00`}
+                                 </p>
+                             )}
                         </div>
 
                         {/* Arrow Icon */}

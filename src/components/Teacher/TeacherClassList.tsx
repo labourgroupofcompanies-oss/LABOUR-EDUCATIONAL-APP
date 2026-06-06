@@ -62,9 +62,9 @@ const StudentCard: React.FC<StudentCardProps> = ({ student }) => {
                             <span className={`text-[10px] font-black ${student.balance > 0 ? 'text-red-500' : student.balance < 0 ? 'text-cyan-600' : 'text-green-600'}`}>
                                 {student.balance > 0 
                                     ? `DEBT: GHS ${student.balance.toFixed(2)}` 
-                                    : student.balance < 0 
-                                        ? `CREDIT: GHS ${Math.abs(student.balance).toFixed(2)}` 
-                                        : `CLEARED: GHS 0.00`}
+                                    : student.balance < 0
+                                    ? `CREDIT: GHS ${Math.abs(student.balance).toFixed(2)}`
+                                    : `CLEARED: GHS 0.00`}
                             </span>
                         )}
                     </div>

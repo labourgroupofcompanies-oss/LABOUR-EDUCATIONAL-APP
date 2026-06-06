@@ -37,6 +37,29 @@ export const syncService = {
             return { success: false, pending: 0, error: this.lastError };
         }
 
+        // One-time client migration to force re-sync of classes and fee structures with new id_local column mappings
+        if (schoolId && !localStorage.getItem('force_sync_classes_structures_v3')) {
+            try {
+                await eduDb.classes.toCollection().modify({ syncStatus: 'pending' });
+                await eduDb.feeStructures.toCollection().modify({ syncStatus: 'pending' });
+                localStorage.setItem('force_sync_classes_structures_v3', 'true');
+                console.log('[syncService] Forced classes and fee_structures to pending status for re-sync.');
+            } catch (err) {
+                console.error('[syncService] Force pending status failed:', err);
+            }
+        }
+
+        // One-time client migration to force re-sync of students with id_local column mappings
+        if (schoolId && !localStorage.getItem('force_sync_students_id_local_v1')) {
+            try {
+                await eduDb.students.toCollection().modify({ syncStatus: 'pending' });
+                localStorage.setItem('force_sync_students_id_local_v1', 'true');
+                console.log('[syncService] Forced students to pending status to sync id_local.');
+            } catch (err) {
+                console.error('[syncService] Force pending status for students failed:', err);
+            }
+        }
+
         if (this._syncLock) return { success: false, pending: 0, error: 'Sync in progress' };
         this._syncLock = true;
         this.lastError = null;
@@ -45,35 +68,45 @@ export const syncService = {
         try {
             console.log('[syncService] Starting sync...');
 
+            const runStep = async (label: string, action: () => Promise<number>) => {
+                try {
+                    const count = await action();
+                    totalSynced += count;
+                } catch (err: any) {
+                    console.error(`[syncService] Sync step failed for ${label}:`, err);
+                    this.lastError = `Step ${label} failed: ${err?.message || err}`;
+                }
+            };
+
             // Custom sync for normalized class system
             // Results-related sync respects relational order
             // 1. Establish Identities First (Required for UUID resolution)
-            totalSynced += await this.syncEntity(schoolId, db.schools, 'schools', 'schoolId');
-            totalSynced += await this.syncStaffProfiles(schoolId);
+            await runStep('schools', () => this.syncEntity(schoolId, db.schools, 'schools', 'schoolId'));
+            await runStep('staffProfiles', () => this.syncStaffProfiles(schoolId));
 
             // 2. Academic Core
-            totalSynced += await this.syncAssessmentConfigs(schoolId);
-            totalSynced += await this.syncSubjects(schoolId);
-            totalSynced += await this.syncClasses(schoolId);
-            totalSynced += await this.syncStudents(schoolId);
-            totalSynced += await this.syncGraduateRecords(schoolId); // Priority: Graduates right after students
-            totalSynced += await this.syncClassSubjects(schoolId);
+            await runStep('assessmentConfigs', () => this.syncAssessmentConfigs(schoolId));
+            await runStep('subjects', () => this.syncSubjects(schoolId));
+            await runStep('classes', () => this.syncClasses(schoolId));
+            await runStep('students', () => this.syncStudents(schoolId));
+            await runStep('graduateRecords', () => this.syncGraduateRecords(schoolId));
+            await runStep('classSubjects', () => this.syncClassSubjects(schoolId));
 
             // 3. Activity & Financials (Dependent on Identities)
-            totalSynced += await this.syncComponentScores(schoolId);
-            totalSynced += await this.syncResults(schoolId);
-            totalSynced += await this.syncAttendance(schoolId);
-            totalSynced += await this.syncFeeStructures(schoolId);
-            totalSynced += await this.syncPayrollRecords(schoolId);
+            await runStep('componentScores', () => this.syncComponentScores(schoolId));
+            await runStep('results', () => this.syncResults(schoolId));
+            await runStep('attendance', () => this.syncAttendance(schoolId));
+            await runStep('feeStructures', () => this.syncFeeStructures(schoolId));
+            await runStep('payrollRecords', () => this.syncPayrollRecords(schoolId));
 
             // 4. Remaining Simpler Tables
-            totalSynced += await this.syncEntity(schoolId, eduDb.feePayments, 'fee_payments', 'id');
-            totalSynced += await this.syncEntity(schoolId, eduDb.expenses, 'expenses', 'id');
-            totalSynced += await this.syncEntity(schoolId, eduDb.budgets, 'budgets', 'id');
-            totalSynced += await this.syncEntity(schoolId, eduDb.settings, 'settings', 'key');
-            totalSynced += await this.syncPromotionRequests(schoolId);
-            totalSynced += await this.syncEntity(schoolId, eduDb.schoolEvents, 'school_events', 'id');
-            totalSynced += await this.syncEntity(schoolId, eduDb.subscriptions, 'school_subscriptions', 'id');
+            await runStep('feePayments', () => this.syncEntity(schoolId, eduDb.feePayments, 'fee_payments', 'id'));
+            await runStep('expenses', () => this.syncEntity(schoolId, eduDb.expenses, 'expenses', 'id'));
+            await runStep('budgets', () => this.syncEntity(schoolId, eduDb.budgets, 'budgets', 'id'));
+            await runStep('settings', () => this.syncEntity(schoolId, eduDb.settings, 'settings', 'key'));
+            await runStep('promotionRequests', () => this.syncPromotionRequests(schoolId));
+            await runStep('schoolEvents', () => this.syncEntity(schoolId, eduDb.schoolEvents, 'school_events', 'id'));
+            await runStep('subscriptions', () => this.syncEntity(schoolId, eduDb.subscriptions, 'school_subscriptions', 'id'));
 
             console.log('[syncService] Sync completed.');
 
@@ -335,6 +368,7 @@ export const syncService = {
 
                 const payload = {
                     school_id: item.schoolId,
+                    id_local: item.id, // target ID mapping for database functions
                     name: item.name,
                     level: item.level,
                     class_teacher_id: teacherCloudId,
@@ -1079,7 +1113,13 @@ export const syncService = {
 
         for (const item of pendingItems) {
             try {
-                const payload = {
+                // Resolve the local Dexie class ID to its cloud UUID so the parent portal
+                // can match fee structures to students via: tf.class_id = s.class_id
+                const classCloudId = item.classId
+                    ? await this.resolveCloudId(eduDb.classes, item.classId)
+                    : null;
+
+                const payload: Record<string, any> = {
                     school_id: item.schoolId,
                     class_id_local: item.classId,
                     term: item.term,
@@ -1089,6 +1129,11 @@ export const syncService = {
                     created_at: this.toIso(item.createdAt),
                     updated_at: this.toIso(item.updatedAt)
                 };
+
+                // Only include class_id if resolved — avoids overwriting a valid UUID with null
+                if (classCloudId) {
+                    payload.class_id = classCloudId;
+                }
 
                 let cloudId = (item as any).idCloud;
 
@@ -1347,6 +1392,7 @@ export const syncService = {
     mapStudentForSync(row: any, schoolId: string, classCloudId: string | null) {
         const payload: any = {
             school_id: schoolId,
+            id_local: row.id,
             class_id: this.isUuid(classCloudId) ? classCloudId : null,
             student_id_string: row.studentIdString ?? null,
             full_name: row.fullName ?? null,
@@ -1461,12 +1507,9 @@ export const syncService = {
                                 return null;
                             }
                             mapped.student_id = cloudStudentId;
-                            delete mapped.student_id_local;
+                            mapped.student_id_local = item.studentId;
+                            mapped.class_id_local = item.classId;
                             delete mapped.student_id_string;
-                            
-                            // Strip strictly-offline UI assistance fields
-                            delete mapped.student_name;
-                            delete mapped.class_id_local;
                             delete mapped.class_id;
                             delete mapped.className;
                         }
@@ -1784,15 +1827,21 @@ export const syncService = {
                 if (['class_subjects', 'fee_structures', 'fee_payments'].includes(supabaseTable)) {
                     if (this.isUuid((mapped as any).classId)) {
                         const localClass = await eduDb.classes.where({ idCloud: (mapped as any).classId }).first();
-                        (mapped as any).classId = localClass?.id ?? null;
+                        (mapped as any).classId = localClass?.id ?? (mapped as any).classIdLocal ?? null;
+                    } else if ((mapped as any).classIdLocal) {
+                        (mapped as any).classId = (mapped as any).classIdLocal;
                     }
                     if (supabaseTable === 'class_subjects' && this.isUuid((mapped as any).subjectId)) {
                         const localSubject = await eduDb.subjects.where({ idCloud: (mapped as any).subjectId }).first();
                         (mapped as any).subjectId = localSubject?.id ?? null;
                     }
-                    if (supabaseTable === 'fee_payments' && this.isUuid((mapped as any).studentId)) {
-                        const localStudent = await eduDb.students.where({ idCloud: (mapped as any).studentId }).first();
-                        (mapped as any).studentId = localStudent?.id ?? null;
+                    if (supabaseTable === 'fee_payments') {
+                        if (this.isUuid((mapped as any).studentId)) {
+                            const localStudent = await eduDb.students.where({ idCloud: (mapped as any).studentId }).first();
+                            (mapped as any).studentId = localStudent?.id ?? (mapped as any).studentIdLocal ?? null;
+                        } else if ((mapped as any).studentIdLocal) {
+                            (mapped as any).studentId = (mapped as any).studentIdLocal;
+                        }
                     }
                 }
 

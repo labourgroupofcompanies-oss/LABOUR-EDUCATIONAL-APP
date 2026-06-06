@@ -45,7 +45,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
     }, [user?.schoolId]);
 
     const enteredAmt = parseFloat(amount) || 0;
-    const wouldOverpay = enteredAmt > row.balance && row.balance > 0;
+    const wouldOverpay = enteredAmt > 0 && (row.balance <= 0 || enteredAmt > row.balance);
 
     const handleSubmit = async () => {
         if (!user?.schoolId || !row.student.id) return;
@@ -111,7 +111,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                     {[
                         { label: 'Total Fee', val: `GHS ${row.feeAmount.toLocaleString()}`, color: 'text-gray-400', bg: 'bg-gray-50' },
                         { label: 'Paid', val: `GHS ${row.amountPaid.toLocaleString()}`, color: 'text-green-600', bg: 'bg-green-50/50' },
-                        { label: 'Balance', val: row.balance > 0 ? `GHS ${row.balance.toLocaleString()}` : 'OVERPAID', color: row.balance > 0 ? 'text-red-500' : 'text-cyan-600', bg: row.balance > 0 ? 'bg-red-50/50' : 'bg-cyan-50/50' },
+                        { label: 'Balance', val: row.balance > 0 ? `GHS ${row.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}` : row.balance < 0 ? `GHS -${Math.abs(row.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })} (Credit)` : 'GHS 0.00', color: row.balance > 0 ? 'text-red-500' : row.balance < 0 ? 'text-cyan-600' : 'text-emerald-600', bg: row.balance > 0 ? 'bg-red-50/50' : row.balance < 0 ? 'bg-cyan-50/50' : 'bg-emerald-50/50' },
                     ].map(s => (
                         <div key={s.label} className={`${s.bg} p-3 rounded-2xl text-center border border-white/50 shadow-sm transition-transform hover:scale-105 flex flex-col justify-center`}>
                             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{s.label}</p>
@@ -147,7 +147,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                         {wouldOverpay && (
                             <div className="mt-2 flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 rounded-xl px-3 py-2 text-xs font-bold">
                                 <i className="fas fa-triangle-exclamation"></i>
-                                This will overpay by GHS {(enteredAmt - row.balance).toFixed(2)}. The excess will be recorded as a credit.
+                                This will overpay by GHS {(row.balance <= 0 ? enteredAmt + Math.abs(row.balance) : enteredAmt - row.balance).toFixed(2)}. The excess will be recorded as a credit.
                             </div>
                         )}
                     </div>

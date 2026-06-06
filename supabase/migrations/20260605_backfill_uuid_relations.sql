@@ -1,0 +1,6 @@
+-- ============================================================================
+-- OBSOLETE: Backfill UUID relations
+-- Description: This migration is no longer needed. The sync service automatically 
+-- resolves local integer IDs to cloud UUIDs before pushing records to Supabase, 
+-- ensuring all cloud relationships are correctly populated.
+-- ============================================================================

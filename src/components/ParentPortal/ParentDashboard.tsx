@@ -93,14 +93,33 @@ const ParentDashboard: React.FC = () => {
             setIsOffline(true);
             showToast('Connection lost. Switching to Offline Mode.', 'warning');
         };
+        // Refresh when tab regains focus so balance is always up-to-date
+        const handleFocus = () => {
+            if (navigator.onLine && parent?.phoneNumber && parent?.password) {
+                refreshParentProfile();
+            }
+        };
 
         window.addEventListener('online', handleOnline);
         window.addEventListener('offline', handleOffline);
+        window.addEventListener('focus', handleFocus);
         return () => {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
+            window.removeEventListener('focus', handleFocus);
         };
     }, [activeChild]);
+
+    // Auto-refresh balance every 5 minutes from live database
+    useEffect(() => {
+        if (!parent?.phoneNumber || !parent?.password) return;
+        const interval = setInterval(() => {
+            if (navigator.onLine) {
+                refreshParentProfile();
+            }
+        }, 5 * 60 * 1000); // 5 minutes
+        return () => clearInterval(interval);
+    }, [parent?.phoneNumber, parent?.password]);
 
     // Helper to determine if a tab contains unseen updates (i.e. different from last marked seen)
     const hasUnseenUpdate = useCallback((tab: ParentTab): boolean => {
@@ -445,6 +464,17 @@ const ParentDashboard: React.FC = () => {
                     >
                         <i className="fas fa-power-off"></i> Exit
                     </button>
+                    <button
+                        onClick={() => {
+                            refreshParentProfile();
+                            if (activeChild) fetchAndCacheChildData(activeChild);
+                            showToast('Refreshing your data...', 'info');
+                        }}
+                        title="Refresh balance and data"
+                        className="bg-white/10 hover:bg-white/20 px-3 py-2.5 rounded-xl font-black text-[9px] uppercase tracking-widest border border-white/20 transition-all flex items-center gap-1.5 active:scale-95 text-white"
+                    >
+                        <i className="fas fa-sync-alt"></i>
+                    </button>
                 </div>
 
                 {/* Sibling Switcher Grid */}
@@ -588,17 +618,49 @@ const ParentDashboard: React.FC = () => {
                                                     <span className="absolute top-4 right-4 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white shadow-sm animate-pulse"></span>
                                                 )}
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Outstanding Arrears</span>
-                                                    <div className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center text-xs">
-                                                        <i className="fas fa-file-invoice-dollar"></i>
+                                                    <span className={`text-[9px] font-black uppercase tracking-widest ${
+                                                        (activeChild.arrears ?? 0) > 0 
+                                                            ? 'text-red-500/80' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'text-cyan-600/80' 
+                                                                : 'text-slate-400'
+                                                    }`}>
+                                                        {(activeChild.arrears ?? 0) > 0 
+                                                            ? 'Outstanding Arrears' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'Overpayment Credit' 
+                                                                : 'Cleared Balance'}
+                                                    </span>
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${
+                                                        (activeChild.arrears ?? 0) > 0 
+                                                            ? 'bg-red-50 text-red-500' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'bg-cyan-50 text-cyan-600' 
+                                                                : 'bg-emerald-50 text-emerald-600'
+                                                    }`}>
+                                                        <i className={(activeChild.arrears ?? 0) > 0 
+                                                            ? 'fas fa-file-invoice-dollar' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'fas fa-piggy-bank' 
+                                                                : 'fas fa-check-circle'}></i>
                                                     </div>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <h3 className={`text-2xl font-black tracking-tight ${(activeChild.arrears ?? 0) > 0 ? 'text-red-500' : 'text-slate-800'}`}>
-                                                        GH¢ {(activeChild.arrears ?? 0).toFixed(2)}
+                                                    <h3 className={`text-2xl font-black tracking-tight ${
+                                                        (activeChild.arrears ?? 0) > 0 
+                                                            ? 'text-red-500' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'text-cyan-600' 
+                                                                : 'text-emerald-600'
+                                                    }`}>
+                                                        GH¢ {Math.abs(activeChild.arrears ?? 0).toFixed(2)}
                                                     </h3>
                                                     <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">
-                                                        Total balance owed to school accountant
+                                                        {(activeChild.arrears ?? 0) > 0 
+                                                            ? 'Total balance owed to school accountant' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'Available credit balance (overpayment)' 
+                                                                : 'Fees fully settled for the active term'}
                                                     </p>
                                                 </div>
                                                 <div className="h-px bg-slate-50"></div>
@@ -788,17 +850,57 @@ const ParentDashboard: React.FC = () => {
                                         {/* Financial Metric Cards */}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                             {/* Outstanding metric */}
-                                            <div className="bg-white border border-red-100 rounded-[2rem] shadow-sm p-6 space-y-4">
+                                            <div className={`bg-white border rounded-[2rem] shadow-sm p-6 space-y-4 ${
+                                                (activeChild.arrears ?? 0) > 0 
+                                                    ? 'border-red-100' 
+                                                    : (activeChild.arrears ?? 0) < 0 
+                                                        ? 'border-cyan-100' 
+                                                        : 'border-slate-100'
+                                            }`}>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[9px] font-black text-red-500/60 uppercase tracking-widest">Owed Arrears</span>
-                                                    <div className="w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center text-xs">
-                                                        <i className="fas fa-exclamation-triangle"></i>
+                                                    <span className={`text-[9px] font-black uppercase tracking-widest ${
+                                                        (activeChild.arrears ?? 0) > 0 
+                                                            ? 'text-red-500/60' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'text-cyan-600/80' 
+                                                                : 'text-emerald-600/80'
+                                                    }`}>
+                                                        {(activeChild.arrears ?? 0) > 0 
+                                                            ? 'Owed Arrears' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'Credit Balance' 
+                                                                : 'Settled Balance'}
+                                                    </span>
+                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs ${
+                                                        (activeChild.arrears ?? 0) > 0 
+                                                            ? 'bg-red-50 text-red-500' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'bg-cyan-50 text-cyan-600' 
+                                                                : 'bg-emerald-50 text-emerald-600'
+                                                    }`}>
+                                                        <i className={(activeChild.arrears ?? 0) > 0 
+                                                            ? 'fas fa-exclamation-triangle' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'fas fa-piggy-bank' 
+                                                                : 'fas fa-check-circle'}></i>
                                                     </div>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <h3 className="text-2xl font-black tracking-tight text-red-500">GH¢ {(activeChild.arrears ?? 0).toFixed(2)}</h3>
+                                                    <h3 className={`text-2xl font-black tracking-tight ${
+                                                        (activeChild.arrears ?? 0) > 0 
+                                                            ? 'text-red-500' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'text-cyan-600' 
+                                                                : 'text-emerald-600'
+                                                    }`}>
+                                                        GH¢ {Math.abs(activeChild.arrears ?? 0).toFixed(2)}
+                                                    </h3>
                                                     <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                                                        Pending balance requiring cash/MoMo deposit
+                                                        {(activeChild.arrears ?? 0) > 0 
+                                                            ? 'Pending balance requiring cash/MoMo deposit' 
+                                                            : (activeChild.arrears ?? 0) < 0 
+                                                                ? 'Available credit from overpayments' 
+                                                                : 'No pending balance for this student'}
                                                     </p>
                                                 </div>
                                             </div>

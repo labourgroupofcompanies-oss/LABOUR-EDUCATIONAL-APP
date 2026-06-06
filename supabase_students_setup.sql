@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS public.students CASCADE;
 CREATE TABLE public.students (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     school_id UUID NOT NULL REFERENCES public.schools(id) ON DELETE CASCADE,
-    class_id UUID NOT NULL REFERENCES public.classes(id) ON DELETE RESTRICT,
+    class_id UUID REFERENCES public.classes(id) ON DELETE SET NULL,
     student_id_string TEXT, 
     
     full_name TEXT NOT NULL,
