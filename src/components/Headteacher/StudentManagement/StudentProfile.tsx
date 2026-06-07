@@ -5,7 +5,7 @@ import { eduDb } from '../../../eduDb';
 import { useAuth } from '../../../hooks/useAuth';
 import { showConfirm } from '../../Common/ConfirmDialog';
 import { showToast } from '../../Common/Toast';
-import { supabase } from '../../../supabaseClient';
+import { dbService } from '../../../services/dbService';
 
 interface StudentProfileProps {
     studentId: number;
@@ -89,44 +89,25 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ studentId, onBack, onEd
 
         const confirmed = await showConfirm({
             title: 'Delete Student',
-            message: `Are you sure you want to permanently delete this student's record? This action cannot be undone.`,
-            confirmText: 'Yes, Delete',
+            message: `Are you sure you want to permanently delete this student's record and all associated records? This action cannot be undone.`,
+            confirmText: 'Yes, Delete All',
             cancelText: 'Cancel',
             variant: 'danger',
         });
 
         if (confirmed) {
             try {
-                if (student.idCloud) {
-                    const { error } = await supabase
-                        .from('students')
-                        .update({ is_deleted: true, deleted_at: new Date().toISOString() })
-                        .eq('school_id', user?.schoolId)
-                        .eq('student_id_string', student.studentIdString); // Use the unique constraint
+                await dbService.students.softDelete(
+                    studentId,
+                    user?.schoolId || '',
+                    student.idCloud
+                );
 
-                    // Fallback to id filter if student_id_string is missing
-                    if (error) {
-                        const { error: fallbackError } = await supabase
-                            .from('students')
-                            .update({ is_deleted: true, deleted_at: new Date().toISOString() })
-                            .eq('id', student.idCloud);
-                        
-                        if (fallbackError) throw fallbackError;
-                    }
-                }
-
-                await eduDb.students.update(studentId, {
-                    isDeleted: true,
-                    deletedAt: Date.now(),
-                    updatedAt: Date.now(),
-                    syncStatus: student.idCloud ? 'synced' : 'pending' // If successfully deleted online, mark synced
-                } as any);
-
-                showToast('Student record deleted', 'info');
+                showToast('Student and associated records deleted', 'info');
                 onBack();
             } catch (error) {
                 console.error('Error deleting student:', error);
-                showToast('Failed to delete student online. Please check connection and try again.', 'error');
+                showToast('Failed to delete student records. Please try again.', 'error');
             }
         }
     };

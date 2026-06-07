@@ -154,6 +154,128 @@ export const dbService = {
 
                 return await this.bulkUpdate(updates);
             });
+        },
+
+        async softDelete(studentId: number, schoolId: string, idCloud?: string) {
+            const now = Date.now();
+            return await eduDb.transaction('rw', [
+                eduDb.students,
+                eduDb.results,
+                eduDb.attendance,
+                eduDb.feePayments,
+                eduDb.promotionRequests,
+                eduDb.componentScores,
+                eduDb.graduateRecords
+            ], async () => {
+                // 1. Soft delete student record locally
+                await eduDb.students.update(studentId, {
+                    isDeleted: true,
+                    deletedAt: now,
+                    updatedAt: now,
+                    syncStatus: 'pending'
+                });
+
+                // Helper to update sync status and soft delete on related tables
+                const softDeleteRelated = async (table: any, queryObj: object) => {
+                    const records = await table.where(queryObj).toArray();
+                    if (records.length > 0) {
+                        const updates = records.map((r: any) => ({
+                            key: r.id!,
+                            changes: {
+                                isDeleted: true,
+                                updatedAt: now,
+                                syncStatus: 'pending'
+                            }
+                        }));
+                        await table.bulkUpdate(updates);
+                    }
+                };
+
+                // 2. Soft delete related records locally
+                await softDeleteRelated(eduDb.results, { studentId });
+                await softDeleteRelated(eduDb.attendance, { studentId });
+                await softDeleteRelated(eduDb.feePayments, { studentId });
+                await softDeleteRelated(eduDb.promotionRequests, { studentId });
+                await softDeleteRelated(eduDb.componentScores, { studentId });
+                await softDeleteRelated(eduDb.graduateRecords, { studentId });
+
+                // 3. Try to soft delete in Supabase online if we have idCloud
+                if (idCloud) {
+                    try {
+                        const { supabase } = await import('../supabaseClient');
+                        const deletedAtStr = new Date().toISOString();
+                        
+                        // Delete student in Supabase
+                        const { error: studentErr } = await supabase
+                            .from('students')
+                            .update({ is_deleted: true, deleted_at: deletedAtStr })
+                            .eq('school_id', schoolId)
+                            .eq('id', idCloud);
+                            
+                        if (studentErr) console.warn('[dbService] Supabase student deletion returned error:', studentErr);
+
+                        // Delete results in Supabase
+                        await supabase
+                            .from('results')
+                            .update({ is_deleted: true, updated_at: deletedAtStr })
+                            .eq('student_id', idCloud);
+
+                        // Delete attendance in Supabase
+                        await supabase
+                            .from('attendance')
+                            .update({ is_deleted: true, updated_at: deletedAtStr })
+                            .eq('student_id', idCloud);
+
+                        // Delete component_scores in Supabase
+                        await supabase
+                            .from('component_scores')
+                            .update({ is_deleted: true, updated_at: deletedAtStr })
+                            .eq('student_id', idCloud);
+
+                        // Delete fee_payments in Supabase
+                        await supabase
+                            .from('fee_payments')
+                            .update({ is_deleted: true, updated_at: deletedAtStr })
+                            .eq('student_id', idCloud);
+
+                        // Delete promotion_requests in Supabase
+                        await supabase
+                            .from('promotion_requests')
+                            .update({ is_deleted: true, updated_at: deletedAtStr })
+                            .eq('student_id', idCloud);
+
+                        // Delete graduate_records in Supabase
+                        await supabase
+                            .from('graduate_records')
+                            .update({ is_deleted: true, updated_at: deletedAtStr })
+                            .eq('student_id', idCloud);
+                            
+                        // Mark student and all updated local records as synced since we just completed it online
+                        await eduDb.students.update(studentId, { syncStatus: 'synced' });
+                        
+                        const markSynced = async (table: any, queryObj: object) => {
+                            const records = await table.where(queryObj).toArray();
+                            if (records.length > 0) {
+                                const updates = records.map((r: any) => ({
+                                    key: r.id!,
+                                    changes: { syncStatus: 'synced' }
+                                }));
+                                await table.bulkUpdate(updates);
+                            }
+                        };
+                        
+                        await markSynced(eduDb.results, { studentId });
+                        await markSynced(eduDb.attendance, { studentId });
+                        await markSynced(eduDb.feePayments, { studentId });
+                        await markSynced(eduDb.promotionRequests, { studentId });
+                        await markSynced(eduDb.componentScores, { studentId });
+                        await markSynced(eduDb.graduateRecords, { studentId });
+
+                    } catch (supabaseErr) {
+                        console.error('[dbService] Failed to perform online cascading soft-delete:', supabaseErr);
+                    }
+                }
+            });
         }
     },
 
