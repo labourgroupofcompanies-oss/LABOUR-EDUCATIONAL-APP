@@ -72,6 +72,94 @@ export const syncManager = {
                     console.error('[syncManager] Auto-repair V4 failed:', e);
                 }
             }
+
+            // V5: Retroactive cascading soft-delete of associated records for already-deleted learners
+            if (!localStorage.getItem('deleted_learners_cascade_patch_v5')) {
+                try {
+                    const { eduDb } = await import('../eduDb');
+                    const { supabase } = await import('../supabaseClient');
+                    const now = Date.now();
+                    const deletedAtStr = new Date().toISOString();
+
+                    // Find all deleted students for this school
+                    const deletedStudents = (await eduDb.students
+                        .where('schoolId')
+                        .equals(schoolId)
+                        .toArray())
+                        .filter(s => s.isDeleted);
+
+                    if (deletedStudents.length > 0) {
+                        console.log(`[syncManager] V5 Repair: Found ${deletedStudents.length} already-deleted students. Cleaning up associated records...`);
+                        
+                        let totalCleanedLocal = 0;
+                        
+                        // We will group table updates in a transaction
+                        await eduDb.transaction('rw', [
+                            eduDb.results,
+                            eduDb.attendance,
+                            eduDb.feePayments,
+                            eduDb.promotionRequests,
+                            eduDb.componentScores,
+                            eduDb.graduateRecords
+                        ], async () => {
+                            const softDeleteRelated = async (table: any, studentIds: number[]) => {
+                                const records = await table.toArray();
+                                const activeRecords = records.filter((r: any) => studentIds.includes(r.studentId) && !r.isDeleted);
+                                if (activeRecords.length > 0) {
+                                    const updates = activeRecords.map((r: any) => ({
+                                        key: r.id!,
+                                        changes: {
+                                            isDeleted: true,
+                                            updatedAt: now,
+                                            syncStatus: 'pending'
+                                        }
+                                    }));
+                                    await table.bulkUpdate(updates);
+                                    totalCleanedLocal += activeRecords.length;
+                                }
+                            };
+
+                            const studentIds = deletedStudents.map(s => s.id!).filter(Boolean);
+                            if (studentIds.length > 0) {
+                                await softDeleteRelated(eduDb.results, studentIds);
+                                await softDeleteRelated(eduDb.attendance, studentIds);
+                                await softDeleteRelated(eduDb.feePayments, studentIds);
+                                await softDeleteRelated(eduDb.promotionRequests, studentIds);
+                                await softDeleteRelated(eduDb.componentScores, studentIds);
+                                await softDeleteRelated(eduDb.graduateRecords, studentIds);
+                            }
+                        });
+
+                        console.log(`[syncManager] V5 Repair: Soft-deleted ${totalCleanedLocal} associated local records.`);
+
+                        // Also try to update Supabase directly for any synced deleted students
+                        const cloudStudentIds = deletedStudents.map(s => s.idCloud).filter(Boolean);
+                        if (cloudStudentIds.length > 0 && window.navigator.onLine) {
+                            try {
+                                // We do a batch of updates in Supabase in parallel
+                                await Promise.all([
+                                    supabase.from('results').update({ is_deleted: true, updated_at: deletedAtStr }).in('student_id', cloudStudentIds),
+                                    supabase.from('attendance').update({ is_deleted: true, updated_at: deletedAtStr }).in('student_id', cloudStudentIds),
+                                    supabase.from('component_scores').update({ is_deleted: true, updated_at: deletedAtStr }).in('student_id', cloudStudentIds),
+                                    supabase.from('fee_payments').update({ is_deleted: true, updated_at: deletedAtStr }).in('student_id', cloudStudentIds),
+                                    supabase.from('promotion_requests').update({ is_deleted: true, updated_at: deletedAtStr }).in('student_id', cloudStudentIds),
+                                    supabase.from('graduate_records').update({ is_deleted: true, updated_at: deletedAtStr }).in('student_id', cloudStudentIds)
+                                ]);
+                                console.log(`[syncManager] V5 Repair: Online cascading soft-deletes pushed to Supabase.`);
+                            } catch (supabaseErr) {
+                                console.error('[syncManager] V5 Repair: Online cascading soft-delete failed:', supabaseErr);
+                            }
+                        }
+                    }
+
+                    localStorage.setItem('deleted_learners_cascade_patch_v5', 'applied');
+                    if (deletedStudents.length > 0) {
+                        setTimeout(() => this.triggerSync(true), 7000);
+                    }
+                } catch (e) {
+                    console.error('[syncManager] Auto-repair V5 failed:', e);
+                }
+            }
         })();
 
         // Initial sync on startup if online
