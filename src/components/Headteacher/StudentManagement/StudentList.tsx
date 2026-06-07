@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { eduDb, type Student } from '../../../eduDb';
+import { ExcelImportModal } from './ExcelImportModal';
 import { useAuth } from '../../../hooks/useAuth';
 import { useAcademicSession } from '../../../hooks/useAcademicSession';
 import { dbService } from '../../../services/dbService';
@@ -27,6 +28,7 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
     const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [financialFilter, setFinancialFilter] = useState<'all' | 'debtors' | 'paid'>('all');
     const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [targetClassId, setTargetClassId] = useState<number | null>(null);
     const [isMoving, setIsMoving] = useState(false);
 
@@ -263,6 +265,12 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
                         className="bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 px-6 py-3 rounded-2xl flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
                     >
                         <i className="fas fa-file-excel text-emerald-600"></i> Export CSV
+                    </button>
+                    <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 px-6 py-3 rounded-2xl flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                    >
+                        <i className="fas fa-file-import text-indigo-600"></i> Import Excel
                     </button>
                     <button
                         onClick={onAdd}
@@ -536,6 +544,16 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {isImportModalOpen && (
+                <ExcelImportModal
+                    isOpen={isImportModalOpen}
+                    onClose={() => setIsImportModalOpen(false)}
+                    onImportSuccess={() => {
+                        // Live query updates directory list automatically
+                    }}
+                />
             )}
         </div>
     );

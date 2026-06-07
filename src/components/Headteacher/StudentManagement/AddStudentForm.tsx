@@ -291,12 +291,9 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
     const handleNext = () => {
         if (currentStep === 'personal') {
             if (!formData.fullName) return showToast('Full Name is required', 'error');
-            if (!formData.dateOfBirth) return showToast('Date of Birth is required', 'error');
         } else if (currentStep === 'academic') {
             if (!formData.classId) return showToast('Class assignment is required', 'error');
         } else if (currentStep === 'guardian') {
-            if (!formData.guardianName) return showToast('Guardian Name is required', 'error');
-            if (!formData.guardianPrimaryContact) return showToast('Primary Contact is required', 'error');
             if (formData.guardianEmail) {
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!emailRegex.test(formData.guardianEmail)) {
@@ -692,7 +689,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                         </div>
 
                         <div className="space-y-2">
-                            <label className="block text-sm font-black text-gray-700 uppercase tracking-wider">Gender <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-black text-gray-700 uppercase tracking-wider">Gender</label>
                             <div className="grid grid-cols-2 gap-3 h-[58px]">
                                 <button type="button" onClick={() => setFormData({ ...formData, gender: 'male' })} className={`rounded-xl border-2 font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${formData.gender === 'male' ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-sm' : 'bg-white border-gray-100 text-gray-400 hover:border-gray-300 hover:text-gray-600'}`}>
                                     <i className="fas fa-male text-lg"></i> Male
@@ -704,7 +701,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                         </div>
 
                         <div className="space-y-2">
-                            <label className="block text-sm font-black text-gray-700 uppercase tracking-wider">Date of Birth <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-black text-gray-700 uppercase tracking-wider">Date of Birth</label>
                             <input
                                 type="date"
                                 name="dateOfBirth"
@@ -810,7 +807,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
 
                         <div className="col-span-1 md:col-span-2 space-y-2">
-                            <label className="block text-sm font-black text-gray-700 uppercase tracking-wider">Guardian Full Name <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-black text-gray-700 uppercase tracking-wider">Guardian Full Name</label>
                             <input
                                 name="guardianName"
                                 value={formData.guardianName}
@@ -821,7 +818,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ studentId, onCancel, on
                         </div>
 
                         <div className="space-y-2">
-                            <label className="block text-sm font-black text-gray-700 uppercase tracking-wider">Primary Phone <span className="text-red-500">*</span></label>
+                            <label className="block text-sm font-black text-gray-700 uppercase tracking-wider">Primary Phone</label>
                             <div className="relative">
                                 <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"><i className="fas fa-phone"></i></span>
                                 <input
