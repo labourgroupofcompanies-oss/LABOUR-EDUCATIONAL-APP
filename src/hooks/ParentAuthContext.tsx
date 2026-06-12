@@ -11,6 +11,7 @@ export interface ParentChild {
     schoolLogoUrl?: string; // School logo (base64 or storage URL)
     arrears: number;
     photoUrl?: string;
+    nextTermFee?: number;
 }
 
 export interface ParentUser {

@@ -5,9 +5,11 @@ interface Props {
     payment: FeePayment;
     schoolName?: string;
     cashierName?: string;
+    balance?: number; // The remaining balance after this payment
+    totalDue?: number; // The total due before this payment
 }
 
-const FeeReceipt: React.FC<Props> = ({ payment, schoolName, cashierName }) => {
+const FeeReceipt: React.FC<Props> = ({ payment, schoolName, cashierName, balance, totalDue }) => {
     return (
         <div className="print-a4-portrait p-10 space-y-8 font-sans">
             {/* Header */}
@@ -18,7 +20,7 @@ const FeeReceipt: React.FC<Props> = ({ payment, schoolName, cashierName }) => {
                 </div>
                 <div className="text-right">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Receipt No</p>
-                    <p className="text-lg font-black text-indigo-600">{payment.receiptNo}</p>
+                    <p className="text-lg font-black text-teal-600">{payment.receiptNo}</p>
                 </div>
             </div>
 
@@ -50,16 +52,36 @@ const FeeReceipt: React.FC<Props> = ({ payment, schoolName, cashierName }) => {
             </div>
 
             {/* Transaction Box */}
-            <div className="bg-indigo-50/50 rounded-2xl border-2 border-indigo-100 p-8 text-center relative overflow-hidden">
+            <div className="bg-teal-50/50 rounded-2xl border-2 border-teal-100 p-6 relative overflow-hidden space-y-4">
                 <div className="absolute top-0 right-0 p-4 opacity-5">
                     <i className="fas fa-receipt text-6xl"></i>
                 </div>
-                <p className="text-xs font-black text-indigo-400 uppercase tracking-widest mb-2">Total Amount Paid</p>
-                <p className="text-5xl font-black text-indigo-700">GHS {payment.amountPaid.toFixed(2)}</p>
-                <p className="text-sm font-bold text-indigo-500 mt-2 italic capitalize">
-                    {/* Basic number to words or similar could go here if needed, but let's keep it clean */}
-                    Official payment record for educational services.
-                </p>
+                <div className="text-center pb-4 border-b border-teal-100/50">
+                    <p className="text-xs font-black text-teal-400 uppercase tracking-widest mb-1">Total Amount Paid</p>
+                    <p className="text-4xl font-black text-teal-700">GHS {payment.amountPaid.toFixed(2)}</p>
+                </div>
+                
+                {/* Ledger breakdown */}
+                <div className="max-w-xs mx-auto space-y-1 text-xs">
+                    {totalDue !== undefined && (
+                        <div className="flex justify-between font-bold text-gray-500">
+                            <span>Total Due this Term:</span>
+                            <span>GHS {totalDue.toFixed(2)}</span>
+                        </div>
+                    )}
+                    <div className="flex justify-between font-bold text-teal-600">
+                        <span>Amount Paid (This Tx):</span>
+                        <span>GHS {payment.amountPaid.toFixed(2)}</span>
+                    </div>
+                    {balance !== undefined && (
+                        <div className="flex justify-between font-black text-gray-800 border-t border-teal-100/50 pt-2 mt-1">
+                            <span>Remaining Balance (Receivable):</span>
+                            <span className={balance > 0 ? 'text-rose-600' : balance < 0 ? 'text-cyan-600' : 'text-emerald-600'}>
+                                {balance > 0 ? `GHS ${balance.toFixed(2)}` : balance < 0 ? `GHS -${Math.abs(balance).toFixed(2)} (Credit)` : 'GHS 0.00'}
+                            </span>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Details Table */}
@@ -82,8 +104,8 @@ const FeeReceipt: React.FC<Props> = ({ payment, schoolName, cashierName }) => {
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest font-sans relative z-10">Accountant / Cashier</p>
                 </div>
                 <div className="text-center">
-                    <div className="w-24 h-24 border-4 border-indigo-100 rounded-full flex items-center justify-center mb-2 mx-auto opacity-20">
-                        <i className="fas fa-stamp text-4xl text-indigo-300"></i>
+                    <div className="w-24 h-24 border-4 border-teal-100 rounded-full flex items-center justify-center mb-2 mx-auto opacity-20">
+                        <i className="fas fa-stamp text-4xl text-teal-300"></i>
                     </div>
                     <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest">School Stamp</p>
                 </div>
@@ -106,3 +128,4 @@ const FeeReceipt: React.FC<Props> = ({ payment, schoolName, cashierName }) => {
 };
 
 export default FeeReceipt;
+

@@ -113,7 +113,7 @@ BEGIN
                 )
                 -- 2. Plus brought-forward arrears stored on student record
                 + COALESCE(s.arrears, 0)
-                -- 3. Minus total valid payments for this student
+                -- 3. Minus current term payments for this student
                 - COALESCE(
                     (
                         SELECT SUM(pay.amount_paid)
@@ -121,13 +121,84 @@ BEGIN
                         WHERE (pay.student_id = s.id OR (pay.student_id_local = s.id_local AND s.id_local IS NOT NULL))
                           AND COALESCE(pay.is_voided, false) = false
                           AND COALESCE(pay.is_deleted, false) = false
+                          AND pay.term = COALESCE(
+                              (SELECT val.value #>> '{}'
+                               FROM public.settings val
+                               WHERE val.school_id = s.school_id
+                                 AND val.key = 'currentTerm'
+                               LIMIT 1),
+                               'Term 1'
+                          )
+                          AND pay.year = COALESCE(
+                              NULLIF(split_part(
+                                  COALESCE(
+                                      (SELECT val.value #>> '{}'
+                                       FROM public.settings val
+                                       WHERE val.school_id = s.school_id
+                                         AND val.key = 'academicYear'
+                                       LIMIT 1),
+                                      '2025/2026'
+                                  ),
+                                  '/', 1
+                              ), '')::integer,
+                              extract(year from now())::integer
+                          )
                     ),
                     0
                 )
             ),
             0
         ),
-        'photoUrl',      s.photo_url
+        'photoUrl',      s.photo_url,
+        'nextTermFee', COALESCE(
+            (
+                SELECT tf_next.term_fee_amount
+                FROM public.fee_structures tf_next
+                CROSS JOIN LATERAL (
+                    SELECT 
+                        COALESCE(
+                            (SELECT val.value #>> '{}'
+                             FROM public.settings val
+                             WHERE val.school_id = s.school_id
+                               AND val.key = 'currentTerm'
+                             LIMIT 1),
+                             'Term 1'
+                        ) as cur_term,
+                        COALESCE(
+                            NULLIF(split_part(
+                                COALESCE(
+                                    (SELECT val.value #>> '{}'
+                                     FROM public.settings val
+                                     WHERE val.school_id = s.school_id
+                                       AND val.key = 'academicYear'
+                                     LIMIT 1),
+                                    '2025/2026'
+                                ),
+                                '/', 1
+                            ), '')::integer,
+                            extract(year from now())::integer
+                        ) as cur_year
+                ) cur
+                CROSS JOIN LATERAL (
+                    SELECT 
+                        CASE 
+                            WHEN cur.cur_term = 'Term 1' THEN 'Term 2'
+                            WHEN cur.cur_term = 'Term 2' THEN 'Term 3'
+                            ELSE 'Term 1'
+                        END as next_term,
+                        CASE 
+                            WHEN cur.cur_term = 'Term 3' THEN cur.cur_year + 1
+                            ELSE cur.cur_year
+                        END as next_year
+                ) nxt
+                WHERE tf_next.school_id = s.school_id
+                  AND (tf_next.class_id = s.class_id OR (tf_next.class_id_local = cl.id_local AND cl.id_local IS NOT NULL))
+                  AND tf_next.term = nxt.next_term
+                  AND tf_next.year = nxt.next_year
+                LIMIT 1
+            ),
+            0
+        )
     )) INTO child_records
     FROM public.students s
     JOIN  public.schools  sch ON s.school_id = sch.id

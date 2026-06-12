@@ -797,6 +797,23 @@ export const dbService = {
          *
          * Returns: max(0, arrears - sumOfPreviousTermPayments)
          */
+        async getCarriedArrears(
+            schoolId: string,
+            studentId: number,
+            term: string,
+            year: number,
+            rawArrears: number
+        ): Promise<number> {
+            const setting = await eduDb.settings
+                .where('[schoolId+key]')
+                .equals([schoolId, `arrears__${studentId}__${term}__${year}`])
+                .first();
+            if (setting && setting.value !== undefined) {
+                return Number(setting.value);
+            }
+            return rawArrears;
+        },
+
         async getArrearsBalance(
             schoolId: string,
             studentId: number,

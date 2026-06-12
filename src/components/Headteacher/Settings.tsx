@@ -8,6 +8,7 @@ import { exportDatabase, importDatabase } from '../../utils/backupUtils';
 import { showConfirm } from '../Common/ConfirmDialog';
 import { showToast } from '../Common/Toast';
 import { syncService } from '../../services/syncService';
+import { dbService } from '../../services/dbService';
 import { normalizeArray, safeString } from '../../utils/dataSafety';
 
 const Settings: React.FC = () => {
@@ -273,6 +274,82 @@ const Settings: React.FC = () => {
 
         try {
             const now = Date.now();
+
+            // Perform automatic fee balance rollover if the term/year is changed
+            if (termChanged && previousTerm && previousYear) {
+                const prevYearNum = parseInt(previousYear.trim().split('/')[0]) || new Date().getFullYear();
+                const nextYearNum = parseInt(academicYear.trim().split('/')[0]) || new Date().getFullYear();
+
+                // 1. Fetch all active students
+                const studentsRaw = await eduDb.students
+                    .where('schoolId')
+                    .equals(user.schoolId)
+                    .filter(s => !s.isDeleted)
+                    .toArray();
+
+                // 2. Fetch fee structures for the ending term/year
+                const structures = await dbService.fees.getAllStructures(user.schoolId, previousTerm.trim(), prevYearNum);
+
+                // 3. Fetch all payments for the ending term/year
+                const payments = await dbService.fees.getPaymentsByTerm(user.schoolId, previousTerm.trim(), prevYearNum, false);
+
+                // 4. Run rollover updates
+                await eduDb.transaction('rw', [eduDb.students, eduDb.settings], async () => {
+                    const nowTs = Date.now();
+                    for (const student of studentsRaw) {
+                        if (!student.id) continue;
+
+                        const structure = structures.find(s => s.classId === student.classId);
+                        const studentPayments = payments.filter(p => p.studentId === student.id);
+                        const amountPaid = studentPayments.reduce((sum, p) => sum + p.amountPaid, 0);
+                        const termFeeAmount = structure?.termFeeAmount ?? 0;
+
+                        // Get ending term's carried arrears
+                        const currentTermArrears = await dbService.fees.getCarriedArrears(
+                            user.schoolId,
+                            student.id,
+                            previousTerm.trim(),
+                            prevYearNum,
+                            student.arrears || 0
+                        );
+
+                        // Ending balance calculation
+                        const endingBalance = currentTermArrears + termFeeAmount - amountPaid;
+
+                        // Save ending balance as carried arrears setting for the next term/year
+                        const targetKey = `arrears__${student.id}__${currentTerm.trim()}__${nextYearNum}`;
+                        const existingSetting = await eduDb.settings
+                            .where('[schoolId+key]')
+                            .equals([user.schoolId, targetKey])
+                            .first();
+
+                        if (existingSetting) {
+                            await eduDb.settings.update(existingSetting.id!, {
+                                value: endingBalance,
+                                updatedAt: nowTs,
+                                syncStatus: 'pending'
+                            });
+                        } else {
+                            await eduDb.settings.add({
+                                schoolId: user.schoolId,
+                                key: targetKey,
+                                value: endingBalance,
+                                createdAt: nowTs,
+                                updatedAt: nowTs,
+                                syncStatus: 'pending'
+                            });
+                        }
+
+                        // Also update student.arrears (to reflect the active current outstanding balance)
+                        await eduDb.students.update(student.id, {
+                            arrears: endingBalance,
+                            updatedAt: nowTs,
+                            syncStatus: 'pending'
+                        });
+                    }
+                });
+            }
+
             await eduDb.transaction('rw', eduDb.settings, async () => {
                 const keys = ['academicYear', 'currentTerm', 'gradingSystem'];
                 const values = [academicYear.trim(), currentTerm.trim(), normalizeArray<any>(gradingSystem)];

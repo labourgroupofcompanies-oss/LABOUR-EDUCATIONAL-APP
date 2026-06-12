@@ -62,11 +62,10 @@ const StudentFeeList: React.FC = () => {
             const amountPaid = (payments as any[]).reduce((sum, p) => sum + p.amountPaid, 0);
             const termFeeAmount = (structure as any)?.termFeeAmount ?? 0;
 
-            // Compute residual arrears: subtract payments from PREVIOUS terms so the
-            // new-term balance correctly reflects what was actually left unpaid.
+            // Compute residual arrears: load the carried arrears for this term/year
             const rawArrears = student.arrears || 0;
             const residualArrears = student.id
-                ? await dbService.fees.getArrearsBalance(user.schoolId, student.id, term, year, rawArrears)
+                ? await dbService.fees.getCarriedArrears(user.schoolId, student.id, term, year, rawArrears)
                 : rawArrears;
 
             const feeAmount = termFeeAmount + residualArrears; // Total Due this term
@@ -166,14 +165,14 @@ const StudentFeeList: React.FC = () => {
                         placeholder="Search student name..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-3.5 text-sm font-black text-slate-700 focus:bg-white focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 transition-all outline-none placeholder:text-slate-400 placeholder:font-bold"
+                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl pl-12 pr-5 py-3.5 text-sm font-black text-slate-700 focus:bg-white focus:border-teal-400 focus:ring-4 focus:ring-teal-50 transition-all outline-none placeholder:text-slate-400 placeholder:font-bold"
                     />
                 </div>
                 <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                     <select
                         value={classFilter as any}
                         onChange={e => setClassFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-black text-slate-600 outline-none focus:bg-white focus:border-indigo-400 transition-all cursor-pointer min-w-[140px]"
+                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-black text-slate-600 outline-none focus:bg-white focus:border-teal-400 transition-all cursor-pointer min-w-[140px]"
                     >
                         <option value="all">All Classes</option>
                         {classes?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -181,7 +180,7 @@ const StudentFeeList: React.FC = () => {
                     <select
                         value={filter}
                         onChange={e => setFilter(e.target.value as FilterStatus)}
-                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-black text-slate-600 outline-none focus:bg-white focus:border-indigo-400 transition-all cursor-pointer min-w-[140px]"
+                        className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-black text-slate-600 outline-none focus:bg-white focus:border-teal-400 transition-all cursor-pointer min-w-[140px]"
                     >
                         <option value="all">All Statuses</option>
                         <option value="paid">Fully Paid</option>
@@ -193,7 +192,7 @@ const StudentFeeList: React.FC = () => {
                         <select
                             value={term}
                             onChange={e => setTerm(e.target.value)}
-                            className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-black text-slate-600 outline-none focus:bg-white focus:border-indigo-400 transition-all cursor-pointer w-full sm:w-auto"
+                            className="bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-xs font-black text-slate-600 outline-none focus:bg-white focus:border-teal-400 transition-all cursor-pointer w-full sm:w-auto"
                         >
                             <option value="Term 1">Term 1</option>
                             <option value="Term 2">Term 2</option>
@@ -228,7 +227,7 @@ const StudentFeeList: React.FC = () => {
                                 <tr key={i} className="group hover:bg-slate-50/50 transition-colors">
                                     <td className="px-8 py-5 font-black text-slate-400 text-sm whitespace-nowrap">{i + 1}</td>
                                     <td className="px-8 py-5">
-                                        <p className="font-black text-slate-800 text-sm group-hover:text-indigo-600 transition-colors">{row.student.fullName}</p>
+                                        <p className="font-black text-slate-800 text-sm group-hover:text-teal-600 transition-colors">{row.student.fullName}</p>
                                         <div className="flex items-center gap-2 mt-1">
                                             <span className="text-[9px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md uppercase tracking-widest">{row.className}</span>
                                             {row.student.studentIdString && <span className="text-[9px] font-bold text-slate-300">{row.student.studentIdString}</span>}
@@ -348,7 +347,8 @@ const StudentFeeList: React.FC = () => {
                         ...payingStudent,
                         student: {
                             id: payingStudent.student.id,
-                            name: payingStudent.student.fullName
+                            name: payingStudent.student.fullName,
+                            classId: payingStudent.student.classId
                         }
                     } as any}
                     term={term}
@@ -387,3 +387,4 @@ const StudentFeeList: React.FC = () => {
 };
 
 export default StudentFeeList;
+

@@ -74,6 +74,9 @@ export interface ReportCardData {
 
     // Customization
     config?: ReportConfig;
+
+    // Next Term Preview
+    nextTermFee?: number;
 }
 
 interface Props {
@@ -494,6 +497,37 @@ const ReportCardTemplate: React.FC<Props> = ({ data, isLastCard: _isLastCard }) 
                                     </span>
                                     <span style={{ fontSize: '7pt', fontWeight: 800, color: data.feeInfo.status === 'Paid' ? '#166534' : '#991b1b' }}>
                                         {data.feeInfo.status.toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Provisional Next Term Bill */}
+                        {config.showFees && data.nextTermFee !== undefined && data.feeInfo && (
+                            <div style={{
+                                padding: '8px 12px',
+                                background: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '4px',
+                                fontSize: '8pt',
+                            }}>
+                                <div style={{ fontSize: '7pt', fontWeight: 800, textTransform: 'uppercase', color: ACCENT_COLOR, borderBottom: '1px solid #e2e8f0', paddingBottom: '3px', marginBottom: '4px' }}>
+                                    Provisional Next Term Bill
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                    <span style={{ color: '#64748b' }}>Next Term Tuition:</span>
+                                    <span style={{ fontWeight: 700 }}>GHS {data.nextTermFee.toFixed(2)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                    <span style={{ color: '#64748b' }}>Carried Arrears:</span>
+                                    <span style={{ fontWeight: 700, color: data.feeInfo.feeBalance > 0 ? '#991b1b' : PRIMARY_TEXT }}>
+                                        GHS {data.feeInfo.feeBalance.toFixed(2)}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #cbd5e1', paddingTop: '4px', marginTop: '4px' }}>
+                                    <span style={{ fontWeight: 800, color: PRIMARY_TEXT }}>Total Expected:</span>
+                                    <span style={{ fontWeight: 900, color: ACCENT_COLOR }}>
+                                        GHS {(data.nextTermFee + data.feeInfo.feeBalance).toFixed(2)}
                                     </span>
                                 </div>
                             </div>

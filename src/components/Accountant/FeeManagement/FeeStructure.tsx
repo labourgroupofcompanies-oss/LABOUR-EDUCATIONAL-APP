@@ -26,11 +26,45 @@ const FeeStructure: React.FC = () => {
 
     const [fees, setFees] = useState<Record<number, string>>({});
     const [groupFees, setGroupFees] = useState<Record<string, string>>({
-        '1-3': '', '4-6': '', '7-9': ''
+        'early': '', '1-3': '', '4-6': '', '7-9': ''
     });
+
+    const getEarlyGradeRank = (name: string): number => {
+        const lower = name.toLowerCase();
+        if (lower.includes('creche') || lower.includes('crèche')) {
+            return 1;
+        }
+        if (lower.includes('nesry') || lower.includes('nursery')) {
+            if (lower.includes('2')) return 3;
+            return 2;
+        }
+        if (lower.includes('lg1') || lower.includes('lg 1') || lower.includes('kg1') || lower.includes('kg 1')) {
+            return 4;
+        }
+        if (lower.includes('kg2') || lower.includes('kg 2') || lower.includes('lg2') || lower.includes('lg 2')) {
+            return 5;
+        }
+        if (lower.includes('kg') || lower.includes('lg') || lower.includes('kindergarten')) {
+            return 6;
+        }
+        return 999;
+    };
 
     const getGroup = (className: string) => {
         const name = className.toLowerCase();
+        
+        if (
+            name.includes('nursery') ||
+            name.includes('nesry') ||
+            name.includes('lg') ||
+            name.includes('kg') ||
+            name.includes('creche') ||
+            name.includes('crèche') ||
+            name.includes('kindergarten')
+        ) {
+            return 'early';
+        }
+
         const isJHS = name.includes('jhs') || name.includes('form') || name.includes('junior');
         
         const match = name.match(/\d+/);
@@ -44,6 +78,25 @@ const FeeStructure: React.FC = () => {
         if (num >= 7 && num <= 9) return '7-9';
         return 'other';
     };
+
+    const sortedClasses = React.useMemo(() => {
+        if (!classes) return [];
+        return [...classes].sort((a, b) => {
+            const rankA = getEarlyGradeRank(a.name);
+            const rankB = getEarlyGradeRank(b.name);
+            
+            if (rankA !== rankB) {
+                return rankA - rankB;
+            }
+            
+            const orderA = a.displayOrder ?? 0;
+            const orderB = b.displayOrder ?? 0;
+            if (orderA !== orderB) return orderA - orderB;
+            
+            if (a.level !== b.level) return a.level.localeCompare(b.level);
+            return a.name.localeCompare(b.name);
+        });
+    }, [classes]);
 
     // Pre-fill existing fee structures
     useEffect(() => {
@@ -148,10 +201,10 @@ const FeeStructure: React.FC = () => {
             </div>
 
             {/* Bulk Actions */}
-            {classes && classes.length > 0 && (
+            {sortedClasses && sortedClasses.length > 0 && (
                 <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 md:p-8">
                     <div className="flex items-center gap-3 mb-6">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center -rotate-6">
+                        <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-500 flex items-center justify-center -rotate-6">
                             <i className="fas fa-layer-group text-lg"></i>
                         </div>
                         <div>
@@ -159,14 +212,23 @@ const FeeStructure: React.FC = () => {
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Set fees for multiple classes at once</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Group Early Grade */}
+                        <div className="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100/50 hover:border-rose-100 transition-colors group">
+                            <p className="font-black text-sm text-slate-700 mb-0.5 group-hover:text-rose-600 transition-colors">Early Grade</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Nesry, LG 1, KG 2</p>
+                            <div className="flex gap-2">
+                                <input type="number" min="0" placeholder="0.00" value={groupFees['early']} onChange={e => setGroupFees(p => ({...p, 'early': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-rose-400 shadow-inner" />
+                                <button onClick={() => handleApplyGroup('early')} className="btn-primary !from-rose-600 !to-rose-700 px-5 !text-[10px] flex-shrink-0">Apply</button>
+                            </div>
+                        </div>
                         {/* Group 1-3 */}
-                        <div className="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100/50 hover:border-indigo-100 transition-colors group">
-                            <p className="font-black text-sm text-slate-700 mb-0.5 group-hover:text-indigo-600 transition-colors">Lower Primary</p>
+                        <div className="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100/50 hover:border-teal-100 transition-colors group">
+                            <p className="font-black text-sm text-slate-700 mb-0.5 group-hover:text-teal-600 transition-colors">Lower Primary</p>
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic 1 - 3</p>
                             <div className="flex gap-2">
-                                <input type="number" min="0" placeholder="0.00" value={groupFees['1-3']} onChange={e => setGroupFees(p => ({...p, '1-3': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-indigo-400 shadow-inner" />
-                                <button onClick={() => handleApplyGroup('1-3')} className="btn-primary !from-indigo-600 !to-indigo-700 px-5 !text-[10px] flex-shrink-0">Apply</button>
+                                <input type="number" min="0" placeholder="0.00" value={groupFees['1-3']} onChange={e => setGroupFees(p => ({...p, '1-3': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-teal-400 shadow-inner" />
+                                <button onClick={() => handleApplyGroup('1-3')} className="btn-primary !from-teal-600 !to-teal-700 px-5 !text-[10px] flex-shrink-0">Apply</button>
                             </div>
                         </div>
                         {/* Group 4-6 */}
@@ -179,12 +241,12 @@ const FeeStructure: React.FC = () => {
                             </div>
                         </div>
                         {/* Group 7-9 */}
-                        <div className="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100/50 hover:border-purple-100 transition-colors group">
-                            <p className="font-black text-sm text-slate-700 mb-0.5 group-hover:text-purple-600 transition-colors">Junior High</p>
+                        <div className="bg-slate-50 p-4 rounded-[1.5rem] border border-slate-100/50 hover:border-teal-100 transition-colors group">
+                            <p className="font-black text-sm text-slate-700 mb-0.5 group-hover:text-teal-600 transition-colors">Junior High</p>
                             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Basic 7 - 9 (JHS)</p>
                             <div className="flex gap-2">
-                                <input type="number" min="0" placeholder="0.00" value={groupFees['7-9']} onChange={e => setGroupFees(p => ({...p, '7-9': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-purple-400 shadow-inner" />
-                                <button onClick={() => handleApplyGroup('7-9')} className="btn-primary !from-purple-600 !to-purple-700 px-5 !text-[10px] flex-shrink-0">Apply</button>
+                                <input type="number" min="0" placeholder="0.00" value={groupFees['7-9']} onChange={e => setGroupFees(p => ({...p, '7-9': e.target.value}))} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-black text-slate-800 outline-none focus:border-teal-400 shadow-inner" />
+                                <button onClick={() => handleApplyGroup('7-9')} className="btn-primary !from-teal-600 !to-teal-700 px-5 !text-[10px] flex-shrink-0">Apply</button>
                             </div>
                         </div>
                     </div>
@@ -199,11 +261,11 @@ const FeeStructure: React.FC = () => {
                     </div>
                     <div>
                         <p className="font-black text-slate-800 text-lg md:text-xl tracking-tight leading-tight">{term} · {year}</p>
-                        <p className="text-[10px] md:text-xs text-emerald-600 font-black uppercase tracking-widest mt-0.5">{classes?.length || 0} active classes</p>
+                        <p className="text-[10px] md:text-xs text-emerald-600 font-black uppercase tracking-widest mt-0.5">{sortedClasses?.length || 0} active classes</p>
                     </div>
                 </div>
 
-                {!classes?.length ? (
+                {!sortedClasses?.length ? (
                     <div className="px-6 py-24 flex flex-col items-center justify-center text-slate-300">
                         <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                             <i className="fas fa-chalkboard text-3xl opacity-30"></i>
@@ -223,7 +285,7 @@ const FeeStructure: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {classes.map(cls => {
+                                {sortedClasses.map(cls => {
                                     const existing = structures?.find(s => s.classId === cls.id);
                                     return (
                                         <tr key={cls.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -276,3 +338,4 @@ const FeeStructure: React.FC = () => {
 };
 
 export default FeeStructure;
+

@@ -56,7 +56,7 @@ const Payslip: React.FC<Props> = ({ record, onClose }) => {
                     <div className="text-center border-b border-gray-100 pb-5">
                         <h1 className="text-xl font-black text-gray-800">{school?.schoolName || 'School Name'}</h1>
                         <p className="text-xs text-gray-400 mt-1">Official Payslip</p>
-                        <p className="text-sm font-bold text-indigo-600 mt-2">
+                        <p className="text-sm font-bold text-teal-600 mt-2">
                             {MONTHS[record.month - 1]} {record.year}
                         </p>
                     </div>
@@ -95,9 +95,9 @@ const Payslip: React.FC<Props> = ({ record, onClose }) => {
                                 </td>
                                 <td className="px-4 py-3 font-bold text-red-500 text-sm text-right">- {record.deductions.toFixed(2)}</td>
                             </tr>
-                            <tr className="bg-indigo-50">
-                                <td className="px-4 py-3 font-black text-indigo-700 text-sm rounded-l-xl">Net Pay</td>
-                                <td className="px-4 py-3 font-black text-indigo-700 text-lg text-right rounded-r-xl">GHS {record.netPay.toFixed(2)}</td>
+                            <tr className="bg-teal-50">
+                                <td className="px-4 py-3 font-black text-teal-700 text-sm rounded-l-xl">Net Pay</td>
+                                <td className="px-4 py-3 font-black text-teal-700 text-lg text-right rounded-r-xl">GHS {record.netPay.toFixed(2)}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -117,7 +117,7 @@ const Payslip: React.FC<Props> = ({ record, onClose }) => {
                             <div className="text-center border-b-2 border-gray-100 pb-6">
                                 <h1 className="text-2xl font-black text-gray-800">{school?.schoolName || 'School Name'}</h1>
                                 <p className="text-sm text-gray-400 mt-1">Official Staff Payslip</p>
-                                <p className="text-lg font-bold text-indigo-600 mt-3">
+                                <p className="text-lg font-bold text-teal-600 mt-3">
                                     {MONTHS[record.month - 1]} {record.year}
                                 </p>
                             </div>
@@ -156,9 +156,9 @@ const Payslip: React.FC<Props> = ({ record, onClose }) => {
                                         </td>
                                         <td className="px-6 py-5 font-bold text-red-500 text-right">- {record.deductions.toFixed(2)}</td>
                                     </tr>
-                                    <tr className="bg-indigo-50/50">
-                                        <td className="px-6 py-5 font-black text-indigo-700">Net Pay</td>
-                                        <td className="px-6 py-5 font-black text-indigo-700 text-2xl text-right">GHS {record.netPay.toFixed(2)}</td>
+                                    <tr className="bg-teal-50/50">
+                                        <td className="px-6 py-5 font-black text-teal-700">Net Pay</td>
+                                        <td className="px-6 py-5 font-black text-teal-700 text-2xl text-right">GHS {record.netPay.toFixed(2)}</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -190,3 +190,4 @@ const Payslip: React.FC<Props> = ({ record, onClose }) => {
 };
 
 export default Payslip;
+

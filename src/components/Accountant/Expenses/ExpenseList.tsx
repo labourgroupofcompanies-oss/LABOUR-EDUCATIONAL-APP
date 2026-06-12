@@ -121,7 +121,7 @@ const ExpenseList: React.FC = () => {
                     onClick={() => setShowForm(s => !s)}
                     className={`${showForm ? 'btn-secondary' : 'btn-primary !from-slate-800 !to-slate-900 shadow-slate-300'} w-full sm:w-auto`}
                 >
-                    <i className={`fas ${showForm ? 'fa-times' : 'fa-plus text-purple-400'}`}></i>
+                    <i className={`fas ${showForm ? 'fa-times' : 'fa-plus text-teal-400'}`}></i>
                     {showForm ? 'Cancel' : 'Record Expense'}
                 </button>
             </div>
@@ -130,7 +130,7 @@ const ExpenseList: React.FC = () => {
             {showForm && (
                 <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 p-6 md:p-10 space-y-6">
                     <div className="flex items-center gap-4 mb-2">
-                        <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-500 flex items-center justify-center text-xl">
+                        <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-500 flex items-center justify-center text-xl">
                             <i className="fas fa-receipt"></i>
                         </div>
                         <div>
@@ -143,7 +143,7 @@ const ExpenseList: React.FC = () => {
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Category</label>
                             <select value={category} onChange={e => setCategory(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-black text-slate-700 focus:bg-white focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none transition-all cursor-pointer">
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-black text-slate-700 focus:bg-white focus:ring-2 focus:ring-teal-400 focus:border-transparent outline-none transition-all cursor-pointer">
                                 {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                             </select>
                         </div>
@@ -151,29 +151,29 @@ const ExpenseList: React.FC = () => {
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Amount (GHS) <span className="text-red-400">*</span></label>
                             <input type="number" min="0" step="0.01" placeholder="0.00"
                                 value={amount} onChange={e => setAmount(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-black text-slate-700 focus:bg-white focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none transition-all" />
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-black text-slate-700 focus:bg-white focus:ring-2 focus:ring-teal-400 focus:border-transparent outline-none transition-all" />
                         </div>
                         <div className="md:col-span-2">
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Description <span className="text-red-400">*</span></label>
                             <input type="text" placeholder="e.g. Chalk and markers for classrooms"
                                 value={description} onChange={e => setDescription(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none transition-all" />
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-teal-400 focus:border-transparent outline-none transition-all" />
                         </div>
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Date</label>
                             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none transition-all" />
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-teal-400 focus:border-transparent outline-none transition-all" />
                         </div>
                         <div>
                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Receipt / Note (Optional)</label>
                             <input type="text" placeholder="Receipt #, vendor name..."
                                 value={receiptNote} onChange={e => setReceiptNote(e.target.value)}
-                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none transition-all" />
+                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-teal-400 focus:border-transparent outline-none transition-all" />
                         </div>
                     </div>
                     <div className="flex justify-end pt-4 border-t border-slate-100">
                         <button onClick={handleAdd} disabled={saving}
-                            className="btn-primary !from-purple-600 !to-purple-700 shadow-purple-200 w-full sm:w-auto">
+                            className="btn-primary !from-teal-600 !to-teal-700 shadow-teal-200 w-full sm:w-auto">
                             {saving ? <><i className="fas fa-spinner fa-spin"></i> Saving...</> : <><i className="fas fa-check"></i> Save Expense</>}
                         </button>
                     </div>
@@ -231,7 +231,7 @@ const ExpenseList: React.FC = () => {
                 <div className="flex flex-wrap gap-2">
                     {Object.entries(byCategory).map(([cat, amt]) => (
                         <span key={cat} className="bg-white border border-slate-100 shadow-sm text-slate-600 text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
                             {cat}: <span className="text-slate-800">{fmt(amt)}</span>
                         </span>
                     ))}
@@ -252,15 +252,15 @@ const ExpenseList: React.FC = () => {
                         <div
                             key={i}
                             onClick={() => openDetail(e)}
-                            className={`bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden flex flex-col gap-5 ${e.voided ? 'opacity-60 grayscale' : 'hover:border-purple-200'}`}
+                            className={`bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden flex flex-col gap-5 ${e.voided ? 'opacity-60 grayscale' : 'hover:border-teal-200'}`}
                         >
                             {/* Category Badge - Floating top right */}
-                            <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-wider ${e.voided ? 'bg-slate-100 text-slate-400' : 'bg-purple-50 text-purple-600'}`}>
+                            <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-wider ${e.voided ? 'bg-slate-100 text-slate-400' : 'bg-teal-50 text-teal-600'}`}>
                                 {e.category}
                             </div>
 
                             <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg flex-shrink-0 transition-all ${e.voided ? 'bg-slate-100 text-slate-400' : 'bg-purple-50 text-purple-500 group-hover:bg-purple-600 group-hover:text-white shadow-sm'}`}>
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg flex-shrink-0 transition-all ${e.voided ? 'bg-slate-100 text-slate-400' : 'bg-teal-50 text-teal-500 group-hover:bg-teal-600 group-hover:text-white shadow-sm'}`}>
                                     <i className={`fas ${e.voided ? 'fa-ban' : 'fa-receipt'}`}></i>
                                 </div>
                                 <div className="min-w-0">
@@ -312,7 +312,7 @@ const ExpenseList: React.FC = () => {
                         {/* Modal header */}
                         <div className="relative px-8 pt-10 pb-6 border-b border-slate-50 bg-slate-50/30">
                             <div className="flex items-center gap-6">
-                                <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-2xl shadow-sm ${selectedExpense.voided ? 'bg-slate-200 text-slate-500' : 'bg-purple-600 text-white shadow-purple-200'}`}>
+                                <div className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center text-2xl shadow-sm ${selectedExpense.voided ? 'bg-slate-200 text-slate-500' : 'bg-teal-600 text-white shadow-teal-200'}`}>
                                     <i className={`fas ${selectedExpense.voided ? 'fa-ban' : 'fa-receipt'}`}></i>
                                 </div>
                                 <div className="min-w-0">
@@ -455,3 +455,4 @@ const ExpenseList: React.FC = () => {
 };
 
 export default ExpenseList;
+

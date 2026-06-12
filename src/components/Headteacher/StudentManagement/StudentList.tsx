@@ -48,11 +48,10 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
             const amountPaid = payments.reduce((sum, p) => sum + p.amountPaid, 0);
             const termFeeAmount = structure?.termFeeAmount ?? 0;
 
-            // Compute residual arrears: subtract payments from PREVIOUS terms so the
-            // new-term balance correctly reflects what was actually left unpaid.
+            // Compute residual arrears: load the carried arrears for this term/year
             const rawArrears = student.arrears || 0;
             const residualArrears = student.id
-                ? await dbService.fees.getArrearsBalance(user.schoolId, student.id, term, year, rawArrears)
+                ? await dbService.fees.getCarriedArrears(user.schoolId, student.id, term, year, rawArrears)
                 : rawArrears;
 
             const feeAmount = termFeeAmount + residualArrears;

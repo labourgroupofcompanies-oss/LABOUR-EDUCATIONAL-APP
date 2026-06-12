@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.98.0",
     "dexie": "^4.3.0",
     "dexie-react-hooks": "^4.2.0",
+    "netlify-cli": "^26.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-paystack": "^6.0.0",

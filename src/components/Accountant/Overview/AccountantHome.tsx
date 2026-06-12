@@ -47,59 +47,95 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
 
     const kpiCards = [
         {
-            label: 'Total Collected',
+            label: 'Total Fees Received',
             value: `GHS ${(stats?.totalCollected || 0).toLocaleString()}`,
             icon: 'fa-coins',
-            trend: 'This Term',
+            trend: 'Fees paid by parents this term',
             textColor: 'text-emerald-600',
             bgColor: 'bg-emerald-50',
             action: () => onNavigate('fees-students')
         },
         {
-            label: 'Net Cash Position',
+            label: 'Cash in Hand (Net)',
             value: `GHS ${(stats?.netCashPosition || 0).toLocaleString()}`,
             icon: 'fa-wallet',
-            trend: 'Income - Expense',
+            trend: 'Fees received minus school expenses',
             textColor: 'text-blue-600',
             bgColor: 'bg-blue-50',
             action: () => onNavigate('reports')
         },
         {
-            label: 'Outstanding Arrears',
+            label: 'Total Unpaid Fees',
             value: `GHS ${(stats?.outstandingArrears || 0).toLocaleString()}`,
             icon: 'fa-clock',
-            trend: 'Debt to school',
+            trend: 'Debt parents still owe to school',
             textColor: 'text-rose-600',
             bgColor: 'bg-rose-50',
             action: () => onNavigate('fees-students')
         },
         {
-            label: 'Budget Variance',
+            label: 'Budget Status',
             value: `GHS ${(stats?.budgetVariance || 0).toLocaleString()}`,
             icon: 'fa-chart-pie',
-            trend: stats && stats.budgetVariance < 0 ? 'Over Budget' : 'Within Budget',
-            textColor: stats && stats.budgetVariance < 0 ? 'text-amber-600' : 'text-purple-600',
-            bgColor: stats && stats.budgetVariance < 0 ? 'bg-amber-50' : 'bg-purple-50',
+            trend: stats && stats.budgetVariance < 0 ? 'Over spending limit' : 'Within spending limit',
+            textColor: stats && stats.budgetVariance < 0 ? 'text-amber-600' : 'text-teal-600',
+            bgColor: stats && stats.budgetVariance < 0 ? 'bg-amber-50' : 'bg-teal-50',
             action: () => onNavigate('reports')
         }
     ];
 
     const quickActions = [
-        { label: 'Set Fee Structure', icon: 'fa-list-alt', color: 'bg-emerald-500', action: () => onNavigate('fees-structure') },
-        { label: 'Record Payment', icon: 'fa-plus-circle', color: 'bg-blue-500', action: () => onNavigate('fees-students') },
-        { label: 'Run Payroll', icon: 'fa-money-bill-wave', color: 'bg-indigo-500', action: () => onNavigate('payroll') },
-        { label: 'Add Expense', icon: 'fa-receipt', color: 'bg-purple-500', action: () => onNavigate('expenses') },
-        { label: 'View Reports', icon: 'fa-chart-bar', color: 'bg-rose-500', action: () => onNavigate('reports') },
-        { label: 'Fee Arrears', icon: 'fa-exclamation-triangle', color: 'bg-amber-500', action: () => onNavigate('fees-students') },
+        { 
+            label: '1. Set School Fees', 
+            desc: 'Set class term prices', 
+            icon: 'fa-list-alt', 
+            color: 'bg-emerald-500', 
+            action: () => onNavigate('fees-structure') 
+        },
+        { 
+            label: '2. Collect Payments', 
+            desc: 'Record fees & print receipts', 
+            icon: 'fa-plus-circle', 
+            color: 'bg-blue-500', 
+            action: () => onNavigate('fees-students') 
+        },
+        { 
+            label: '3. School Spending', 
+            desc: 'Record expenses & purchases', 
+            icon: 'fa-receipt', 
+            color: 'bg-teal-500', 
+            action: () => onNavigate('expenses') 
+        },
+        { 
+            label: '4. Pay Salaries', 
+            desc: 'Pay teacher & staff wages', 
+            icon: 'fa-money-bill-wave', 
+            color: 'bg-teal-600', 
+            action: () => onNavigate('payroll') 
+        },
+        { 
+            label: '5. Money Reports', 
+            desc: 'View income, expense totals', 
+            icon: 'fa-chart-bar', 
+            color: 'bg-rose-500', 
+            action: () => onNavigate('reports') 
+        },
+        { 
+            label: '6. Track Unpaid Fees', 
+            desc: 'See who owes school fees', 
+            icon: 'fa-exclamation-triangle', 
+            color: 'bg-amber-500', 
+            action: () => onNavigate('fees-students') 
+        },
     ];
 
     return (
         <div className="space-y-8 md:space-y-12 animate-fadeIn pb-12">
             {/* ── Header / Greeting ── */}
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-700 via-purple-600 to-purple-800 p-6 md:p-12 shadow-2xl shadow-indigo-200 text-left">
+            <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 via-teal-800 to-teal-950 p-6 md:p-12 shadow-2xl shadow-teal-900/10 text-left">
                 {/* Decorative Blobs */}
                 <div className="pointer-events-none absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
-                <div className="pointer-events-none absolute -bottom-10 -left-10 w-40 h-40 bg-purple-400/20 rounded-full blur-2xl"></div>
+                <div className="pointer-events-none absolute -bottom-10 -left-10 w-40 h-40 bg-teal-400/20 rounded-full blur-2xl"></div>
 
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="space-y-1">
@@ -110,8 +146,8 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
                         <h1 className="text-2xl md:text-5xl font-black text-white tracking-tight leading-tight">
                             Hello, {user?.fullName?.split(' ')[0] || 'Accountant'} 👋
                         </h1>
-                        <p className="text-indigo-100/70 font-bold text-[10px] md:text-base flex items-center gap-2 pt-1 uppercase tracking-widest">
-                            <i className="fas fa-calendar-alt text-purple-300"></i>
+                        <p className="text-teal-100/70 font-bold text-[10px] md:text-base flex items-center gap-2 pt-1 uppercase tracking-widest">
+                            <i className="fas fa-calendar-alt text-teal-300"></i>
                             {term} <span className="opacity-30">|</span> {year} Session
                         </p>
                     </div>
@@ -163,21 +199,26 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
                             <span className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-amber-400 text-white flex items-center justify-center text-xs md:text-sm shadow-sm">
                                 <i className="fas fa-bolt"></i>
                             </span>
-                            Quick Actions
+                            Quick Actions Menu
                         </h2>
-                        <div className="grid grid-cols-3 sm:grid-cols-3 gap-3 md:gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                             {quickActions.map((a, i) => (
                                 <button
                                     key={i}
                                     onClick={a.action}
-                                    className="bg-white p-3 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col items-center gap-2 md:gap-4 group hover:border-purple-200 active:scale-95"
+                                    className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all flex flex-col items-center text-center gap-2 md:gap-3 group hover:border-teal-200 active:scale-95"
                                 >
-                                    <div className={`w-10 h-10 md:w-14 md:h-14 ${a.color} rounded-xl md:rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform`}>
-                                        <i className={`fas ${a.icon} text-sm md:text-xl`}></i>
+                                    <div className={`w-10 h-10 md:w-12 md:h-12 ${a.color} rounded-xl md:rounded-2xl flex items-center justify-center text-white flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform`}>
+                                        <i className={`fas ${a.icon} text-sm md:text-lg`}></i>
                                     </div>
-                                    <span className="font-black text-[7px] md:text-[11px] uppercase tracking-wider text-slate-500 group-hover:text-purple-600 transition-colors text-center leading-tight">
-                                        {a.label.split(' ').length > 1 ? <>{a.label.split(' ')[0]}<br/>{a.label.split(' ').slice(1).join(' ')}</> : a.label}
-                                    </span>
+                                    <div>
+                                        <span className="block font-black text-[10px] md:text-xs uppercase tracking-wider text-slate-800 group-hover:text-teal-600 transition-colors">
+                                            {a.label}
+                                        </span>
+                                        <span className="block text-[8.5px] md:text-[10px] font-bold text-slate-400 mt-1 leading-snug">
+                                            {a.desc}
+                                        </span>
+                                    </div>
                                 </button>
                             ))}
                         </div>
@@ -190,7 +231,7 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
                                 <h2 className="text-lg md:text-2xl font-black text-slate-800 tracking-tight">Expenditure</h2>
                                 <p className="text-[9px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Latest Transactions</p>
                             </div>
-                            <button onClick={() => onNavigate('expenses')} className="px-4 py-2 md:px-6 md:py-3 rounded-xl bg-purple-50 text-purple-600 font-black text-[9px] md:text-xs uppercase tracking-widest hover:bg-purple-600 hover:text-white transition-all shadow-sm">
+                            <button onClick={() => onNavigate('expenses')} className="px-4 py-2 md:px-6 md:py-3 rounded-xl bg-teal-50 text-teal-600 font-black text-[9px] md:text-xs uppercase tracking-widest hover:bg-teal-600 hover:text-white transition-all shadow-sm">
                                 View All
                             </button>
                         </div>
@@ -207,13 +248,13 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
                                 {stats.recentExpenses.map((expense: any, i: number) => (
                                     <div key={i} className="px-5 py-4 md:px-8 md:py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors group cursor-pointer">
                                         <div className="flex items-center gap-4 md:gap-5 min-w-0">
-                                            <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-100 rounded-xl md:rounded-2xl flex flex-shrink-0 items-center justify-center text-slate-400 group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-all font-black text-sm md:text-base shadow-sm">
+                                            <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-100 rounded-xl md:rounded-2xl flex flex-shrink-0 items-center justify-center text-slate-400 group-hover:bg-teal-100 group-hover:text-teal-600 transition-all font-black text-sm md:text-base shadow-sm">
                                                 {expense.category.charAt(0)}
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="font-black text-slate-800 text-sm md:text-base tracking-tight truncate">{expense.description}</p>
                                                 <div className="flex items-center gap-1.5 md:gap-2 mt-0.5">
-                                                    <span className="text-[8px] md:text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded md:rounded-md uppercase tracking-widest">
+                                                    <span className="text-[8px] md:text-[10px] font-black text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded md:rounded-md uppercase tracking-widest">
                                                         {expense.category}
                                                     </span>
                                                     <span className="w-0.5 h-0.5 rounded-full bg-slate-200"></span>
@@ -238,16 +279,16 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
                 {/* Right Side: School Calendar */}
                 <div className="lg:col-span-4 space-y-8 sticky top-24">
                     <h2 className="text-base md:text-xl font-black text-slate-800 flex items-center gap-3 px-1">
-                        <span className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-indigo-500 text-white flex items-center justify-center text-xs md:text-sm shadow-lg">
+                        <span className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-teal-500 text-white flex items-center justify-center text-xs md:text-sm shadow-lg">
                             <i className="fas fa-calendar-star"></i>
                         </span>
                         Calendar
                     </h2>
-                    <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-xl shadow-indigo-900/5 p-6 md:p-8 space-y-6 md:space-y-8">
+                    <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 shadow-xl shadow-teal-900/5 p-6 md:p-8 space-y-6 md:space-y-8">
                         <div className="space-y-4 md:space-y-6">
                             {stats?.upcomingEvents && stats.upcomingEvents.length > 0 ? stats.upcomingEvents.map((e: any) => (
                                 <div key={e.id} className="flex items-center gap-4 md:gap-5 group">
-                                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex flex-col items-center justify-center text-slate-500 font-black group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all border border-slate-100 flex-shrink-0">
+                                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-slate-50 flex flex-col items-center justify-center text-slate-500 font-black group-hover:bg-teal-50 group-hover:text-teal-600 transition-all border border-slate-100 flex-shrink-0">
                                         <span className="text-[8px] md:text-[10px] uppercase leading-none mb-0.5 md:mb-1">{new Date(e.startDate).toLocaleString('default', { month: 'short' })}</span>
                                         <span className="text-base md:text-lg leading-none">{new Date(e.startDate).getDate()}</span>
                                     </div>
@@ -274,4 +315,5 @@ const AccountantHome: React.FC<Props> = ({ onNavigate }) => {
 };
 
 export default AccountantHome;
+
 

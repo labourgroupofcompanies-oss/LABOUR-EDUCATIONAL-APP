@@ -78,7 +78,7 @@ const BulkDiscountModal: React.FC<Props> = ({ schoolId, classes, studentsWithArr
                         <select
                             value={selectedClassId}
                             onChange={(e) => setSelectedClassId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-500 transition-all cursor-pointer"
                         >
                             <option value="all">All Students with Arrears ({studentsWithArrears.length})</option>
                             {classes.map(c => (
@@ -98,13 +98,13 @@ const BulkDiscountModal: React.FC<Props> = ({ schoolId, classes, studentsWithArr
                                 placeholder="0.00"
                                 value={discountAmount}
                                 onChange={(e) => setDiscountAmount(e.target.value)}
-                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-base font-black text-slate-800 outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300"
+                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-base font-black text-slate-800 outline-none focus:border-teal-500 transition-all placeholder:text-slate-300"
                             />
                         </div>
                         {/* Summary Box */}
-                        <div className="bg-indigo-50/50 rounded-2xl p-4 flex flex-col justify-center border border-indigo-100/50">
-                            <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Selected Students</p>
-                            <p className="text-2xl font-black text-indigo-600 tracking-tighter">{targetStudents.length}</p>
+                        <div className="bg-teal-50/50 rounded-2xl p-4 flex flex-col justify-center border border-teal-100/50">
+                            <p className="text-[8px] font-black text-teal-400 uppercase tracking-widest">Selected Students</p>
+                            <p className="text-2xl font-black text-teal-600 tracking-tighter">{targetStudents.length}</p>
                         </div>
                     </div>
 
@@ -116,7 +116,7 @@ const BulkDiscountModal: React.FC<Props> = ({ schoolId, classes, studentsWithArr
                             placeholder="e.g. End of term waiver, PTA adjustment"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-indigo-500 transition-all"
+                            className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-teal-500 transition-all"
                         />
                     </div>
 
@@ -159,3 +159,4 @@ const BulkDiscountModal: React.FC<Props> = ({ schoolId, classes, studentsWithArr
 };
 
 export default BulkDiscountModal;
+

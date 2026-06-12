@@ -92,7 +92,7 @@ const PaymentHistoryModal: React.FC<Props> = ({ studentId, studentName, classNam
                 <div className="p-6 overflow-y-auto bg-slate-50/50 flex-1">
                     {payments === undefined ? (
                         <div className="flex justify-center items-center py-12">
-                            <i className="fas fa-circle-notch fa-spin text-3xl text-indigo-200"></i>
+                            <i className="fas fa-circle-notch fa-spin text-3xl text-teal-200"></i>
                         </div>
                     ) : payments.length === 0 ? (
                         <div className="text-center py-12">
@@ -165,3 +165,4 @@ const PaymentHistoryModal: React.FC<Props> = ({ studentId, studentName, classNam
 };
 
 export default PaymentHistoryModal;
+

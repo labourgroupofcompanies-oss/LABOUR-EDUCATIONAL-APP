@@ -2362,7 +2362,7 @@ export const syncService = {
         // graduate_records (snake_case Supabase name)
         if (table === 'graduate_records') return 'school_id,student_id';
         // school_events (snake_case Supabase name)
-        if (table === 'school_events') return 'school_id,title,start_date';
+        if (table === 'school_events') return 'id';
         if (table === 'classes') return 'school_id,name,level';
         if (table === 'subjects') return 'school_id,name';
         // class_subjects (snake_case Supabase name)

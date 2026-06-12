@@ -85,9 +85,9 @@ const AccountantSettings: React.FC = () => {
 
             {/* Profile */}
             <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 p-6 md:p-10 space-y-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-bl-full -mr-8 -mt-8 opacity-50 pointer-events-none"></div>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-bl-full -mr-8 -mt-8 opacity-50 pointer-events-none"></div>
                 <div className="relative z-10 flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shadow-sm">
+                    <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-600 flex items-center justify-center text-xl shadow-sm">
                         <i className="fas fa-user-circle"></i>
                     </div>
                     <div>
@@ -105,7 +105,7 @@ const AccountantSettings: React.FC = () => {
                     ].map(({ label, val, icon }) => (
                         <div key={label} className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:bg-white hover:shadow-lg transition-all group">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-1.5">
-                                <i className={`fas ${icon} text-slate-300 group-hover:text-purple-400 transition-colors`}></i>
+                                <i className={`fas ${icon} text-slate-300 group-hover:text-teal-400 transition-colors`}></i>
                                 {label}
                             </p>
                             <p className="font-black text-slate-800 text-sm tracking-tight">{val}</p>
@@ -161,3 +161,4 @@ const AccountantSettings: React.FC = () => {
 };
 
 export default AccountantSettings;
+

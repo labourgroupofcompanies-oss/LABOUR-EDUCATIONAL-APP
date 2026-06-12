@@ -4,8 +4,10 @@ import { useAuth } from '../../../hooks/useAuth';
 import { dbService } from '../../../services/dbService';
 import { syncManager } from '../../../services/syncManager';
 import { showToast } from '../../Common/Toast';
-import { type PayrollRecord } from '../../../eduDb';
+import { eduDb, type PayrollRecord } from '../../../eduDb';
+import { db } from '../../../db';
 import Payslip from './Payslip';
+import PrintPortal from '../../Common/PrintPortal';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
@@ -32,6 +34,24 @@ const PayrollDashboard: React.FC = () => {
     const [viewPayslip, setViewPayslip] = useState<PayrollRecord | null>(null);
     const [confirmingCodeFor, setConfirmingCodeFor] = useState<PayrollRow | null>(null);
     const [codeEntry, setCodeEntry] = useState('');
+    const [latestGross, setLatestGross] = useState<Record<number, number>>({});
+    const [isPrinting, setIsPrinting] = useState(false);
+
+    const school = useLiveQuery(async () => {
+        if (!user?.schoolId) return null;
+        return await db.schools
+            .where('schoolId').equals(user.schoolId)
+            .or('idCloud').equals(user.schoolId)
+            .first();
+    }, [user?.schoolId]);
+
+    const handlePrint = () => {
+        setIsPrinting(true);
+        setTimeout(() => {
+            window.print();
+            setIsPrinting(false);
+        }, 100);
+    };
 
     const allStaff = useLiveQuery(() =>
         user?.schoolId ? dbService.staff.getAll(user.schoolId) : [], [user?.schoolId]);
@@ -39,6 +59,33 @@ const PayrollDashboard: React.FC = () => {
     const payrollRecords = useLiveQuery(() =>
         user?.schoolId ? dbService.payroll.getByMonth(user.schoolId, month, year) : [],
         [user?.schoolId, month, year]);
+
+    // Fetch the most recent gross salary for each staff member up to the selected period
+    React.useEffect(() => {
+        if (!allStaff || !user?.schoolId) return;
+
+        const fetchLatestGross = async () => {
+            const mapping: Record<number, number> = {};
+            for (const s of allStaff) {
+                const records = await eduDb.payrollRecords
+                    .where('staffId')
+                    .equals(s.id!)
+                    .filter(r => r.schoolId === user.schoolId && !r.isDeleted && r.grossSalary > 0 && (r.year < year || (r.year === year && r.month <= month)))
+                    .toArray();
+                
+                if (records.length > 0) {
+                    records.sort((a, b) => {
+                        if (a.year !== b.year) return b.year - a.year;
+                        return b.month - a.month;
+                    });
+                    mapping[s.id!] = records[0].grossSalary;
+                }
+            }
+            setLatestGross(mapping);
+        };
+
+        fetchLatestGross();
+    }, [allStaff, user?.schoolId, payrollRecords, month, year]);
 
     const prevPeriod = React.useRef({ month, year });
 
@@ -75,7 +122,7 @@ const PayrollDashboard: React.FC = () => {
                         name: s.fullName || s.username,
                         role: s.role,
                         record: dbRecord,
-                        grossInput: grossModified ? existing.grossInput : (dbRecord?.grossSalary ? dbRecord.grossSalary.toString() : ''),
+                        grossInput: grossModified ? existing.grossInput : (dbRecord?.grossSalary ? dbRecord.grossSalary.toString() : (latestGross[s.id!] ? latestGross[s.id!].toString() : '')),
                         deductionInput: deductionsModified ? existing.deductionInput : (dbRecord?.deductions ? dbRecord.deductions.toString() : ''),
                         deductionNotes: notesModified ? existing.deductionNotes : (dbRecord?.deductionNotes || ''),
                         methodInput: methodModified ? existing.methodInput : (dbRecord?.paymentMethod || 'Cash'),
@@ -88,7 +135,7 @@ const PayrollDashboard: React.FC = () => {
                         name: s.fullName || s.username,
                         role: s.role,
                         record: dbRecord,
-                        grossInput: dbRecord?.grossSalary ? dbRecord.grossSalary.toString() : '',
+                        grossInput: dbRecord?.grossSalary ? dbRecord.grossSalary.toString() : (latestGross[s.id!] ? latestGross[s.id!].toString() : ''),
                         deductionInput: dbRecord?.deductions ? dbRecord.deductions.toString() : '',
                         deductionNotes: dbRecord?.deductionNotes || '',
                         methodInput: dbRecord?.paymentMethod || 'Cash',
@@ -96,7 +143,7 @@ const PayrollDashboard: React.FC = () => {
                 }
             });
         });
-    }, [allStaff, payrollRecords, month, year]);
+    }, [allStaff, payrollRecords, month, year, latestGross]);
 
     const updateRow = (i: number, changes: Partial<PayrollRow>) => {
         setRows(prev => prev.map((r, idx) => idx === i ? { ...r, ...changes } : r));
@@ -188,28 +235,36 @@ const PayrollDashboard: React.FC = () => {
                         Assign salaries and mark staff as paid
                     </p>
                 </div>
-                <div className="flex bg-white p-2 rounded-2xl shadow-sm border border-slate-100 gap-2 w-full sm:w-auto">
+                <div className="flex flex-wrap bg-white p-2 rounded-2xl shadow-sm border border-slate-100 gap-2 w-full sm:w-auto items-center">
                     <select
                         value={month}
                         onChange={e => setMonth(parseInt(e.target.value))}
-                        className="border-none bg-slate-50 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none w-full sm:w-auto cursor-pointer"
+                        className="border-none bg-slate-50 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-2 focus:ring-teal-400 outline-none w-full sm:w-auto cursor-pointer"
                     >
                         {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
                     </select>
                     <select
                         value={year}
                         onChange={e => setYear(parseInt(e.target.value))}
-                        className="border-none bg-slate-50 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-2 focus:ring-indigo-400 outline-none w-full sm:w-auto cursor-pointer"
+                        className="border-none bg-slate-50 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-2 focus:ring-teal-400 outline-none w-full sm:w-auto cursor-pointer"
                     >
                         {Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - 15 + i).map(y => <option key={y} value={y}>{y}</option>)}
                     </select>
+                    {rows.length > 0 && (
+                        <button
+                            onClick={handlePrint}
+                            className="bg-slate-800 text-white hover:bg-slate-900 px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ml-auto sm:ml-0"
+                        >
+                            <i className="fas fa-print"></i> Print Salaries
+                        </button>
+                    )}
                 </div>
             </div>
 
             {/* ── Summary bar ── */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                 {[
-                    { label: 'Net Pay', val: `GHS ${totalNet.toLocaleString()}`, color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100' },
+                    { label: 'Net Pay', val: `GHS ${totalNet.toLocaleString()}`, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100' },
                     { label: 'Staff Paid', val: `${paidCount}/${rows.length}`, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
                     { label: 'Period', val: `${MONTHS[month - 1].slice(0, 3)} ${year}`, color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-100' },
                 ].map((s, idx) => (
@@ -248,9 +303,9 @@ const PayrollDashboard: React.FC = () => {
                                 return (
                                     <tr key={row.staffId} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 py-5 font-black text-slate-400 text-sm whitespace-nowrap">{i + 1}</td>
-                                        <td className="px-6 py-5 font-black text-slate-800 text-sm whitespace-nowrap group-hover:text-indigo-600 transition-colors">{row.name}</td>
+                                        <td className="px-6 py-5 font-black text-slate-800 text-sm whitespace-nowrap group-hover:text-teal-600 transition-colors">{row.name}</td>
                                         <td className="px-6 py-5">
-                                            <span className="text-[9px] font-black bg-purple-50 text-purple-600 px-2.5 py-1 rounded-md uppercase tracking-widest">{row.role}</span>
+                                            <span className="text-[9px] font-black bg-teal-50 text-teal-600 px-2.5 py-1 rounded-md uppercase tracking-widest">{row.role}</span>
                                         </td>
                                         <td className="px-6 py-5">
                                             <input
@@ -258,7 +313,7 @@ const PayrollDashboard: React.FC = () => {
                                                 value={row.grossInput}
                                                 onChange={e => updateRow(i, { grossInput: e.target.value })}
                                                 disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
-                                                className="w-28 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-400 focus:border-transparent outline-none disabled:bg-slate-50 disabled:text-slate-400 transition-all shadow-inner"
+                                                className="w-28 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-800 focus:bg-white focus:ring-2 focus:ring-teal-400 focus:border-transparent outline-none disabled:bg-slate-50 disabled:text-slate-400 transition-all shadow-inner"
                                             />
                                         </td>
                                         <td className="px-6 py-5">
@@ -267,7 +322,7 @@ const PayrollDashboard: React.FC = () => {
                                                  value={row.deductionInput}
                                                 onChange={e => updateRow(i, { deductionInput: e.target.value })}
                                                 disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
-                                                className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-400 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition-all shadow-inner"
+                                                className="w-24 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-black text-slate-800 focus:bg-white focus:ring-2 focus:ring-teal-400 outline-none disabled:bg-slate-50 disabled:text-slate-400 transition-all shadow-inner"
                                             />
                                         </td>
                                         <td className="px-6 py-5">
@@ -276,17 +331,17 @@ const PayrollDashboard: React.FC = () => {
                                                 value={row.deductionNotes}
                                                 onChange={e => updateRow(i, { deductionNotes: e.target.value })}
                                                 disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
-                                                className="w-32 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-bold text-slate-600 focus:bg-white focus:ring-2 focus:ring-indigo-400 outline-none disabled:bg-slate-50 disabled:text-slate-300 transition-all shadow-inner placeholder:text-slate-300"
+                                                className="w-32 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-[11px] font-bold text-slate-600 focus:bg-white focus:ring-2 focus:ring-teal-400 outline-none disabled:bg-slate-50 disabled:text-slate-300 transition-all shadow-inner placeholder:text-slate-300"
                                             />
                                         </td>
-                                        <td className="px-6 py-5 font-black text-indigo-700 text-base">
+                                        <td className="px-6 py-5 font-black text-teal-700 text-base">
                                             GHS {isNaN(net) ? '0.00' : net.toFixed(2)}
                                         </td>
                                         <td className="px-6 py-5">
                                             <select
                                                  value={row.methodInput}
                                                 onChange={e => updateRow(i, { methodInput: e.target.value as any })}
-                                                className="border border-slate-200 rounded-xl px-3 py-2 text-[10px] uppercase tracking-widest font-black bg-white focus:ring-2 focus:ring-indigo-400 outline-none cursor-pointer"
+                                                className="border border-slate-200 rounded-xl px-3 py-2 text-[10px] uppercase tracking-widest font-black bg-white focus:ring-2 focus:ring-teal-400 outline-none cursor-pointer"
                                             >
                                                 <option>Cash</option>
                                                 <option>Bank Transfer</option>
@@ -369,7 +424,7 @@ const PayrollDashboard: React.FC = () => {
                             <div className="flex items-start justify-between gap-4 p-6 border-b border-slate-50">
                                 <div>
                                     <p className="font-black text-slate-800 text-base leading-tight">{row.name}</p>
-                                    <span className="inline-block mt-2 text-[9px] font-black bg-purple-50 text-purple-600 px-2 py-0.5 rounded-md uppercase tracking-widest">
+                                    <span className="inline-block mt-2 text-[9px] font-black bg-teal-50 text-teal-600 px-2 py-0.5 rounded-md uppercase tracking-widest">
                                         {row.role}
                                     </span>
                                 </div>
@@ -397,7 +452,7 @@ const PayrollDashboard: React.FC = () => {
                                             type="number" min="0" step="0.01" placeholder="0.00"
                                             value={row.grossInput}
                                             onChange={e => updateRow(i, { grossInput: e.target.value })}
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black focus:ring-2 focus:ring-indigo-400 outline-none shadow-sm"
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black focus:ring-2 focus:ring-teal-400 outline-none shadow-sm"
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
@@ -408,7 +463,7 @@ const PayrollDashboard: React.FC = () => {
                                                 value={row.deductionInput}
                                                 onChange={e => updateRow(i, { deductionInput: e.target.value })}
                                                 disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black focus:ring-2 focus:ring-indigo-400 outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-black focus:ring-2 focus:ring-teal-400 outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-400"
                                             />
                                         </div>
                                         <div>
@@ -418,7 +473,7 @@ const PayrollDashboard: React.FC = () => {
                                                 value={row.deductionNotes}
                                                 onChange={e => updateRow(i, { deductionNotes: e.target.value })}
                                                 disabled={row.record?.status === 'Paid' || row.record?.status === 'Ready'}
-                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-600 focus:ring-2 focus:ring-indigo-400 outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-300 placeholder:text-slate-300"
+                                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-600 focus:ring-2 focus:ring-teal-400 outline-none shadow-sm disabled:bg-slate-50 disabled:text-slate-300 placeholder:text-slate-300"
                                             />
                                         </div>
                                     </div>
@@ -426,14 +481,14 @@ const PayrollDashboard: React.FC = () => {
                                 <div className="grid grid-cols-2 gap-4 items-end border-t border-slate-100 pt-4">
                                     <div>
                                         <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Net Pay</label>
-                                        <p className="text-xl font-black text-indigo-700 tracking-tight">GHS {isNaN(net) ? '0.00' : net.toFixed(2)}</p>
+                                        <p className="text-xl font-black text-teal-700 tracking-tight">GHS {isNaN(net) ? '0.00' : net.toFixed(2)}</p>
                                     </div>
                                     <div>
                                         <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Method</label>
                                         <select
                                             value={row.methodInput}
                                             onChange={e => updateRow(i, { methodInput: e.target.value as any })}
-                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-indigo-400 outline-none"
+                                            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest focus:ring-2 focus:ring-teal-400 outline-none"
                                         >
                                             <option>Cash</option>
                                             <option>Bank Transfer</option>
@@ -489,8 +544,8 @@ const PayrollDashboard: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fadeIn">
                     <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
                         <div className="p-6 text-center border-b border-slate-100">
-                            <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i className="fas fa-lock text-indigo-400 text-2xl"></i>
+                            <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i className="fas fa-lock text-teal-400 text-2xl"></i>
                             </div>
                             <h3 className="text-xl font-black text-slate-800">Enter Collection Code</h3>
                             <p className="text-sm font-bold text-slate-400 mt-1">Get this code from {confirmingCodeFor.name}</p>
@@ -502,7 +557,7 @@ const PayrollDashboard: React.FC = () => {
                                 value={codeEntry}
                                 onChange={e => setCodeEntry(e.target.value.replace(/\D/g, ''))}
                                 placeholder="0000"
-                                className="w-full text-center text-3xl tracking-[0.5em] font-black bg-white border border-slate-200 rounded-2xl p-4 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all shadow-sm"
+                                className="w-full text-center text-3xl tracking-[0.5em] font-black bg-white border border-slate-200 rounded-2xl p-4 focus:ring-4 focus:ring-teal-100 focus:border-teal-400 outline-none transition-all shadow-sm"
                             />
                         </div>
                         <div className="p-6 grid grid-cols-2 gap-3 pt-0 bg-slate-50/50">
@@ -525,7 +580,7 @@ const PayrollDashboard: React.FC = () => {
                                      }
                                 }}
                                 disabled={codeEntry.length !== 4}
-                                className="btn-primary px-4 py-3.5 !rounded-xl !text-[10px] shadow-indigo-200"
+                                className="btn-primary px-4 py-3.5 !rounded-xl !text-[10px] shadow-teal-200"
                             >
                                 Confirm Code
                             </button>
@@ -533,8 +588,53 @@ const PayrollDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {isPrinting && (
+                <PrintPortal>
+                    <div className="print-a4-portrait p-10 space-y-8">
+                        <div className="text-center border-b-2 border-slate-100 pb-6">
+                            <h1 className="text-2xl font-black text-slate-800">{school?.schoolName || 'School Name'}</h1>
+                            <p className="text-sm text-slate-500 mt-1 uppercase tracking-[0.2em] font-bold">Staff Gross Salary List</p>
+                            <p className="text-xs text-slate-400 mt-2">Period: {MONTHS[month - 1]} {year} | Generated on {new Date().toLocaleDateString()}</p>
+                        </div>
+
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50 border-y border-slate-200">
+                                    {['S/N', 'Staff Name', 'Role', 'Gross Salary (GHS)'].map(h => (
+                                        <th key={h} className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase tracking-widest">{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {rows.map((row, i) => {
+                                    const gross = parseFloat(row.grossInput || '0');
+                                    return (
+                                        <tr key={row.staffId}>
+                                            <td className="px-4 py-3 text-xs font-bold text-slate-500">{i + 1}</td>
+                                            <td className="px-4 py-3 text-sm font-bold text-slate-800">{row.name}</td>
+                                            <td className="px-4 py-3 text-[10px] font-black text-teal-600 uppercase">{row.role}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-700 font-bold">GHS {isNaN(gross) ? '0.00' : gross.toFixed(2)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+
+                        <div className="pt-20 flex justify-between items-end border-t border-dashed border-slate-200">
+                            <div className="text-center w-64 border-t border-slate-300 pt-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Accountant's Signature</p>
+                            </div>
+                            <div className="text-center w-64 border-t border-slate-300 pt-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Headteacher's Approval</p>
+                            </div>
+                        </div>
+                    </div>
+                </PrintPortal>
+            )}
         </div>
     );
 };
 
 export default PayrollDashboard;
+

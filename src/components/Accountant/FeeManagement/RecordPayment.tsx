@@ -11,7 +11,7 @@ import { syncService } from '../../../services/syncService';
 import { supabase } from '../../../supabaseClient';
 
 interface FeeRow {
-    student: { id?: number; name: string; };
+    student: { id?: number; name: string; classId?: number; };
     feeAmount: number;
     amountPaid: number;
     balance: number;
@@ -59,7 +59,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                 schoolId: user.schoolId,
                 studentId: row.student.id,
                 studentName: row.student.name,
-                classId: 0,
+                classId: row.student.classId || 0,
                 term,
                 year,
                 amountPaid: amt,
@@ -128,7 +128,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                             {row.balance > 0 && (
                                 <button
                                     onClick={() => setAmount(row.balance.toString())}
-                                    className="btn-ghost !px-2 !py-1 !rounded-lg !text-[10px] text-indigo-600"
+                                    className="btn-ghost !px-2 !py-1 !rounded-lg !text-[10px] text-teal-600"
                                 >
                                     <i className="fas fa-magic"></i> Pay Balance
                                 </button>
@@ -141,7 +141,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                             placeholder="0.00"
                             value={amount}
                             onChange={e => setAmount(e.target.value)}
-                            className="w-full border-2 border-gray-100 rounded-2xl px-5 py-4 font-black text-gray-800 focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 outline-none text-2xl transition-all placeholder:text-gray-200"
+                            className="w-full border-2 border-gray-100 rounded-2xl px-5 py-4 font-black text-gray-800 focus:ring-4 focus:ring-teal-50 focus:border-teal-500 outline-none text-2xl transition-all placeholder:text-gray-200"
                         />
                         {/* Overpayment warning */}
                         {wouldOverpay && (
@@ -157,7 +157,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                             <select
                                 value={method}
                                 onChange={e => setMethod(e.target.value as FeePayment['paymentMethod'])}
-                                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm font-medium focus:ring-2 focus:ring-indigo-400 outline-none bg-white"
+                                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm font-medium focus:ring-2 focus:ring-teal-400 outline-none bg-white"
                             >
                                 <option>Cash</option>
                                 <option>MoMo</option>
@@ -170,7 +170,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                                 type="date"
                                 value={date}
                                 onChange={e => setDate(e.target.value)}
-                                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm font-medium focus:ring-2 focus:ring-indigo-400 outline-none"
+                                className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm font-medium focus:ring-2 focus:ring-teal-400 outline-none"
                             />
                         </div>
                     </div>
@@ -181,7 +181,7 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                             placeholder="e.g. First instalment"
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
-                            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-indigo-400 outline-none"
+                            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-teal-400 outline-none"
                         />
                     </div>
                 </div>
@@ -222,10 +222,15 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
                     )}
                 </div>
 
-                {/* Print Portal */}
                 {isPrinting && lastPayment && (
                     <PrintPortal>
-                        <FeeReceipt payment={lastPayment} schoolName={school?.schoolName} cashierName={user?.fullName || 'Accountant'} />
+                        <FeeReceipt 
+                            payment={lastPayment} 
+                            schoolName={school?.schoolName} 
+                            cashierName={user?.fullName || 'Accountant'} 
+                            balance={row.balance - lastPayment.amountPaid}
+                            totalDue={row.feeAmount}
+                        />
                     </PrintPortal>
                 )}
             </div>
@@ -234,3 +239,4 @@ const RecordPayment: React.FC<Props> = ({ row, term, year, onClose }) => {
 };
 
 export default RecordPayment;
+

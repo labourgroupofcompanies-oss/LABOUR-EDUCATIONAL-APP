@@ -15,6 +15,9 @@ const PayrollHistory: React.FC = () => {
     const [selected, setSelected] = React.useState<PayrollRecord | null>(null);
     const [search, setSearch] = React.useState('');
     const [isPrinting, setIsPrinting] = React.useState(false);
+    const [selectedMethod, setSelectedMethod] = React.useState<string>('All');
+    const [selectedMonth, setSelectedMonth] = React.useState<string>('All');
+    const [selectedYear, setSelectedYear] = React.useState<string>('All');
 
     const school = useLiveQuery(async () => {
         if (!user?.schoolId) return null;
@@ -48,9 +51,20 @@ const PayrollHistory: React.FC = () => {
         });
     }, [user?.schoolId, allStaff]);
 
-    const filtered = allRecords?.filter(r =>
-        r.staffName.toLowerCase().includes(search.toLowerCase())
-    ) || [];
+    const years = React.useMemo(() => {
+        if (!allRecords) return [];
+        const set = new Set<number>();
+        allRecords.forEach(r => set.add(r.year));
+        return Array.from(set).sort((a, b) => b - a);
+    }, [allRecords]);
+
+    const filtered = allRecords?.filter(r => {
+        const matchesSearch = r.staffName.toLowerCase().includes(search.toLowerCase());
+        const matchesMethod = selectedMethod === 'All' || r.paymentMethod.toLowerCase().includes(selectedMethod.toLowerCase());
+        const matchesMonth = selectedMonth === 'All' || r.month === parseInt(selectedMonth, 10);
+        const matchesYear = selectedYear === 'All' || r.year === parseInt(selectedYear, 10);
+        return matchesSearch && matchesMethod && matchesMonth && matchesYear;
+    }) || [];
 
     return (
         <div className="space-y-6 animate-fadeIn">
@@ -59,20 +73,62 @@ const PayrollHistory: React.FC = () => {
                 <p className="text-gray-400 text-sm">All past payroll records</p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                <input
-                    type="text"
-                    placeholder="Search by staff name..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="w-full sm:max-w-xs border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-purple-400 outline-none"
-                />
-                <button
-                    onClick={handlePrint}
-                    className="w-full sm:w-auto bg-slate-800 text-white hover:bg-slate-900 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2"
-                >
-                    <i className="fas fa-print"></i> Print History
-                </button>
+            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
+                <div className="flex flex-wrap gap-3 items-center">
+                    <div className="flex-1 min-w-[200px]">
+                        <input
+                            type="text"
+                            placeholder="Search by staff name..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2 text-xs font-bold focus:ring-2 focus:ring-teal-400 outline-none"
+                        />
+                    </div>
+                    <div className="w-full sm:w-auto min-w-[130px]">
+                        <select
+                            value={selectedMethod}
+                            onChange={e => setSelectedMethod(e.target.value)}
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2 text-xs font-black bg-white focus:ring-2 focus:ring-teal-400 outline-none cursor-pointer"
+                        >
+                            <option value="All">All Methods</option>
+                            <option value="Cash">Cash</option>
+                            <option value="MoMo">MoMo</option>
+                            <option value="Bank">Bank Transfer</option>
+                        </select>
+                    </div>
+                    <div className="w-full sm:w-auto min-w-[130px]">
+                        <select
+                            value={selectedMonth}
+                            onChange={e => setSelectedMonth(e.target.value)}
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2 text-xs font-black bg-white focus:ring-2 focus:ring-teal-400 outline-none cursor-pointer"
+                        >
+                            <option value="All">All Months</option>
+                            {MONTHS.map((m, idx) => (
+                                <option key={idx} value={idx + 1}>{m}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="w-full sm:w-auto min-w-[130px]">
+                        <select
+                            value={selectedYear}
+                            onChange={e => setSelectedYear(e.target.value)}
+                            className="w-full border border-gray-200 rounded-xl px-4 py-2 text-xs font-black bg-white focus:ring-2 focus:ring-teal-400 outline-none cursor-pointer"
+                        >
+                            <option value="All">All Years</option>
+                            {years.length > 0 ? years.map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            )) : (
+                                <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                            )}
+                        </select>
+                    </div>
+                    <button
+                        onClick={handlePrint}
+                        className="w-full sm:w-auto bg-slate-800 text-white hover:bg-slate-900 px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ml-auto"
+                    >
+                        <i className="fas fa-print"></i> Print History
+                    </button>
+                </div>
             </div>
 
             {/* ── Desktop Table (hidden on mobile) ── */}
@@ -95,11 +151,11 @@ const PayrollHistory: React.FC = () => {
                                     <td className="px-4 py-3 font-bold text-gray-700 text-sm whitespace-nowrap">{MONTHS[r.month - 1]} {r.year}</td>
                                     <td className="px-4 py-3 font-bold text-gray-800 text-sm whitespace-nowrap">{r.staffName}</td>
                                     <td className="px-4 py-3">
-                                        <span className="text-[10px] font-black bg-purple-50 text-purple-600 px-2.5 py-1 rounded-full uppercase tracking-wider">{r.staffRole}</span>
+                                        <span className="text-[10px] font-black bg-teal-50 text-teal-600 px-2.5 py-1 rounded-full uppercase tracking-wider">{r.staffRole}</span>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-gray-600">GHS {r.grossSalary.toFixed(2)}</td>
                                     <td className="px-4 py-3 text-sm text-red-400">GHS {r.deductions.toFixed(2)}</td>
-                                    <td className="px-4 py-3 font-black text-indigo-700 text-sm">GHS {r.netPay.toFixed(2)}</td>
+                                    <td className="px-4 py-3 font-black text-teal-700 text-sm">GHS {r.netPay.toFixed(2)}</td>
                                     <td className="px-4 py-3 text-sm text-gray-500">{r.paymentMethod}</td>
                                     <td className="px-4 py-3">
                                         <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full uppercase ${r.status === 'Paid' ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
@@ -119,7 +175,7 @@ const PayrollHistory: React.FC = () => {
                                     <td className="px-4 py-3">
                                         <button
                                             onClick={() => setSelected(r)}
-                                            className="bg-gray-50 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase transition-all"
+                                            className="bg-gray-50 text-gray-500 hover:bg-teal-50 hover:text-teal-600 px-3 py-1.5 rounded-lg font-black text-[10px] uppercase transition-all"
                                         >
                                             <i className="fas fa-file-invoice mr-1"></i>Slip
                                         </button>
@@ -146,7 +202,7 @@ const PayrollHistory: React.FC = () => {
                                     {MONTHS[r.month - 1]} {r.year}
                                 </p>
                                 <p className="font-black text-gray-800 text-sm leading-tight mt-0.5">{r.staffName}</p>
-                                <span className="inline-block mt-1 text-[10px] font-black bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                <span className="inline-block mt-1 text-[10px] font-black bg-teal-50 text-teal-600 px-2 py-0.5 rounded-full uppercase tracking-widest">
                                     {r.staffRole}
                                 </span>
                             </div>
@@ -168,7 +224,7 @@ const PayrollHistory: React.FC = () => {
                             </div>
                             <div className="px-4 py-3 text-center">
                                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Net Pay</p>
-                                <p className="text-sm font-black text-indigo-700">GHS {r.netPay.toFixed(2)}</p>
+                                <p className="text-sm font-black text-teal-700">GHS {r.netPay.toFixed(2)}</p>
                             </div>
                         </div>
 
@@ -191,7 +247,7 @@ const PayrollHistory: React.FC = () => {
                             </div>
                             <button
                                 onClick={() => setSelected(r)}
-                                className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-1.5"
+                                className="bg-teal-50 text-teal-600 hover:bg-teal-100 px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-1.5"
                             >
                                 <i className="fas fa-file-invoice"></i> View Payslip
                             </button>
@@ -225,10 +281,10 @@ const PayrollHistory: React.FC = () => {
                                         <td className="px-4 py-3 text-xs font-bold text-gray-500">{i + 1}</td>
                                         <td className="px-4 py-3 text-sm font-bold text-gray-700">{MONTHS[r.month - 1]} {r.year}</td>
                                         <td className="px-4 py-3 text-sm font-bold text-gray-800">{r.staffName}</td>
-                                        <td className="px-4 py-3 text-[10px] font-black text-purple-600 uppercase">{r.staffRole}</td>
+                                        <td className="px-4 py-3 text-[10px] font-black text-teal-600 uppercase">{r.staffRole}</td>
                                         <td className="px-4 py-3 text-sm text-gray-600 font-medium">{r.grossSalary.toFixed(2)}</td>
                                         <td className="px-4 py-3 text-sm text-red-500 font-medium">{r.deductions.toFixed(2)}</td>
-                                        <td className="px-4 py-3 text-sm text-indigo-700 font-bold">{r.netPay.toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-sm text-teal-700 font-bold">{r.netPay.toFixed(2)}</td>
                                         <td className="px-4 py-3 text-xs text-gray-500">{r.paymentMethod}</td>
                                         <td className="px-4 py-3 text-[10px] font-black uppercase text-green-600">{r.status}</td>
                                     </tr>
@@ -252,3 +308,4 @@ const PayrollHistory: React.FC = () => {
 };
 
 export default PayrollHistory;
+

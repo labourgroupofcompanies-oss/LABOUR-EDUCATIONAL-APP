@@ -914,7 +914,7 @@ const ParentDashboard: React.FC = () => {
                                 {activeTab === 'financials' && (
                                     <div className="space-y-6 animate-fadeIn">
                                         {/* Financial Metric Cards */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                             {/* Outstanding metric */}
                                             <div className={`bg-white border rounded-[2rem] shadow-sm p-6 space-y-4 ${
                                                 (activeChild.arrears ?? 0) > 0 
@@ -986,6 +986,38 @@ const ParentDashboard: React.FC = () => {
                                                     </p>
                                                 </div>
                                             </div>
+
+                                            {/* Provisional Next Term Preview Card */}
+                                            {activeChild.nextTermFee !== undefined && activeChild.nextTermFee > 0 && (
+                                                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-[2rem] shadow-sm p-6 space-y-4 sm:col-span-2 lg:col-span-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Provisional Next Term Fee</span>
+                                                        <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">
+                                                            <i className="fas fa-calendar-plus"></i>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between text-xs font-bold text-slate-700">
+                                                            <span>Next Term Fee:</span>
+                                                            <span>GH¢ {activeChild.nextTermFee.toFixed(2)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs font-bold text-slate-700">
+                                                            <span>Current Arrears:</span>
+                                                            <span className={(activeChild.arrears ?? 0) > 0 ? 'text-red-600' : 'text-slate-600'}>
+                                                                GH¢ {(activeChild.arrears ?? 0).toFixed(2)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="h-px bg-indigo-200/50 my-2"></div>
+                                                        <div className="flex justify-between text-sm font-black text-indigo-950">
+                                                            <span>Total Expected:</span>
+                                                            <span>GH¢ {((activeChild.nextTermFee ?? 0) + (activeChild.arrears ?? 0)).toFixed(2)}</span>
+                                                        </div>
+                                                        <p className="text-[7.5px] font-bold text-slate-400 uppercase tracking-wider leading-none mt-1">
+                                                            * Provisional preview before official term rollover
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Beautiful receipt Timeline Ledger */}

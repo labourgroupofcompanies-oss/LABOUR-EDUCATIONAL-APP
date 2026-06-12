@@ -78,15 +78,15 @@ const AccountantDashboard: React.FC = () => {
     const logoPreview = useAssetPreview(schoolData?.logo);
 
     const nav = [
-        { id: 'overview', label: 'Overview', icon: 'fa-home', group: null },
-        { id: 'fees-structure', label: 'Fee Structure', icon: 'fa-list-alt', group: 'Fee Management' },
-        { id: 'fees-students', label: 'Student Fees', icon: 'fa-users', group: 'Fee Management' },
-        { id: 'payroll', label: 'Payroll Run', icon: 'fa-money-bill-wave', group: 'Payroll' },
-        { id: 'payroll-history', label: 'Pay History', icon: 'fa-history', group: 'Payroll' },
-        { id: 'expenses', label: 'Expenses', icon: 'fa-receipt', group: 'Expenses' },
-        { id: 'reports', label: 'Reports', icon: 'fa-chart-bar', group: 'Reports' },
-        { id: 'subscription', label: 'Subscription', icon: 'fa-credit-card', group: 'System' },
-        { id: 'settings', label: 'Settings', icon: 'fa-cog', group: null },
+        { id: 'overview', label: 'Home Dashboard', desc: 'Main summary of school money', icon: 'fa-home', group: null },
+        { id: 'fees-structure', label: '1. Set School Fees', desc: 'Configure fee amounts for classes', icon: 'fa-list-alt', group: 'Fee Management' },
+        { id: 'fees-students', label: '2. Collect Fees', desc: 'Record payments, print receipts', icon: 'fa-users', group: 'Fee Management' },
+        { id: 'expenses', label: '3. School Expenses', desc: 'Record school buying & spending', icon: 'fa-receipt', group: 'Expenses' },
+        { id: 'payroll', label: '4. Pay Salaries', desc: 'Pay monthly salaries to teachers', icon: 'fa-money-bill-wave', group: 'Payroll' },
+        { id: 'payroll-history', label: '5. Salary History', desc: 'View past pay slips & totals', icon: 'fa-history', group: 'Payroll' },
+        { id: 'reports', label: '6. Money Reports', desc: 'Total income, expenses & ledgers', icon: 'fa-chart-bar', group: 'Reports' },
+        { id: 'subscription', label: 'Subscription Plan', desc: 'Renew or manage school license', icon: 'fa-credit-card', group: 'System' },
+        { id: 'settings', label: 'Settings & Profile', desc: 'Update details and password', icon: 'fa-cog', group: null },
     ] as const;
 
     const tabIcons: Record<string, string> = {
@@ -103,10 +103,10 @@ const AccountantDashboard: React.FC = () => {
 
     const tabLabels: Record<string, string> = {
         'overview': 'Home',
-        'fees-structure': 'Fees',
-        'fees-students': 'Students',
-        'payroll': 'Payroll',
-        'payroll-history': 'History',
+        'fees-structure': 'Set Fees',
+        'fees-students': 'Collect',
+        'payroll': 'Pay Staff',
+        'payroll-history': 'Pay History',
         'expenses': 'Expenses',
         'reports': 'Reports',
         'subscription': 'Plan',
@@ -130,12 +130,12 @@ const AccountantDashboard: React.FC = () => {
         }
     };
 
-    const groups = ['Fee Management', 'Payroll', 'Expenses', 'System'];
+    const groups = ['Fee Management', 'Expenses', 'Payroll', 'Reports', 'System'];
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             {/* ── Top Header Bar ── */}
-            <header className="sticky top-0 z-40 bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-700 shadow-xl shadow-purple-300/30">
+            <header className="sticky top-0 z-40 bg-gradient-to-r from-teal-800 via-teal-700 to-emerald-800 shadow-xl shadow-teal-900/10 border-b border-teal-850">
                 <div className="flex items-center justify-between px-4 md:px-8 py-3 md:py-4">
                     {/* Left: hamburger (mobile) + logo + title (clickable → home) */}
                     <div className="flex items-center gap-3">
@@ -200,54 +200,72 @@ const AccountantDashboard: React.FC = () => {
             <div className="flex flex-1 overflow-hidden">
                 {/* ── Sidebar ── */}
                 <aside className={`
-                    hidden md:flex fixed md:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-100
+                    hidden md:flex fixed md:static inset-y-0 left-0 z-30 w-72 bg-gradient-to-b from-teal-800 via-teal-900 to-emerald-950 border-r border-teal-900/40
                     flex-col pt-24 md:pt-0 transition-transform duration-300
                 `}>
-                    <div className="p-4 md:p-6 flex-1 overflow-y-auto space-y-1">
+                    <div className="py-6 pl-6 pr-0 flex-1 overflow-y-auto space-y-2.5">
                         {/* Overview */}
                         <button
                             onClick={() => { setView('overview'); setSidebarOpen(false); }}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${view === 'overview' ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-gray-500 hover:bg-gray-50 hover:text-purple-600'}`}
+                            className={`w-full flex items-start gap-3.5 px-4 py-3 transition-all duration-200 group relative ${view === 'overview' ? 'bg-gray-50 text-teal-800 rounded-l-2xl rounded-r-none mr-0 -mr-[2px] relative z-10 shadow-sm before:absolute before:right-0 before:-top-4 before:w-4 before:h-4 before:rounded-br-2xl before:shadow-[4px_4px_0_0_#f9fafb] before:pointer-events-none after:absolute after:right-0 after:-bottom-4 after:w-4 after:h-4 after:rounded-tr-2xl after:shadow-[4px_-4px_0_0_#f9fafb] after:pointer-events-none' : 'text-teal-100/90 hover:bg-white/10 hover:text-white rounded-xl mr-6'}`}
                         >
-                            <i className="fas fa-home w-4 text-center"></i> Overview
+                            {view === 'overview' && (
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-teal-600 rounded-r-full"></span>
+                            )}
+                            <div className={`flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform ${view === 'overview' ? 'bg-teal-50 text-teal-700 shadow-sm' : 'bg-white/10 text-teal-250 group-hover:text-white'}`}>
+                                <i className="fas fa-home text-sm"></i>
+                            </div>
+                            <div className="text-left flex-1 min-w-0">
+                                <p className={`font-black text-[12px] uppercase tracking-wide leading-tight ${view === 'overview' ? 'text-teal-950' : 'text-white'}`}>Home Dashboard</p>
+                                <p className={`text-[9.5px] font-semibold leading-normal truncate mt-0.5 ${view === 'overview' ? 'text-teal-600/85' : 'text-teal-200/60'}`}>Main summary of school money</p>
+                            </div>
                         </button>
 
                         {/* Grouped Nav */}
                         {groups.map(group => (
-                            <div key={group} className="pt-4">
-                                <p className="px-4 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">{group}</p>
+                            <div key={group} className="pt-4 space-y-1">
+                                <p className="px-4 text-[9px] font-black text-teal-200/50 uppercase tracking-[0.2em] flex items-center gap-2 mb-2 mr-6">
+                                    <span>{group}</span>
+                                    <span className="flex-1 h-px bg-teal-500/20"></span>
+                                </p>
                                 {nav.filter(n => n.group === group).map(item => (
                                     <button
                                         key={item.id}
                                         onClick={() => { setView(item.id as View); setSidebarOpen(false); }}
-                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${view === item.id ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-gray-500 hover:bg-gray-50 hover:text-purple-600'}`}
+                                        className={`w-full flex items-start gap-3.5 px-4 py-2.5 transition-all duration-200 group relative ${view === item.id ? 'bg-gray-50 text-teal-800 rounded-l-2xl rounded-r-none mr-0 -mr-[2px] relative z-10 shadow-sm before:absolute before:right-0 before:-top-4 before:w-4 before:h-4 before:rounded-br-2xl before:shadow-[4px_4px_0_0_#f9fafb] before:pointer-events-none after:absolute after:right-0 after:-bottom-4 after:w-4 after:h-4 after:rounded-tr-2xl after:shadow-[4px_-4px_0_0_#f9fafb] after:pointer-events-none' : 'text-teal-100/90 hover:bg-white/10 hover:text-white rounded-xl mr-6'}`}
                                     >
-                                        <i className={`fas ${item.icon} w-4 text-center`}></i> {item.label}
+                                        {view === item.id && (
+                                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-teal-600 rounded-r-full"></span>
+                                        )}
+                                        <div className={`flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform ${view === item.id ? 'bg-teal-50 text-teal-700 shadow-sm' : 'bg-white/10 text-teal-250 group-hover:text-white'}`}>
+                                            <i className={`fas ${item.icon} text-sm`}></i>
+                                        </div>
+                                        <div className="text-left flex-1 min-w-0">
+                                            <p className={`font-black text-[12px] uppercase tracking-wide leading-tight ${view === item.id ? 'text-teal-950' : 'text-white'}`}>{item.label}</p>
+                                            <p className={`text-[9.5px] font-semibold leading-normal truncate mt-0.5 ${view === item.id ? 'text-teal-600/85' : 'text-teal-200/60'}`}>{item.desc}</p>
+                                        </div>
                                     </button>
                                 ))}
                             </div>
                         ))}
 
-                        {/* Reports */}
-                        <div className="pt-4">
-                            <p className="px-4 text-[9px] font-black text-gray-300 uppercase tracking-widest mb-1">Reports</p>
-                            <button
-                                onClick={() => { setView('reports'); setSidebarOpen(false); }}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${view === 'reports' ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-gray-500 hover:bg-gray-50 hover:text-purple-600'}`}
-                            >
-                                <i className="fas fa-chart-bar w-4 text-center"></i> Financial Reports
-                            </button>
-                        </div>
-
                         {/* Settings */}
-                        <div className="pt-4 border-t border-gray-100 mt-4">
-                            <button
-                                onClick={() => { setView('settings'); setSidebarOpen(false); }}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${view === 'settings' ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'text-gray-500 hover:bg-gray-50 hover:text-purple-600'}`}
-                            >
-                                <i className="fas fa-cog w-4 text-center"></i> Settings
-                            </button>
-                        </div>
+                        <div className="pt-4 border-t border-teal-500/20 mt-5 mr-6"></div>
+                        <button
+                            onClick={() => { setView('settings'); setSidebarOpen(false); }}
+                            className={`w-full flex items-start gap-3.5 px-4 py-2.5 transition-all duration-200 group relative ${view === 'settings' ? 'bg-gray-50 text-teal-800 rounded-l-2xl rounded-r-none mr-0 -mr-[2px] relative z-10 shadow-sm before:absolute before:right-0 before:-top-4 before:w-4 before:h-4 before:rounded-br-2xl before:shadow-[4px_4px_0_0_#f9fafb] before:pointer-events-none after:absolute after:right-0 after:-bottom-4 after:w-4 after:h-4 after:rounded-tr-2xl after:shadow-[4px_-4px_0_0_#f9fafb] after:pointer-events-none' : 'text-teal-100/90 hover:bg-white/10 hover:text-white rounded-xl mr-6'}`}
+                        >
+                            {view === 'settings' && (
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-teal-600 rounded-r-full"></span>
+                            )}
+                            <div className={`flex items-center justify-center w-8 h-8 rounded-xl flex-shrink-0 group-hover:scale-105 transition-transform ${view === 'settings' ? 'bg-teal-50 text-teal-700 shadow-sm' : 'bg-white/10 text-teal-250 group-hover:text-white'}`}>
+                                <i className="fas fa-cog text-sm"></i>
+                            </div>
+                            <div className="text-left flex-1 min-w-0">
+                                <p className={`font-black text-[12px] uppercase tracking-wide leading-tight ${view === 'settings' ? 'text-teal-950' : 'text-white'}`}>Settings & Profile</p>
+                                <p className={`text-[9.5px] font-semibold leading-normal truncate mt-0.5 ${view === 'settings' ? 'text-teal-600/85' : 'text-teal-200/60'}`}>Update details and password</p>
+                            </div>
+                        </button>
                     </div>
                 </aside>
 
@@ -261,7 +279,7 @@ const AccountantDashboard: React.FC = () => {
             </div>
 
             {/* ── Mobile Fixed Bottom Navigation Bar ── */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.12)]">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-gradient-to-r from-teal-800 via-teal-900 to-emerald-950 border-t border-teal-900/60 z-50 shadow-[0_-8px_30px_rgba(4,47,46,0.35)]">
                 <div className="flex items-center justify-around px-2">
                     {(() => {
                         const primaryTabs = ['overview', 'fees-students', 'payroll', 'expenses'] as const;
@@ -274,12 +292,12 @@ const AccountantDashboard: React.FC = () => {
                                     <button
                                         key={tab}
                                         onClick={() => { setView(tab); setSidebarOpen(false); setShowMoreNav(false); }}
-                                        className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${view === tab ? 'text-purple-600' : 'text-gray-400'}`}
+                                        className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${view === tab ? 'text-white' : 'text-teal-200/60 hover:text-white'}`}
                                     >
                                         {view === tab && (
-                                            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-purple-600 rounded-b-full shadow-[0_2px_10px_rgba(147,51,234,0.5)] animate-slideDown"></span>
+                                            <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-teal-400 rounded-b-full shadow-[0_2px_10px_rgba(20,184,166,0.4)] animate-slideDown"></span>
                                         )}
-                                        <i className={`fas ${tabIcons[tab]} text-xl transition-colors ${view === tab ? 'scale-110' : ''}`}></i>
+                                        <i className={`fas ${tabIcons[tab]} text-xl transition-all ${view === tab ? 'scale-110 text-white' : 'text-teal-200/60'}`}></i>
                                         <span className="text-[9px] font-black uppercase tracking-tight leading-none">
                                             {tabLabels[tab]}
                                         </span>
@@ -288,13 +306,13 @@ const AccountantDashboard: React.FC = () => {
 
                                 <button
                                     onClick={() => setShowMoreNav(!showMoreNav)}
-                                    className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${isMoreActive || showMoreNav ? 'text-purple-600' : 'text-gray-400'}`}
+                                    className={`relative flex-1 flex flex-col items-center pt-3 pb-4 gap-1 transition-all active:scale-95 ${isMoreActive || showMoreNav ? 'text-white font-bold' : 'text-teal-200/60 hover:text-white'}`}
                                 >
                                     {(isMoreActive || showMoreNav) && (
-                                        <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-purple-600 rounded-b-full shadow-[0_2px_10px_rgba(147,51,234,0.5)] animate-slideDown"></span>
+                                        <span className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-teal-400 rounded-b-full shadow-[0_2px_10px_rgba(20,184,166,0.4)] animate-slideDown"></span>
                                     )}
                                     <div className={`w-6 h-6 flex items-center justify-center transition-transform duration-300 ${showMoreNav ? 'rotate-90' : ''}`}>
-                                        <i className={`fas ${showMoreNav ? 'fa-times' : 'fa-th-large'} text-xl`}></i>
+                                        <i className={`fas ${showMoreNav ? 'fa-times' : 'fa-th-large'} text-xl ${isMoreActive || showMoreNav ? 'text-white' : 'text-teal-200/60'}`}></i>
                                     </div>
                                     <span className="text-[9px] font-black uppercase tracking-tight leading-none">{showMoreNav ? 'Close' : 'Menu'}</span>
                                 </button>
@@ -302,14 +320,14 @@ const AccountantDashboard: React.FC = () => {
                                 {/* More Overlay for Accountant */}
                                 {showMoreNav && (
                                     <div className="absolute bottom-full left-0 right-0 p-4 animate-in slide-in-from-bottom duration-300">
-                                        <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] border border-white/20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] overflow-hidden max-h-[70vh] flex flex-col">
-                                            <div className="p-6 border-b border-gray-100/50 bg-gray-50/50 flex items-center justify-between">
-                                                <h3 className="text-sm font-black text-gray-800 uppercase tracking-widest flex items-center gap-2">
-                                                    <i className="fas fa-calculator text-purple-600"></i>
+                                        <div className="bg-gradient-to-br from-teal-800 via-teal-900 to-emerald-950 rounded-[2.5rem] border border-teal-900/60 shadow-[0_-20px_50px_rgba(0,0,0,0.3)] overflow-hidden max-h-[70vh] flex flex-col">
+                                            <div className="p-6 border-b border-teal-900/40 bg-teal-950/30 flex items-center justify-between">
+                                                <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+                                                    <i className="fas fa-calculator text-teal-300"></i>
                                                     Accountant Menu
                                                 </h3>
-                                                <div className="px-3 py-1 bg-purple-100 rounded-full">
-                                                    <span className="text-[9px] font-black text-purple-600 uppercase tracking-tighter">Finance Hub</span>
+                                                <div className="px-3 py-1 bg-white/10 border border-white/10 rounded-full">
+                                                    <span className="text-[9px] font-black text-teal-200 uppercase tracking-tighter">Finance Hub</span>
                                                 </div>
                                             </div>
                                             <div className="p-4 overflow-y-auto grid grid-cols-3 gap-3">
@@ -318,18 +336,18 @@ const AccountantDashboard: React.FC = () => {
                                                         key={tab}
                                                         onClick={() => { setView(tab); setShowMoreNav(false); }}
                                                         className={`flex flex-col items-center justify-center p-4 rounded-2xl transition-all active:scale-95 gap-3 border ${view === tab 
-                                                            ? 'bg-purple-600 text-white border-purple-600 shadow-lg shadow-purple-200' 
-                                                            : 'bg-gray-50/50 text-gray-500 border-gray-100 hover:bg-gray-100'}`}
+                                                            ? 'bg-white text-teal-950 border-white shadow-lg shadow-teal-950/40' 
+                                                            : 'bg-white/5 text-teal-100/80 border-white/5 hover:bg-white/10 hover:text-white'}`}
                                                     >
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${view === tab ? 'bg-white/20' : 'bg-white shadow-sm text-gray-400'}`}>
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${view === tab ? 'bg-teal-50 text-teal-800 shadow-sm' : 'bg-white/10 text-teal-200 group-hover:text-white'}`}>
                                                             <i className={`fas ${tabIcons[tab]}`}></i>
                                                         </div>
-                                                        <span className="text-[9px] font-bold text-center leading-tight uppercase tracking-tight">{tabLabels[tab]}</span>
+                                                        <span className={`text-[9px] font-black text-center leading-tight uppercase tracking-tight ${view === tab ? 'text-teal-950' : 'text-teal-100'}`}>{tabLabels[tab]}</span>
                                                     </button>
                                                 ))}
                                             </div>
-                                            <div className="p-4 bg-gray-50/80 border-t border-gray-100/50">
-                                                <p className="text-[8px] text-center text-gray-400 font-black uppercase tracking-[0.2em]">
+                                            <div className="p-4 bg-teal-950/40 border-t border-white/5">
+                                                <p className="text-[8px] text-center text-teal-300/40 font-black uppercase tracking-[0.2em]">
                                                     Labour Edu System • Accountant Terminal
                                                 </p>
                                             </div>
@@ -348,3 +366,4 @@ const AccountantDashboard: React.FC = () => {
 };
 
 export default AccountantDashboard;
+

@@ -9,6 +9,7 @@ import { useAcademicSession } from '../../../hooks/useAcademicSession';
 import { assignGrade } from '../../../utils/assessmentCalculator';
 import ReportCardTemplate, { type ReportCardData } from './ReportCardTemplate';
 import { attendanceService } from '../../../services/attendanceService';
+import { dbService } from '../../../services/dbService';
 import { normalizeArray, normalizeObject } from '../../../utils/dataSafety';
 
 /* ─── helpers ─── */
@@ -300,32 +301,52 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
 
                 // Financial info
                 let feeInfo: ReportCardData['feeInfo'] | undefined;
-                if (feeStructure) {
-                    const studentPayments = allFeePayments
-                        .filter(p => p.studentId === student.id)
-                        .sort((a, b) => b.paymentDate - a.paymentDate);
-                    const feeDue = feeStructure.termFeeAmount;
-                    const feePaid = studentPayments.reduce((sum, p) => sum + p.amountPaid, 0);
-                    const feeBalance = feeDue - feePaid;
-                    const status: 'Paid' | 'Partial' | 'Unpaid' | 'Overpaid' =
-                        feePaid === 0 ? 'Unpaid'
-                            : feeBalance < 0 ? 'Overpaid'
-                                : feeBalance === 0 ? 'Paid'
-                                    : 'Partial';
-                    feeInfo = {
-                        feeDue,
-                        feePaid,
-                        feeBalance,
-                        status,
-                        lastPaymentMethod: studentPayments[0]?.paymentMethod,
+                const carriedArrears = await dbService.fees.getCarriedArrears(
+                    user.schoolId,
+                    student.id!,
+                    selectedTerm,
+                    selectedYear,
+                    student.arrears || 0
+                );
+                
+                const studentPayments = allFeePayments
+                    .filter(p => p.studentId === student.id)
+                    .sort((a, b) => b.paymentDate - a.paymentDate);
+                const feePaid = studentPayments.reduce((sum, p) => sum + p.amountPaid, 0);
+                const termFeeAmount = feeStructure?.termFeeAmount ?? 0;
+                const feeDue = termFeeAmount + carriedArrears;
+                const feeBalance = feeDue - feePaid;
+                const status: 'Paid' | 'Partial' | 'Unpaid' | 'Overpaid' =
+                    feePaid === 0 ? 'Unpaid'
+                        : feeBalance < 0 ? 'Overpaid'
+                            : feeBalance === 0 ? 'Paid'
+                                : 'Partial';
+                feeInfo = {
+                    feeDue,
+                    feePaid,
+                    feeBalance,
+                    status,
+                    lastPaymentMethod: studentPayments[0]?.paymentMethod,
+                };
+
+                // Resolve next term fee preview
+                let nextTermFee: number | undefined;
+                try {
+                    const getNextTerm = (t: string, y: number) => {
+                        if (t === 'Term 1') return { term: 'Term 2', year: y };
+                        if (t === 'Term 2') return { term: 'Term 3', year: y };
+                        return { term: 'Term 1', year: y + 1 };
                     };
-                } else {
-                    feeInfo = {
-                        feeDue: 0,
-                        feePaid: 0,
-                        feeBalance: 0,
-                        status: 'Unpaid',
-                    };
+                    const { term: nextT, year: nextY } = getNextTerm(selectedTerm, selectedYear);
+                    const nextFeeStructure = await eduDb.feeStructures
+                        .where('schoolId').equals(user.schoolId)
+                        .and(f => f.classId === student.classId && f.term === nextT && f.year === nextY)
+                        .first();
+                    if (nextFeeStructure) {
+                        nextTermFee = nextFeeStructure.termFeeAmount;
+                    }
+                } catch (err) {
+                    console.warn('[ReportCard] Failed to load next term fee preview:', err);
                 }
 
                 // Promotion formatting
@@ -367,6 +388,7 @@ const ReportCardGenerator: React.FC<Props> = ({ initialClassId, initialStudentId
                     feeInfo,
                     promotionStatus,
                     config: reportConfig as any,
+                    nextTermFee,
                 });
             }
 

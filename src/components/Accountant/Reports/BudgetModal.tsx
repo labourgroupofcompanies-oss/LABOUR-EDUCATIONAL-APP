@@ -130,3 +130,4 @@ const BudgetModal: React.FC<BudgetModalProps> = ({ schoolId, term, year, onClose
 };
 
 export default BudgetModal;
+
