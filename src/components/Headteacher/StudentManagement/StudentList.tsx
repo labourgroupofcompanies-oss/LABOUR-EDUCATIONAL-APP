@@ -250,30 +250,30 @@ const StudentList: React.FC<StudentListProps> = ({ onAdd, onView }) => {
                     <h2 className="text-2xl font-bold text-gray-800">Students Directory</h2>
                     <p className="text-gray-400 text-sm">Manage {students?.length || 0} students and their financial status</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     {selectedStudentIds.length > 0 && (
                         <button
                             onClick={() => setIsMoveModalOpen(true)}
-                            className="btn-primary !from-indigo-600 !to-indigo-700 px-6 py-3"
+                            className="btn-primary !from-indigo-600 !to-indigo-700 px-6 py-3 flex-1 md:flex-none"
                         >
                             <i className="fas fa-exchange-alt"></i> Move ({selectedStudentIds.length})
                         </button>
                     )}
                     <button
                         onClick={exportToSpreadsheet}
-                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 px-6 py-3 rounded-2xl flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 px-6 py-3 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer flex-1 md:flex-none text-xs md:text-sm"
                     >
                         <i className="fas fa-file-excel text-emerald-600"></i> Export CSV
                     </button>
                     <button
                         onClick={() => setIsImportModalOpen(true)}
-                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 px-6 py-3 rounded-2xl flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
+                        className="bg-white hover:bg-slate-50 text-slate-700 font-bold border border-slate-200 px-6 py-3 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer flex-1 md:flex-none text-xs md:text-sm"
                     >
                         <i className="fas fa-file-import text-indigo-600"></i> Import Excel
                     </button>
                     <button
                         onClick={onAdd}
-                        className="btn-primary px-6 py-3"
+                        className="btn-primary px-6 py-3 flex-1 md:flex-none text-xs md:text-sm"
                     >
                         <i className="fas fa-plus"></i> Add Student
                     </button>

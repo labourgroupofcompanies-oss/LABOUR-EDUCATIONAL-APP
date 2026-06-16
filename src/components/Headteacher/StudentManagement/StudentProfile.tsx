@@ -124,7 +124,7 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ studentId, onBack, onEd
                     </button>
                     <h2 className="text-xl md:text-2xl font-bold text-gray-800">Student Profile</h2>
                 </div>
-                <div className="sm:ml-auto flex gap-2">
+                <div className="sm:ml-auto flex flex-wrap gap-2 w-full sm:w-auto">
                     <button 
                         onClick={() => {
                             // Custom event to navigate to results/reportcards in HeadteacherDashboard
@@ -133,14 +133,14 @@ const StudentProfile: React.FC<StudentProfileProps> = ({ studentId, onBack, onEd
                             });
                             window.dispatchEvent(event);
                         }}
-                        className="btn-secondary !bg-indigo-50 !text-indigo-600 hover:!bg-indigo-100 flex-1 sm:flex-none px-4 py-2 !text-sm"
+                        className="btn-secondary !bg-indigo-50 !text-indigo-600 hover:!bg-indigo-100 flex-1 sm:flex-none px-4 py-2 !text-sm flex items-center justify-center"
                     >
                         <i className="fas fa-file-invoice mr-2"></i> Report Card
                     </button>
-                    <button onClick={onEdit} className="btn-secondary !bg-blue-50 !text-blue-600 hover:!bg-blue-100 flex-1 sm:flex-none px-4 py-2 !text-sm">
+                    <button onClick={onEdit} className="btn-secondary !bg-blue-50 !text-blue-600 hover:!bg-blue-100 flex-1 sm:flex-none px-4 py-2 !text-sm flex items-center justify-center">
                         <i className="fas fa-edit mr-2"></i> Edit
                     </button>
-                    <button onClick={handleDelete} className="btn-secondary !bg-red-50 !text-red-600 hover:!bg-red-100 flex-1 sm:flex-none px-4 py-2 !text-sm">
+                    <button onClick={handleDelete} className="btn-secondary !bg-red-50 !text-red-600 hover:!bg-red-100 flex-1 sm:flex-none px-4 py-2 !text-sm flex items-center justify-center">
                         <i className="fas fa-trash-alt mr-2"></i> Delete
                     </button>
                 </div>

@@ -608,19 +608,19 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                         </div>
 
                         {/* Actions Footer */}
-                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-between items-center shrink-0">
+                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex flex-col sm:flex-row gap-3 justify-between items-stretch sm:items-center shrink-0">
                             <button
                                 onClick={() => { setStep('upload'); setParsedRows([]); }}
-                                className="btn-secondary px-5 py-3"
+                                className="btn-secondary px-5 py-3 w-full sm:w-auto flex items-center justify-center gap-2"
                                 disabled={isSaving}
                             >
-                                <i className="fas fa-arrow-left"></i> Re-upload File
+                                <i className="fas fa-arrow-left"></i> Re-upload
                             </button>
                             
-                            <div className="flex gap-3">
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                 <button
                                     onClick={onClose}
-                                    className="btn-secondary px-5 py-3"
+                                    className="btn-secondary px-5 py-3 w-full sm:w-auto flex items-center justify-center"
                                     disabled={isSaving}
                                 >
                                     Cancel
@@ -628,14 +628,12 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = ({ isOpen, onCl
                                 <button
                                     onClick={handleRegisterLearners}
                                     disabled={isSaving || parsedRows.filter(r => r.selected && isRowValid(r) && !isRowDuplicate(r)).length === 0}
-                                    className="btn-success px-8 py-3 shadow-lg shadow-emerald-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="btn-success px-8 py-3 shadow-lg shadow-emerald-100 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto flex items-center justify-center gap-2"
                                 >
                                     {isSaving ? (
-                                        <><i className="fas fa-circle-notch fa-spin mr-2"></i> Registering...</>
+                                        <><i className="fas fa-circle-notch fa-spin"></i> Registering...</>
                                     ) : (
-                                        <><i className="fas fa-check-circle mr-2"></i> Register Learners ({
-                                            parsedRows.filter(r => r.selected && isRowValid(r) && !isRowDuplicate(r)).length
-                                        })</>
+                                        <><i className="fas fa-check-circle"></i> Register Learners ({parsedRows.filter(r => r.selected && isRowValid(r) && !isRowDuplicate(r)).length})</>
                                     )}
                                 </button>
                             </div>
